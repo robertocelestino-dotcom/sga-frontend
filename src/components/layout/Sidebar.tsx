@@ -1,200 +1,259 @@
+// src/components/layout/Sidebar.tsx - ATUALIZAR
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useAuthStore } from '../../stores/authStore';
+import {
+  FaHome,
+  FaUsers,
+  FaFileImport,
+  FaMoneyBillWave,
+  FaCog,
+  FaChartBar,
+  FaChevronDown,
+  FaChevronRight,
+  FaBox,
+  FaUserPlus,
+  FaFileInvoiceDollar,
+  FaClipboardList,
+  FaTag,
+  FaDollarSign
+} from 'react-icons/fa';
 
 const Sidebar = () => {
   const location = useLocation();
-  const { user, logout } = useAuthStore();
-  const [openMenus, setOpenMenus] = useState<{ [key: string]: boolean }>({
-    cadastros: false,
-    gestaoServicos: false,
-    gestaoFaturamento: false,
-    importacoes: false
+  const [menuAberto, setMenuAberto] = useState({
+    cadastro: false,
+    importacao: false,
+    faturamento: false,
+    gestao: false
   });
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const toggleMenu = (menu: string) => {
-    setOpenMenus(prev => ({
+    setMenuAberto(prev => ({
       ...prev,
       [menu]: !prev[menu]
     }));
   };
 
-  const menuStructure = [
+  const menuItems = [
     {
       name: 'Dashboard',
-      path: '/',
-      icon: '📊',
+      path: '/dashboard',
+      icon: <FaHome size={18} />,
+      exact: true
     },
     {
-      name: 'Cadastros',
-      key: 'cadastros',
-      icon: '📋',
-      items: [
-        { name: 'Associados', path: '/cadastros/associados', icon: '👥' },
-        { name: 'Usuários', path: '/cadastros/usuarios', icon: '👤' }
+      name: 'Cadastro',
+      icon: <FaUserPlus size={18} />,
+      submenu: [
+        {
+          name: 'Produtos',
+          path: '/produtos',
+          icon: <FaBox size={16} />,
+          description: 'Gestão de produtos e serviços'
+        },
+        {
+          name: 'Associados',
+          path: '/associados',
+          icon: <FaUsers size={16} />,
+          description: 'Cadastro de associados'
+        },
+        {
+          name: 'Usuários',
+          path: '/usuarios',
+          icon: <FaUserPlus size={16} />,
+          description: 'Gestão de usuários'
+        },
+        {
+          name: 'Parâmetros',
+          path: '/parametrizacao-associados',
+          icon: <FaCog size={16} />,
+          description: 'Configurações do sistema'
+        },
+        {
+          name: 'Tabela de Preços',
+          path: '/tabela-precos',
+          icon: <FaTag size={16} />,
+          description: 'Preços e valores'
+        },
+        {
+          name: 'Tabela de Valores',
+          path: '/tabela-valores',
+          icon: <FaDollarSign size={16} />,
+          description: 'Valores e tarifas'
+        }
       ]
     },
     {
-      name: 'Gestão de Serviços',
-      key: 'gestaoServicos',
-      icon: '🛠️',
-      items: [
-        { name: 'Serviços', path: '/servicos/gestao/servicos', icon: '🔧' },
-        { name: 'Produtos', path: '/servicos/gestao/produtos', icon: '📦' },
-        { name: 'Tabela de Valores', path: '/servicos/gestao/tabela-valores', icon: '💰' }
+      name: 'Importação',
+      icon: <FaFileImport size={18} />,
+      submenu: [
+        {
+          name: 'Importar SPC',
+          path: '/importacao-spc',
+          icon: <FaFileImport size={16} />
+        },
+        {
+          name: 'Importar Associados',
+          path: '/importacao-associados',
+          icon: <FaUsers size={16} />
+        },
+        {
+          name: 'Importar Benefícios',
+          path: '/importacao-beneficios',
+          icon: <FaClipboardList size={16} />
+        },
+        {
+          name: 'Importar Faturamentos',
+          path: '/importacao-faturamentos',
+          icon: <FaFileInvoiceDollar size={16} />
+        },
+        {
+          name: 'Verificar Importação',
+          path: '/verificacao-importacao',
+          icon: <FaChartBar size={16} />
+        }
       ]
     },
     {
-      name: 'Gestão de Faturamento',
-      key: 'gestaoFaturamento',
-      icon: '💳',
-      items: [
-        { name: 'SPC', path: '/faturamento/gestao/spc', icon: '📄' },
-        { name: 'Benefícios', path: '/faturamento/gestao/beneficios', icon: '🎁' },
-        { name: 'Tabela de Preços', path: '/faturamento/gestao/tabela-precos', icon: '📋' }
+      name: 'Faturamento',
+      icon: <FaMoneyBillWave size={18} />,
+      submenu: [
+        {
+          name: 'Processar Faturamento',
+          path: '/processar-faturamento',
+          icon: <FaFileInvoiceDollar size={16} />
+        },
+        {
+          name: 'Tabelas de Faturamento',
+          path: '/tabelas-faturamento',
+          icon: <FaClipboardList size={16} />
+        }
       ]
     },
     {
-      name: 'Importações',
-      key: 'importacoes',
-      icon: '📥',
-      items: [
-        { name: 'Associados', path: '/importacoes/associados', icon: '👥' },
-        { name: 'Faturamentos', path: '/importacoes/faturamentos', icon: '💳' }
+      name: 'Gestão',
+      icon: <FaChartBar size={18} />,
+      submenu: [
+        {
+          name: 'Benefícios',
+          path: '/beneficios',
+          icon: <FaClipboardList size={16} />
+        },
+        {
+          name: 'Serviços',
+          path: '/servicos',
+          icon: <FaCog size={16} />
+        },
+        {
+          name: 'Gestão SPC',
+          path: '/gestao-spc',
+          icon: <FaChartBar size={16} />
+        },
+        {
+          name: 'Atualização Associados',
+          path: '/atualizacao-associados',
+          icon: <FaUsers size={16} />
+        }
       ]
+    },
+    {
+      name: 'Verificação',
+      path: '/verificacao-dashboard',
+      icon: <FaChartBar size={18} />
     }
   ];
 
+  const isActive = (path: string) => {
+    return location.pathname === path || location.pathname.startsWith(`${path}/`);
+  };
+
   return (
-    <>
-      {/* Mobile Menu Button */}
-      <div className="lg:hidden fixed top-4 left-4 z-50">
-        <button
-          onClick={() => setIsMobileOpen(!isMobileOpen)}
-          className="p-2 bg-gray-800 text-white rounded-lg shadow-lg"
-        >
-          {isMobileOpen ? '✕' : '☰'}
-        </button>
-      </div>
-
-      {/* Overlay para mobile */}
-      {isMobileOpen && (
-        <div 
-          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
-          onClick={() => setIsMobileOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <div className={`
-        fixed lg:static inset-y-0 left-0 z-40
-        w-64 bg-gray-800 text-white min-h-screen flex flex-col
-        transform transition-transform duration-300 ease-in-out
-        ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `}>
-        {/* Header Simplificado */}
-        <div className="p-4 border-b border-gray-700">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-xl font-bold" style={{ fontFamily: 'Segoe UI, sans-serif' }}>SGA</h1>
-              <p className="text-gray-400 text-sm" style={{ fontFamily: 'Segoe UI, sans-serif' }}>Sistema de Gestão</p>
-            </div>
-            <button 
-              onClick={() => setIsMobileOpen(false)}
-              className="lg:hidden p-1 text-gray-400 hover:text-white"
-            >
-              ✕
-            </button>
+    <div className="h-full bg-gray-900 text-white w-64 flex-shrink-0 overflow-y-auto">
+      <div className="p-4">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="bg-blue-600 p-2 rounded-lg">
+            <FaBox size={24} />
+          </div>
+          <div>
+            <h1 className="font-bold text-lg">SGA</h1>
+            <p className="text-xs text-gray-400">Sistema de Gestão</p>
           </div>
         </div>
 
-        {/* User Info Simplificado */}
-        <div className="p-4 border-b border-gray-700">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-              <span className="text-white text-sm font-semibold">
-                {user?.username?.charAt(0).toUpperCase()}
-              </span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate" style={{ fontFamily: 'Segoe UI, sans-serif' }}>
-                {user?.username}
-              </p>
-              <button
-                onClick={logout}
-                className="text-xs text-gray-400 hover:text-white mt-1"
-                style={{ fontFamily: 'Segoe UI, sans-serif' }}
-              >
-                Sair
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Navigation - Sem Scroll */}
-        <nav className="flex-1">
-          {menuStructure.map((item) => (
-            <div key={item.path || item.key} className="border-b border-gray-700 last:border-b-0">
-              {'path' in item ? (
-                // Item simples (Dashboard)
-                <Link
-                  to={item.path}
-                  onClick={() => setIsMobileOpen(false)}
-                  className={`flex items-center px-4 py-3 transition-colors ${
-                    location.pathname === item.path
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-300 hover:bg-gray-700'
-                  }`}
-                  style={{ fontFamily: 'Segoe UI, sans-serif' }}
-                >
-                  <span className="mr-3">{item.icon}</span>
-                  {item.name}
-                </Link>
-              ) : (
-                // Menu com subitens
-                <div>
+        <nav className="space-y-1">
+          {menuItems.map((item) => (
+            <div key={item.name}>
+              {item.submenu ? (
+                <>
                   <button
-                    onClick={() => toggleMenu(item.key)}
-                    className="flex items-center justify-between w-full px-4 py-3 text-gray-300 hover:bg-gray-700 transition-colors"
-                    style={{ fontFamily: 'Segoe UI, sans-serif' }}
+                    onClick={() => toggleMenu(item.name.toLowerCase())}
+                    className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors ${
+                      menuAberto[item.name.toLowerCase() as keyof typeof menuAberto]
+                        ? 'bg-gray-800 text-white'
+                        : 'hover:bg-gray-800 text-gray-300'
+                    }`}
                   >
-                    <div className="flex items-center">
-                      <span className="mr-3">{item.icon}</span>
-                      {item.name}
+                    <div className="flex items-center gap-3">
+                      {item.icon}
+                      <span className="font-medium">{item.name}</span>
                     </div>
-                    <span className={`transform transition-transform ${openMenus[item.key] ? 'rotate-180' : ''}`}>
-                      ▼
-                    </span>
+                    {menuAberto[item.name.toLowerCase() as keyof typeof menuAberto] ? (
+                      <FaChevronDown size={14} />
+                    ) : (
+                      <FaChevronRight size={14} />
+                    )}
                   </button>
 
-                  {openMenus[item.key] && (
-                    <div className="bg-gray-750">
-                      {item.items.map((subItem) => (
+                  {menuAberto[item.name.toLowerCase() as keyof typeof menuAberto] && (
+                    <div className="ml-8 mt-1 space-y-1">
+                      {item.submenu.map((subitem) => (
                         <Link
-                          key={subItem.path}
-                          to={subItem.path}
-                          onClick={() => setIsMobileOpen(false)}
-                          className={`flex items-center px-8 py-2 transition-colors ${
-                            location.pathname === subItem.path
-                              ? 'bg-blue-600 text-white'
-                              : 'text-gray-300 hover:bg-gray-700'
+                          key={subitem.name}
+                          to={subitem.path!}
+                          className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${
+                            isActive(subitem.path!)
+                              ? 'bg-blue-900 text-white'
+                              : 'text-gray-400 hover:text-white hover:bg-gray-800'
                           }`}
-                          style={{ fontFamily: 'Segoe UI, sans-serif' }}
                         >
-                          <span className="mr-3 text-sm">{subItem.icon}</span>
-                          <span className="text-sm">{subItem.name}</span>
+                          {subitem.icon}
+                          <div className="flex-1">
+                            <span className="text-sm font-medium">{subitem.name}</span>
+                            {subitem.description && (
+                              <p className="text-xs text-gray-500 mt-0.5">{subitem.description}</p>
+                            )}
+                          </div>
                         </Link>
                       ))}
                     </div>
                   )}
-                </div>
+                </>
+              ) : (
+                <Link
+                  to={item.path!}
+                  className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                    isActive(item.path!)
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                  }`}
+                >
+                  {item.icon}
+                  <span className="font-medium">{item.name}</span>
+                </Link>
               )}
             </div>
           ))}
         </nav>
+
+        {/* Versão do Sistema */}
+        <div className="mt-8 pt-6 border-t border-gray-800">
+          <div className="text-center">
+            <p className="text-xs text-gray-500">SGA v1.0.0</p>
+            <p className="text-xs text-gray-500 mt-1">© 2025 Sistema de Gestão</p>
+          </div>
+        </div>
       </div>
-    </>
+    </div>
   );
 };
 
