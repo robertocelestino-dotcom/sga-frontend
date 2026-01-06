@@ -10,6 +10,8 @@ import Dashboard from './pages/Dashboard'
 
 // Importe todas as páginas que você tem na estrutura
 import Associados from './pages/Associados'
+import AssociadoForm from './pages/AssociadoForm' // ADICIONE ESTE IMPORT
+import AssociadoDetalhes from './pages/AssociadoDetalhes' // ADICIONE ESTE IMPORT
 import AtualizacaoAssociados from './pages/AtualizacaoAssociados'
 import Beneficios from './pages/Beneficios'
 import GestaoSPC from './pages/GestaoSPC'
@@ -91,6 +93,9 @@ function App() {
 
               {/* Cadastro */}
               <Route path="associados" element={<Associados />} />
+              <Route path="associados/novo" element={<AssociadoForm />} /> {/* ADICIONE ESTA LINHA */}
+              <Route path="associados/editar/:id" element={<AssociadoForm />} /> {/* ADICIONE ESTA LINHA */}
+              <Route path="associados/:id" element={<AssociadoDetalhes />} /> {/* ADICIONE ESTA LINHA */}
               <Route path="usuarios" element={<Usuarios />} />
               <Route path="parametrizacao-associados" element={<ParametrizacaoAssociados />} />
               <Route path="tabela-precos" element={<TabelaPrecos />} />

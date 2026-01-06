@@ -1,9 +1,9 @@
 // src/services/api.ts
 import axios from "axios";
-
-export { 
-  api as defaultApi
-};
+//export { api }; // ← ADICIONE ESTA LINHA
+//export { 
+//  api as defaultApi
+//};
 /* ============================================================================
    CONFIGURAÇÃO GLOBAL AXIOS
    ============================================================================ */
@@ -435,6 +435,106 @@ export const produtoAPI = {
 };
 
 /* ============================================================================
+   SERVIÇO DE ASSOCIADOS — ADICIONADO
+   ============================================================================ */
+   export const associadoAPI = {
+    // CRUD Básico
+    async listarAssociados(params?: any) {
+      const response = await api.get("/associados", { params });
+      return response.data;
+    },
+  
+    async buscarPorId(id: number) {
+      const response = await api.get(`/associados/${id}`);
+      return response.data;
+    },
+  
+    async criarAssociado(data: any) {
+      const response = await api.post("/associados", data);
+      return response.data;
+    },
+  
+    async atualizarAssociado(id: number, data: any) {
+      const response = await api.put(`/associados/${id}`, data);
+      return response.data;
+    },
+  
+    async excluirAssociado(id: number) {
+      await api.delete(`/associados/${id}`);
+    },
+  
+    // Endereços
+    async adicionarEndereco(associadoId: number, endereco: any) {
+      const response = await api.post(`/associados/${associadoId}/enderecos`, endereco);
+      return response.data;
+    },
+  
+    async atualizarEndereco(associadoId: number, enderecoId: number, endereco: any) {
+      const response = await api.put(`/associados/${associadoId}/enderecos/${enderecoId}`, endereco);
+      return response.data;
+    },
+  
+    async removerEndereco(associadoId: number, enderecoId: number) {
+      await api.delete(`/associados/${associadoId}/enderecos/${enderecoId}`);
+    },
+  
+    // Emails
+    async adicionarEmail(associadoId: number, email: any) {
+      const response = await api.post(`/associados/${associadoId}/emails`, email);
+      return response.data;
+    },
+  
+    async atualizarEmail(associadoId: number, emailId: number, email: any) {
+      const response = await api.put(`/associados/${associadoId}/emails/${emailId}`, email);
+      return response.data;
+    },
+  
+    async removerEmail(associadoId: number, emailId: number) {
+      await api.delete(`/associados/${associadoId}/emails/${emailId}`);
+    },
+  
+    // Telefones
+    async adicionarTelefone(associadoId: number, telefone: any) {
+      const response = await api.post(`/associados/${associadoId}/telefones`, telefone);
+      return response.data;
+    },
+  
+    async atualizarTelefone(associadoId: number, telefoneId: number, telefone: any) {
+      const response = await api.put(`/associados/${associadoId}/telefones/${telefoneId}`, telefone);
+      return response.data;
+    },
+  
+    async removerTelefone(associadoId: number, telefoneId: number) {
+      await api.delete(`/associados/${associadoId}/telefones/${telefoneId}`);
+    },
+  
+    // Dados relacionados
+    async listarVendedores() {
+      const response = await api.get("/associados/vendedores");
+      return response.data;
+    },
+  
+    async listarPlanos() {
+      const response = await api.get("/associados/planos");
+      return response.data;
+    },
+  
+    async listarCategorias() {
+      const response = await api.get("/associados/categorias");
+      return response.data;
+    },
+  
+    async healthCheck() {
+      try {
+        const response = await api.get("/associados/health");
+        return response.data;
+      } catch (error) {
+        return { status: "DOWN", error: error.message };
+      }
+    }
+  };
+
+/* ============================================================================
    HANDLER DE ERROS
    ============================================================================ */
 export const errorHandler = {
@@ -464,4 +564,5 @@ export const errorHandler = {
 };
 
 // Exportações principais
+
 export default api;

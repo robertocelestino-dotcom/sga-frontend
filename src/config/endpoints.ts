@@ -1,6 +1,38 @@
+
 // src/config/endpoints.ts
 export const API_ENDPOINTS = {
-    // Verificação
+  
+  // Vendedores
+  vendedores: {
+    listarAtivos: `${API_BASE_URL}/vendedores/ativos`,
+    listar: `${API_BASE_URL}/vendedores`,
+    criar: `${API_BASE_URL}/vendedores`,
+    atualizar: (id: number) => `${API_BASE_URL}/vendedores/${id}`,
+    buscarPorId: (id: number) => `${API_BASE_URL}/vendedores/${id}`,
+    excluir: (id: number) => `${API_BASE_URL}/vendedores/${id}`,
+  },
+  
+  // Categorias
+  categorias: {
+    listarAtivas: `${API_BASE_URL}/categorias/ativas`,
+    listar: `${API_BASE_URL}/categorias/`,
+    criar: `${API_BASE_URL}/categorias`,
+    atualizar: (id: number) => `${API_BASE_URL}/categorias/${id}`,
+    buscarPorId: (id: number) => `${API_BASE_URL}/categorias/${id}`,
+    excluir: (id: number) => `${API_BASE_URL}/categorias/${id}`,
+  },
+  
+  // Planos 
+  planos: {
+    listarAtivos: `${API_BASE_URL}/planos/ativos`,
+    listar: `${API_BASE_URL}/planos`,
+    criar: `${API_BASE_URL}/planos`,
+    atualizar: (id: number) => `${API_BASE_URL}/planos/${id}`,
+    buscarPorId: (id: number) => `${API_BASE_URL}/planos/${id}`,
+    excluir: (id: number) => `${API_BASE_URL}/planos/${id}`,
+  },
+
+  // Verificação
     VERIFICACAO: {
       BASE: '/verificacao',
       IMPORTACAO: (id: number) => `/verificacao/importacao/${id}`,
@@ -41,5 +73,6 @@ export const API_ENDPOINTS = {
       LOGOUT: '/auth/logout',
       PROFILE: '/auth/profile',
       VALIDATE: '/auth/validate',
-    },
-  };
+    }
+  
+};
