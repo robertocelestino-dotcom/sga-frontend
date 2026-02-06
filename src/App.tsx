@@ -28,6 +28,7 @@ import TabelaValores from './pages/TabelaValores'
 import Usuarios from './pages/Usuarios'
 import VerificacaoDashboard from './pages/VerificacaoDashboard'
 import VerificacaoImportacao from './pages/VerificacaoImportacao'
+import LogsSistema from './pages/LogsSistema';
 
 // PÁGINAS DE PRODUTOS
 import Produtos from './pages/Produtos'
@@ -136,11 +137,15 @@ function App() {
               {/* Verificação */}
               <Route path="verificacao-dashboard" element={<VerificacaoDashboard />} />
 
+              {/* Logs do Sistema */}
+              <Route path="logs" element={<LogsSistema />} />
+
               {/* Páginas extras que podem não ter sido criadas ainda - deixe comentadas */}
               {/* 
               <Route path="importacao-produtos" element={<ImportacaoProdutos />} />
               <Route path="relatorios-produtos" element={<RelatoriosProdutos />} />
               */}
+              
             </Route>
 
             {/* FALLBACK - Redireciona para dashboard se rota não existir */}

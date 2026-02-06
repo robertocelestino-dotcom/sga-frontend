@@ -1,26 +1,25 @@
-// src/services/associadoService.ts
-//import { API_ENDPOINTS } from '../config/endpoints';
-//import { defaultApi as api } from './api';
+// src/services/associadoService.ts - VERSÃO COMPLETA ATUALIZADA
 import api from './api';
 
 const endpoints = {
   associados: {
-    criar: '/api/associados',
-    atualizar: (id: number) => `/api/associados/${id}`,
-    buscarPorId: (id: number) => `/api/associados/${id}`,
-    listar: '/api/associados',
-    excluir: (id: number) => `/api/associados/${id}`,
+    criar: '/associados',
+    atualizar: (id: number) => `/associados/${id}`,
+    buscarPorId: (id: number) => `/associados/${id}`,
+    listar: '/associados',
+    excluir: (id: number) => `/associados/${id}`,
+    reativar: (id: number) => `/associados/${id}/reativar`,
   },
   vendedores: {
-    listarAtivos: '/vendedores/ativos', // Se não existir, mude para '/api/vendedores'
+    listarAtivos: '/vendedores/ativos',
     listar: '/vendedores',
   },
   categorias: {
-    listarAtivas: '/categorias/ativas', // Se não existir, mude para '/api/categorias'
+    listarAtivas: '/categorias/ativas',
     listar: '/categorias',
   },
   planos: {
-    listarAtivos: '/planos/ativos', // Se não existir, mude para '/api/planos'
+    listarAtivos: '/planos/ativos',
     listar: '/planos',
   },
 };
@@ -45,11 +44,25 @@ export interface AssociadoResumoDTO {
   nomeRazao: string;
   nomeFantasia?: string;
   tipoPessoa: 'F' | 'J';
-  status: 'A' | 'I';
+  status: 'A' | 'I' | 'S'; // ADICIONADO 'S' PARA SUSPENSO
   dataCadastro: string;
+  dataFiliacao?: string;
+  
+  // NOVOS CAMPOS DE STATUS
+  dataInativacao?: string;
+  dataInicioSuspensao?: string;
+  dataFimSuspensao?: string;
+  motivoInativacao?: string;
+  motivoSuspensao?: string;
+  
   faturamentoMinimo?: number;
+  vendedorId?: number;
   vendedorNome?: string;
+  vendedorExternoId?: number;
+  vendedorExternoNome?: string;
+  planoId?: number;
   planoNome?: string;
+  categoriaId?: number;
   categoriaNome?: string;
 }
 
@@ -71,17 +84,32 @@ export interface AssociadoDTO {
   nomeRazao: string;
   nomeFantasia?: string;
   tipoPessoa: 'F' | 'J';
-  status: 'A' | 'I';
+  status: 'A' | 'I' | 'S'; // ADICIONADO 'S' PARA SUSPENSO
   dataCadastro: string;
+  dataFiliacao?: string;
+  
+  // NOVOS CAMPOS DE STATUS
+  dataInativacao?: string;
+  dataInicioSuspensao?: string;
+  dataFimSuspensao?: string;
+  motivoInativacao?: string;
+  motivoSuspensao?: string;
+  
   vendedorId?: number;
+  vendedorNome?: string;
+  vendedorExternoId?: number;
+  vendedorExternoNome?: string;
   planoId?: number;
+  planoNome?: string;
   categoriaId?: number;
+  categoriaNome?: string;
   faturamentoMinimo?: number;
   enderecos?: EnderecoDTO[];
   emails?: EmailDTO[];
   telefones?: TelefoneDTO[];
   definicoesNotificacao?: any[];
   definicoesFaturamento?: any[];
+
 }
 
 export interface EnderecoDTO {
@@ -146,7 +174,8 @@ export const associadoOpcoes = {
   
   status: [
     { value: 'A', label: 'Ativo' },
-    { value: 'I', label: 'Inativo' }
+    { value: 'I', label: 'Inativo' },
+    { value: 'S', label: 'Suspenso' } // ADICIONADO SUSPENSO
   ] as OpcaoSelect[],
   
   tipoEndereco: [
@@ -204,7 +233,9 @@ export const associadoService = {
   // CRUD de Associados
   criar: async (associado: AssociadoDTO): Promise<AssociadoDTO> => {
     try {
-      const response = await api.post(endpoints.associados.criar, associado);
+      // Validações antes de enviar
+      const dadosValidados = validarDadosAssociado(associado);
+      const response = await api.post(endpoints.associados.criar, dadosValidados);
       return response.data;
     } catch (error: any) {
       console.error('Erro ao criar associado:', error);
@@ -214,7 +245,9 @@ export const associadoService = {
 
   atualizar: async (id: number, associado: AssociadoDTO): Promise<AssociadoDTO> => {
     try {
-      const response = await api.put(endpoints.associados.atualizar(id), associado);
+      // Validações antes de enviar
+      const dadosValidados = validarDadosAssociado(associado);
+      const response = await api.put(endpoints.associados.atualizar(id), dadosValidados);
       return response.data;
     } catch (error: any) {
       console.error('Erro ao atualizar associado:', error);
@@ -246,31 +279,21 @@ export const associadoService = {
       if (params?.status) queryParams.append('status', params.status);
   
       const url = `${endpoints.associados.listar}?${queryParams.toString()}`;
-      console.log('📡 URL da requisição:', url); // Para debug
+      console.log('🔍 URL FINAL que será chamada:', url);
       
       const response = await api.get(url);
-      console.log('✅ Resposta da API:', response.data); // Para debug
-      
-      // Se a resposta não tiver estrutura de paginação, adapte
-      if (response.data && !response.data.content && Array.isArray(response.data)) {
-        return {
-          content: response.data,
-          totalElements: response.data.length,
-          totalPages: 1,
-          size: params?.size || 10,
-          number: params?.page || 0,
-          first: true,
-          last: true
-        };
-      }
+      console.log('✅ Resposta do backend:', response.data);
       
       return response.data;
     } catch (error: any) {
       console.error('❌ Erro ao listar associados:', error);
       
-      // Se for erro 404 ou similar, retorne estrutura vazia
+      if (error.config) {
+        console.error('🔍 URL completa que falhou:', error.config.baseURL + error.config.url);
+      }
+      
       if (error.response?.status === 404) {
-        console.warn('⚠️ Endpoint não encontrado, retornando vazio');
+        console.warn('⚠️ Endpoint não encontrado');
         return {
           content: [],
           totalElements: 0,
@@ -295,20 +318,109 @@ export const associadoService = {
     }
   },
 
-  // ✅ NOVAS FUNÇÕES PARA OS COMBOBOX:
+  reativarAssociado: async (id: number, motivo?: string): Promise<AssociadoDTO> => {
+    try {
+      const response = await api.post(endpoints.associados.reativar(id), { motivo });
+      return response.data;
+    } catch (error: any) {
+      console.error('Erro ao reativar associado:', error);
+      throw error;
+    }
+  },
 
-  // Listar vendedores ativos
+  // ✅ FUNÇÕES PARA OS COMBOBOX:
   listarVendedores: async (): Promise<VendedorResumoDTO[]> => {
     try {
-      const response = await api.get(endpoints.vendedores.listarAtivos);
+      console.log('🔄 Buscando vendedores da API real...');
+      
+      // Usa o vendedorService que agora está correto
+      const { vendedorService } = await import('./vendedorService');
+      const vendedores = await vendedorService.listarAtivos();
+      
+      // Converte para o tipo esperado
+      return vendedores.map(v => ({
+        id: v.id,
+        nomeRazao: v.nomeRazao,
+        cargoFuncao: v.cargoFuncao || 'Vendedor',
+        status: v.status
+      }));
+    } catch (error) {
+      console.error('❌ Erro ao buscar vendedores:', error);
+      return [];
+    }
+  },
+  
+  atualizarEnderecos: async (associadoId: number, enderecos: EnderecoDTO[]): Promise<EnderecoDTO[]> => {
+    try {
+      console.log('📤 Atualizando endereços para associado ID:', associadoId);
+      console.log('🏠 Endereços enviados:', enderecos);
+      
+      const response = await api.put(`/associados/${associadoId}/enderecos`, enderecos);
+      console.log('✅ Endereços atualizados com sucesso:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Erro ao atualizar endereços:', error);
+      throw error;
+    }
+  },
+
+  atualizarTelefones: async (associadoId: number, telefones: TelefoneDTO[]): Promise<TelefoneDTO[]> => {
+    try {
+      console.log('📤 Atualizando telefones para associado ID:', associadoId);
+      
+      const response = await api.put(`/associados/${associadoId}/telefones`, telefones);
+      console.log('✅ Telefones atualizados com sucesso:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Erro ao atualizar telefones:', error);
+      throw error;
+    }
+  },
+
+  atualizarEmails: async (associadoId: number, emails: EmailDTO[]): Promise<EmailDTO[]> => {
+    try {
+      console.log('📤 Atualizando emails para associado ID:', associadoId);
+      
+      const response = await api.put(`/associados/${associadoId}/emails`, emails);
+      console.log('✅ Emails atualizados com sucesso:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Erro ao atualizar emails:', error);
+      throw error;
+    }
+  },
+
+  // Métodos para buscar separadamente (opcional)
+  buscarEnderecos: async (associadoId: number): Promise<EnderecoDTO[]> => {
+    try {
+      const response = await api.get(`/associados/${associadoId}/enderecos`);
       return response.data;
     } catch (error) {
-      console.error('Erro ao buscar vendedores:', error);
+      console.error('Erro ao buscar endereços:', error);
       return [];
     }
   },
 
-  // Listar categorias ativas
+  buscarTelefones: async (associadoId: number): Promise<TelefoneDTO[]> => {
+    try {
+      const response = await api.get(`/associados/${associadoId}/telefones`);
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao buscar telefones:', error);
+      return [];
+    }
+  },
+
+  buscarEmails: async (associadoId: number): Promise<EmailDTO[]> => {
+    try {
+      const response = await api.get(`/associados/${associadoId}/emails`);
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao buscar emails:', error);
+      return [];
+    }
+  },
+
   listarCategorias: async (): Promise<CategoriaResumoDTO[]> => {
     try {
       const response = await api.get(endpoints.categorias.listarAtivas);
@@ -319,13 +431,8 @@ export const associadoService = {
     }
   },
 
-  // Listar planos ativos
   listarPlanos: async (): Promise<PlanoResumoDTO[]> => {
     try {
-      // Se não tiver endpoint de planos ainda, retorna array vazio
-      if (!endpoints.planos?.listarAtivos) {
-        return [];
-      }
       const response = await api.get(endpoints.planos.listarAtivos);
       return response.data;
     } catch (error) {
@@ -334,7 +441,57 @@ export const associadoService = {
     }
   },
 
-  // Outras funções auxiliares
+  listarPlanosParaCombo: async (): Promise<any[]> => {
+
+  try {
+    console.log('🔄 Buscando planos para combo...');
+    
+    // Tenta endpoint específico para combo
+    let response;
+    try {
+      response = await api.get('/planos/ativos');
+    } catch (error) {
+      console.log('⚠️ Endpoint /ativos não disponível, tentando padrão...');
+      response = await api.get('/planos/');
+    }
+    
+    console.log('📋 Resposta da API de planos:', response.data);
+    
+    let planosData = response.data;
+    
+    // Se for resposta paginada, extrai o conteúdo
+    if (planosData && typeof planosData === 'object' && planosData.content) {
+      planosData = planosData.content;
+    }
+    
+    // Garante que é um array
+    if (!Array.isArray(planosData)) {
+      console.warn('⚠️ Planos não é array, convertendo:', planosData);
+      planosData = [];
+    }
+    
+    // Normaliza os dados para garantir estrutura consistente
+    const planosNormalizados = planosData.map((plano: any) => ({
+      id: plano.id || 0,
+      plano: plano.plano || plano.descricao || plano.nome || `Plano ${plano.id}`,
+      descricao: plano.descricao || plano.plano || plano.nome || `Plano ${plano.id}`,
+      nome: plano.nome || plano.plano || plano.descricao || `Plano ${plano.id}`,
+      status: plano.status || 'ATIVO',
+      tipo: plano.tipo || 'GERAL',
+      valorMensal: plano.valorMensal || plano.valor || plano.faturamentoMinimo || 0,
+      faturamentoMinimo: plano.faturamentoMinimo || plano.valorMensal || plano.valor || 0,
+      raw: plano
+    }));
+    
+    console.log(`✅ ${planosNormalizados.length} plano(s) normalizado(s)`);
+    return planosNormalizados;
+  } catch (error) {
+    console.error('❌ Erro ao buscar planos para combo:', error);
+    return [];
+  }
+
+},
+
   formatarCnpjCpf: (cnpjCpf: string): string => {
     if (!cnpjCpf) return '';
     
@@ -370,4 +527,50 @@ export const associadoService = {
     
     return `(${ddd}) ${numero}`;
   }
+};
+
+// Função auxiliar para validar dados antes de enviar
+const validarDadosAssociado = (associado: AssociadoDTO): AssociadoDTO => {
+  const dadosValidados = { ...associado };
+  
+  // Se status é Inativo
+  if (dadosValidados.status === 'I') {
+    // Garantir data de inativação
+    if (!dadosValidados.dataInativacao) {
+      dadosValidados.dataInativacao = new Date().toISOString().split('T')[0];
+    }
+    // Limpar campos de suspensão
+    dadosValidados.dataInicioSuspensao = undefined;
+    dadosValidados.dataFimSuspensao = undefined;
+    dadosValidados.motivoSuspensao = undefined;
+  }
+  
+  // Se status é Suspenso
+  if (dadosValidados.status === 'S') {
+    // Garantir data de início
+    if (!dadosValidados.dataInicioSuspensao) {
+      dadosValidados.dataInicioSuspensao = new Date().toISOString().split('T')[0];
+    }
+    // Garantir data de fim (padrão: 30 dias)
+    if (!dadosValidados.dataFimSuspensao) {
+      const inicio = new Date(dadosValidados.dataInicioSuspensao);
+      inicio.setDate(inicio.getDate() + 30);
+      dadosValidados.dataFimSuspensao = inicio.toISOString().split('T')[0];
+    }
+    // Limpar campos de inativação
+    dadosValidados.dataInativacao = undefined;
+    dadosValidados.motivoInativacao = undefined;
+  }
+  
+  // Se status é Ativo
+  if (dadosValidados.status === 'A') {
+    // Limpar todos os campos de status
+    dadosValidados.dataInativacao = undefined;
+    dadosValidados.dataInicioSuspensao = undefined;
+    dadosValidados.dataFimSuspensao = undefined;
+    dadosValidados.motivoInativacao = undefined;
+    dadosValidados.motivoSuspensao = undefined;
+  }
+  
+  return dadosValidados;
 };

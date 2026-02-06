@@ -8,18 +8,18 @@ export interface VendedorResumoDTO {
     telefone: string;
     status: 'ATIVO' | 'INATIVO';
     dataCadastro: string;
+    vendedorTipoId: number;
+    vendedorTipoDescricao: string;
   }
   
-  export interface VendedorDTO extends VendedorResumoDTO {
+  export interface VendedorResumoDTO {
+    id: number;
+    nomeRazao: string;
     nomeFantasia?: string;
-    tipoPessoa: 'F' | 'J';
-    endereco?: string;
-    bairro?: string;
-    cidade?: string;
-    estado?: string;
-    cep?: string;
-    comissaoPercentual?: number;
-    observacoes?: string;
+    cargoFuncao?: string;
+    status: 'ATIVO' | 'INATIVO';
+    vendedorTipoId: number;
+    vendedorTipoDescricao: string;
   }
   
   export interface VendedorFiltros {
@@ -32,3 +32,22 @@ export interface VendedorResumoDTO {
     sort?: string;
     direction?: 'asc' | 'desc';
   }
+
+  export interface VendedorTipoDTO {
+    id: number;
+    descricao: string;
+    ativo: boolean
+  }
+  
+  export interface VendedorDTO {
+    id?: number;
+    nomeRazao: string;
+    nomeFantasia?: string;
+    cargoFuncao?: string;
+    status: string;
+    observacao?: string;
+    dataCadastro?: string;
+    vendedorTipoId: number;
+    vendedorTipoDescricao?: string;
+  }
+

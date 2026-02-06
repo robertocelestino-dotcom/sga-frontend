@@ -1,6 +1,7 @@
 // src/services/categoriaService.ts
-import { api } from './api';
-import { endpoints } from '../config/endpoints';
+//import { api } from './api';
+import api from './api';
+import { endpoints} from '../config/endpoints';
 import { CategoriaOption } from '../types/combobox';
 
 export const categoriaService = {

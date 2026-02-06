@@ -1,4 +1,4 @@
-// src/pages/Associados.tsx - VERSÃO CORRIGIDA (SEM LOOP INFINITO)
+// src/pages/Associados.tsx - VERSÃO SEM CARDS DE ESTATÍSTICAS
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -290,16 +290,227 @@ const AssociadosPage: React.FC = () => {
     return cnpjCpf;
   };
 
-  // Formatar data
-  const formatarData = (dataString: string) => {
+  // 🔴 FUNÇÃO CORRIGIDA PARA FORMATAR DATAS
+  const formatarData = (dataString?: string): string => {
+    if (!dataString || dataString.trim() === '') return '-';
+    
     try {
-      return new Date(dataString).toLocaleDateString('pt-BR');
-    } catch {
+      // Remover qualquer espaço em branco
+      const dataLimpa = dataString.trim();
+      
+      // Caso 1: Data ISO (YYYY-MM-DD ou YYYY-MM-DDTHH:mm:ss)
+      if (dataLimpa.includes('T') || /^\d{4}-\d{2}-\d{2}/.test(dataLimpa)) {
+        const dataObj = new Date(dataLimpa);
+        
+        if (isNaN(dataObj.getTime())) {
+          return '-';
+        }
+        
+        // Usar UTC para consistência
+        const dia = String(dataObj.getUTCDate()).padStart(2, '0');
+        const mes = String(dataObj.getUTCMonth() + 1).padStart(2, '0');
+        const ano = dataObj.getUTCFullYear();
+        
+        return `${dia}/${mes}/${ano}`;
+      }
+      
+      // Caso 2: Data no formato DD/MM/YYYY
+      if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(dataLimpa)) {
+        const partes = dataLimpa.split('/');
+        if (partes.length === 3) {
+          const [dia, mes, ano] = partes;
+          return `${dia.padStart(2, '0')}/${mes.padStart(2, '0')}/${ano}`;
+        }
+      }
+      
+      // Caso 3: Data no formato YYYY/MM/DD
+      if (/^\d{4}\/\d{1,2}\/\d{1,2}/.test(dataLimpa)) {
+        const partes = dataLimpa.split('/');
+        if (partes.length === 3) {
+          const [ano, mes, dia] = partes;
+          return `${dia.padStart(2, '0')}/${mes.padStart(2, '0')}/${ano}`;
+        }
+      }
+      
+      // Caso 4: Data com formato estranho (ex: "27 15:37:38/01/2026")
+      if (dataLimpa.includes(' ')) {
+        // Tentar extrair a parte da data
+        const match = dataLimpa.match(/(\d{1,2})\s+[^\/]*\/(\d{1,2})\/(\d{4})/);
+        if (match) {
+          const [, dia, mes, ano] = match;
+          return `${dia.padStart(2, '0')}/${mes.padStart(2, '0')}/${ano}`;
+        }
+      }
+      
+      console.warn('Formato de data não reconhecido:', dataString);
+      return '-';
+      
+    } catch (error) {
+      console.error('Erro ao formatar data:', error, 'Data:', dataString);
       return '-';
     }
   };
 
-  // Cores para status
+  // 🔴 FUNÇÃO ESPECÍFICA PARA DATA DE CADASTRO (com timestamp)
+const formatarDataCadastro = (dataString?: string): string => {
+  if (!dataString || dataString.trim() === '') return '-';
+  
+  try {
+    // Para data de cadastro, queremos apenas a data, ignorando o horário
+    const dataLimpa = dataString.trim();
+    
+    // Extrair apenas a parte da data
+    let dataPart = dataLimpa;
+    
+    // Se tiver espaço, pegar a parte antes do espaço
+    if (dataLimpa.includes(' ')) {
+      dataPart = dataLimpa.split(' ')[0];
+    }
+    
+    // Se tiver 'T', pegar a parte antes do 'T'
+    if (dataPart.includes('T')) {
+      dataPart = dataPart.split('T')[0];
+    }
+    
+    // Parse manual da data no formato YYYY-MM-DD
+    const [ano, mes, dia] = dataPart.split('-').map(Number);
+    
+    if (!ano || !mes || !dia) {
+      return formatarData(dataString); // Fallback para a função geral
+    }
+    
+    return `${String(dia).padStart(2, '0')}/${String(mes).padStart(2, '0')}/${ano}`;
+    
+  } catch (error) {
+    console.error('Erro ao formatar data de cadastro:', error, 'Data:', dataString);
+    return formatarData(dataString); // Fallback
+  }
+};
+
+const formatarDataFiliacao = (dataString?: string) => {
+  if (!dataString || dataString.trim() === '') return '-';
+  
+  try {
+    // Para datas de filiação, que são apenas data sem hora
+    // Remover qualquer parte de tempo
+    const dataPart = dataString.split('T')[0];
+    
+    if (!dataPart) return '-';
+    
+    // Parse manual para evitar problemas de fuso
+    const [ano, mes, dia] = dataPart.split('-');
+    
+    if (!ano || !mes || !dia) return '-';
+    
+    return `${dia.padStart(2, '0')}/${mes.padStart(2, '0')}/${ano}`;
+  } catch {
+    return '-';
+  }
+};
+
+// 🔴 FUNÇÃO PARA DATA DE FILIAÇÃO COM STATUS VISUAL (versão corrigida)
+const formatarDataFiliacaoComStatus = (dataString?: string) => {
+  const dataFormatada = formatarDataFiliacao(dataString);
+  
+  if (dataFormatada === '-') {
+    return {
+      texto: 'Não informada',
+      classe: 'text-gray-400 italic'
+    };
+  }
+  
+  // Calcular diferença de dias para coloração
+  try {
+    // Parse da data formatada (DD/MM/YYYY)
+    const [diaStr, mesStr, anoStr] = dataFormatada.split('/');
+    const dia = parseInt(diaStr);
+    const mes = parseInt(mesStr) - 1; // Mês 0-indexed
+    const ano = parseInt(anoStr);
+    
+    const dataFiliacao = new Date(ano, mes, dia);
+    const hoje = new Date();
+    
+    // Zerar horas para comparar apenas datas
+    const hojeSemHora = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    const dataFiliacaoSemHora = new Date(ano, mes, dia);
+    
+    const diffTempo = hojeSemHora.getTime() - dataFiliacaoSemHora.getTime();
+    const diffDias = diffTempo / (1000 * 3600 * 24);
+    
+    if (diffDias <= 30) {
+      // Data recente (últimos 30 dias)
+      return {
+        texto: dataFormatada,
+        classe: 'text-green-600 font-medium'
+      };
+    } else if (diffDias > 365) {
+      // Data antiga (mais de 1 ano)
+      return {
+        texto: dataFormatada,
+        classe: 'text-yellow-600'
+      };
+    } else {
+      // Data normal
+      return {
+        texto: dataFormatada,
+        classe: 'text-gray-600'
+      };
+    }
+  } catch {
+    return {
+      texto: dataFormatada,
+      classe: 'text-gray-600'
+    };
+  }
+};
+
+  // Nova função para formatar data com status visual
+  const formatarDataComStatus = (dataString?: string) => {
+    //const dataFormatada = formatarData(dataString);
+    const dataFormatada = formatarDataFiliacao(dataString);
+    
+    if (dataFormatada === '-') {
+      return {
+        texto: 'Não informada',
+        classe: 'text-gray-400 italic'
+      };
+    }
+    
+    // Verificar se a data é recente (últimos 30 dias)
+    try {
+      const data = new Date(dataString || '');
+      const hoje = new Date();
+      const diffTempo = hoje.getTime() - data.getTime();
+      const diffDias = diffTempo / (1000 * 3600 * 24);
+      
+      if (diffDias <= 30) {
+        // Data recente (últimos 30 dias)
+        return {
+          texto: dataFormatada,
+          classe: 'text-green-600 font-medium'
+        };
+      } else if (diffDias > 365) {
+        // Data antiga (mais de 1 ano)
+        return {
+          texto: dataFormatada,
+          classe: 'text-yellow-600'
+        };
+      } else {
+        // Data normal
+        return {
+          texto: dataFormatada,
+          classe: 'text-gray-600'
+        };
+      }
+    } catch {
+      return {
+        texto: dataFormatada,
+        classe: 'text-gray-600'
+      };
+    }
+  };
+
+  // Atualize a função getStatusColor:
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'A': return 'bg-green-100 text-green-800';
@@ -318,7 +529,7 @@ const AssociadosPage: React.FC = () => {
     }
   };
 
-  // Texto para status
+  // Atualize a função getStatusText:
   const getStatusText = (status: string) => {
     const opcao = associadoOpcoes.status.find(s => s.value === status);
     return opcao ? opcao.label : status;
@@ -587,8 +798,9 @@ const AssociadosPage: React.FC = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
+                    {/* ALTERAÇÃO: Data de Cadastro → Data de Filiação */}
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Data Cadastro
+                      Data de Filiação
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Ações
@@ -596,89 +808,107 @@ const AssociadosPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {associados.map((associado) => (
-                    <tr 
-                      key={associado.id} 
-                      className="hover:bg-gray-50 transition-colors"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-mono font-medium text-gray-900">
-                          {associado.codigoSpc || '-'}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {associado.codigoRm || 'Sem código RM'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900">{associado.nomeRazao}</div>
-                        {associado.nomeFantasia && (
-                          <div className="text-sm text-gray-500 truncate max-w-xs">
-                            {associado.nomeFantasia}
+                  {associados.map((associado) => {
+                    // Formatar data de filiação com status visual
+                    const dataFiliacaoFormatada = formatarDataComStatus(associado.dataFiliacao);
+                    
+                    return (
+                      <tr 
+                        key={associado.id} 
+                        className="hover:bg-gray-50 transition-colors"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-mono font-medium text-gray-900">
+                            {associado.codigoSpc || '-'}
                           </div>
-                        )}
-                        {/* Informações adicionais */}
-                        <div className="text-xs text-gray-400 mt-1">
-                          {associado.planoNome && (
-                            <span className="mr-2">📋 {associado.planoNome}</span>
-                          )}
-                          {associado.vendedorNome && (
-                            <span>👤 {associado.vendedorNome}</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {formatarCnpjCpf(associado.cnpjCpf)}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {associado.tipoPessoa === 'F' ? 'Pessoa Física' : 'Pessoa Jurídica'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTipoPessoaColor(associado.tipoPessoa)}`}>
-                          {getTipoPessoaText(associado.tipoPessoa)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(associado.status)}`}>
-                          {getStatusText(associado.status)}
-                        </span>
-                        {associado.faturamentoMinimo && (
-                          <div className="text-xs text-gray-500 mt-1">
-                            💰 {formatarValor(associado.faturamentoMinimo)}
+                          <div className="text-xs text-gray-500">
+                            {associado.codigoRm || 'Sem código RM'}
                           </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatarData(associado.dataCadastro)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleVerDetalhes(associado.id)}
-                            className="p-1 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded transition-colors"
-                            title="Ver detalhes"
-                          >
-                            👁️
-                          </button>
-                          <button
-                            onClick={() => handleEditarAssociado(associado.id)}
-                            className="p-1 text-yellow-600 hover:text-yellow-900 hover:bg-yellow-50 rounded transition-colors"
-                            title="Editar"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => handleExcluirAssociado(associado.id, associado.nomeRazao)}
-                            className="p-1 text-red-600 hover:text-red-900 hover:bg-red-50 rounded transition-colors"
-                            title="Excluir"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-gray-900">{associado.nomeRazao}</div>
+                          {associado.nomeFantasia && (
+                            <div className="text-sm text-gray-500 truncate max-w-xs">
+                              {associado.nomeFantasia}
+                            </div>
+                          )}
+                          {/* Informações adicionais */}
+                          <div className="text-xs text-gray-400 mt-1">
+                            {associado.planoNome && (
+                              <span className="mr-2">📋 {associado.planoNome}</span>
+                            )}
+                            {associado.vendedorNome && (
+                              <span>👤 {associado.vendedorNome}</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {formatarCnpjCpf(associado.cnpjCpf)}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {associado.tipoPessoa === 'F' ? 'Pessoa Física' : 'Pessoa Jurídica'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTipoPessoaColor(associado.tipoPessoa)}`}>
+                            {getTipoPessoaText(associado.tipoPessoa)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(associado.status)}`}>
+                            {getStatusText(associado.status)}
+                          </span>
+                          {associado.faturamentoMinimo && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              💰 {formatarValor(associado.faturamentoMinimo)}
+                            </div>
+                          )}
+                        </td>
+                        {/* ALTERAÇÃO: Exibir Data de Filiação com formatação especial */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className={`text-sm ${dataFiliacaoFormatada.classe}`}>
+                            {dataFiliacaoFormatada.texto}
+                          </div>
+                          {associado.dataFiliacao && associado.dataFiliacao !== '-' && (
+                            <div className="text-xs text-gray-400">
+                              {associado.dataCadastro && (
+                                <span title={`Cadastrado em: ${formatarData(associado.dataCadastro)}`}>
+                                  📅 Cadastro: {formatarDataCadastro(associado.dataCadastro)}
+                                  
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleVerDetalhes(associado.id)}
+                              className="p-1 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded transition-colors"
+                              title="Ver detalhes"
+                            >
+                              👁️
+                            </button>
+                            <button
+                              onClick={() => handleEditarAssociado(associado.id)}
+                              className="p-1 text-yellow-600 hover:text-yellow-900 hover:bg-yellow-50 rounded transition-colors"
+                              title="Editar"
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              onClick={() => handleExcluirAssociado(associado.id, associado.nomeRazao)}
+                              className="p-1 text-red-600 hover:text-red-900 hover:bg-red-50 rounded transition-colors"
+                              title="Excluir"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

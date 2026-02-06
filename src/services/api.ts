@@ -563,6 +563,79 @@ export const errorHandler = {
   isTimeoutError: (e: any) => e?.code === "ECONNABORTED",
 };
 
-// Exportações principais
+/* ============================================================================
+   SERVIÇO DE LOGS DO SISTEMA
+   ============================================================================ */
+export const sistemaLogAPI = {
+  // Buscar logs com filtros
+  async buscarLogs(filtros: any) {
+    const response = await api.get("/sistema-log", { params: filtros });
+    return response.data;
+  },
+
+  // Buscar log por ID
+  async buscarLogPorId(id: number) {
+    const response = await api.get(`/sistema-log/${id}`);
+    return response.data;
+  },
+
+  // Buscar logs por registro
+  async buscarLogsPorRegistro(tabela: string, idRegistro: number) {
+    const response = await api.get(`/sistema-log/registro/${tabela}/${idRegistro}`);
+    return response.data;
+  },
+
+  // Buscar logs por período
+  async buscarLogsPorPeriodo(dataInicio: string, dataFim: string) {
+    const response = await api.get(`/sistema-log/periodo`, {
+      params: { dataInicio, dataFim }
+    });
+    return response.data;
+  },
+
+  // Buscar opções para filtros
+  async buscarOpcoesTabelas() {
+    try {
+      const response = await api.get("/sistema-log/tabelas");
+      return response.data;
+    } catch {
+      return ['Associado', 'Produto', 'Vendedor', 'Usuario', 'Plano', 'Categoria'];
+    }
+  },
+
+  async buscarOpcoesAcoes() {
+    try {
+      const response = await api.get("/sistema-log/acoes");
+      return response.data;
+    } catch {
+      return ['CREATE', 'UPDATE', 'DELETE', 'READ', 'ERRO'];
+    }
+  },
+
+  async buscarOpcoesModulos() {
+    try {
+      const response = await api.get("/sistema-log/modulos");
+      return response.data;
+    } catch {
+      return ['ASSOCIADOS', 'PRODUTOS', 'VENDEDORES', 'USUARIOS', 'SISTEMA'];
+    }
+  },
+
+  // Limpar logs antigos
+  async limparLogsAntigos(dias: number) {
+    const response = await api.delete(`/sistema-log/limpar/${dias}`);
+    return response.data;
+  },
+
+  // Health check
+  async healthCheck() {
+    try {
+      const response = await api.get("/sistema-log/health");
+      return response.data;
+    } catch {
+      return { status: "DOWN", message: "Serviço de logs não disponível" };
+    }
+  }
+};
 
 export default api;

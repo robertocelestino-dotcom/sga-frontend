@@ -160,7 +160,15 @@ const Sidebar = () => {
       name: 'Verificação',
       path: '/verificacao-dashboard',
       icon: <FaChartBar size={18} />
-    }
+    },
+
+    {
+      name: 'Logs do Sistema',
+      path: '/logs',
+      icon: <FaClipboardList size={18} />, // Ou escolha outro ícone: FaFileAlt, FaHistory, FaClipboardCheck
+      exact: true
+    },
+    
   ];
 
   const isActive = (path: string) => {

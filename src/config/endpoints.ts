@@ -1,6 +1,22 @@
 
 // src/config/endpoints.ts
-export const API_ENDPOINTS = {
+
+const API_BASE_URL = 'http://localhost:8080'
+
+export const endpoints  = {
+
+  // LOGS DO SISTEMA
+  logs: {
+    base: `${API_BASE_URL}/logs`,
+    tabelas: `${API_BASE_URL}/logs/tabelas`,
+    acoes: `${API_BASE_URL}/logs/acoes`,
+    modulos: `${API_BASE_URL}/logs/modulos`,
+    periodo: `${API_BASE_URL}/logs/periodo`,
+    limpar: `${API_BASE_URL}/logs/limpar`,
+    estatisticas: `${API_BASE_URL}/logs/estatisticas`,
+    byRegistro: (tabela: string, id: number) => `${API_BASE_URL}/logs/tabela/${tabela}/registro/${id}`,
+    byModulo: (modulo: string) => `${API_BASE_URL}/logs/modulo/${modulo}`,
+  },
   
   // Vendedores
   vendedores: {
@@ -74,5 +90,6 @@ export const API_ENDPOINTS = {
       PROFILE: '/auth/profile',
       VALIDATE: '/auth/validate',
     }
+
   
 };
