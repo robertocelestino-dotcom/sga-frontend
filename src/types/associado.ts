@@ -53,3 +53,30 @@ export interface Email {
   tipoEmail: string;
   ativo: boolean;
 }
+
+// Função de validação para CPF/CNPJ (a ser implementada)
+const validarCnpj = (cnpj: string): boolean => {
+  // Por enquanto, manter validação existente
+  // A partir de julho/2026, implementar a nova validação
+  const cnpjLimpo = cnpj.replace(/[^\w]/g, ''); // Agora \w inclui letras e números
+  
+  if (cnpjLimpo.length !== 14) return false;
+  
+  // Se for composto apenas por números, validar como CNPJ antigo
+  if (/^\d+$/.test(cnpjLimpo)) {
+    // Manter validação atual do CNPJ numérico
+    return validarCnpjNumerico(cnpjLimpo);
+  }
+  
+  // Se tiver letras, validar como novo CNPJ alfanumérico
+  return validarCnpjAlfanumerico(cnpjLimpo);
+};
+
+// Função específica para validar o novo formato alfanumérico
+const validarCnpjAlfanumerico = (cnpj: string): boolean => {
+  // Placeholder: implementar a lógica de validação do módulo 11 com ASCII
+  // quando a Receita Federal publicar a especificação completa
+  console.warn('Validação de CNPJ alfanumérico será implementada até julho/2026');
+  return true; // Temporário
+};
+
