@@ -654,7 +654,7 @@ const AssociadoForm: React.FC = () => {
     try {
       const produtosHabilitadosData = await associadoProdutoService.listarPorAssociado(associadoId);
       
-      // Converter para o formato local
+      // Converter para o formato local com todas as configurações
       const produtosFormatados: ProdutoHabilitado[] = produtosHabilitadosData.map(item => ({
         id: item.produtoId,
         associadoProdutoId: item.id,
@@ -664,11 +664,20 @@ const AssociadoForm: React.FC = () => {
         configuracao: {
           valorDefinido: item.valorDefinido,
           statusNoProcesso: item.statusNoProcesso,
-          // Outros campos podem ser adicionados conforme necessário
+          observacao: item.observacao,
+          tipoEnvioId: item.tipoEnvioId,
+          dataAdesao: item.dataAdesao,
+          dataInicio: item.dataInicio,
+          dataFim: item.dataFim,
+          dataReinicio: item.dataReinicio,
+          envioPadrao: item.envioPadrao,
+          utilizaEnriquecimento: item.utilizaEnriquecimento,
+          deduzirDoPlano: item.deduzirDoPlano
         }
       }));
       
       setProdutosHabilitados(produtosFormatados);
+      console.log('Produtos habilitados carregados:', produtosFormatados);
     } catch (error) {
       console.log('Produtos habilitados não disponíveis:', error);
     }
@@ -683,25 +692,70 @@ const AssociadoForm: React.FC = () => {
       try {
         const associadoDTO = await associadoService.buscarPorId(parseInt(id));
         
+        console.log('Associado carregado:', associadoDTO);
+        
         // Carregar produtos habilitados usando o novo serviço
         await carregarProdutosHabilitados(parseInt(id));
         
         // Carregar configurações de faturamento
         await carregarConfiguracoesFaturamento(parseInt(id));
 
-        // Se já tiver uma categoria selecionada, carregar ela
-        if (associadoDTO.categoriaId) {
-          const categoriaExistente = categoriasDisponiveis.find(c => c.id === associadoDTO.categoriaId);
-          if (categoriaExistente) {
-            setCategoriaSelecionada(categoriaExistente);
+        // Carregar plano selecionado
+        if (associadoDTO.planoId) {
+          // Buscar o plano na lista de planos disponíveis
+          const planoEncontrado = planosDisponiveis.find(p => p.id === associadoDTO.planoId);
+          if (planoEncontrado) {
+            setPlanoSelecionado(planoEncontrado);
+            
+            // Atualizar também o formData
+            setFormData(prev => ({
+              ...prev,
+              planoId: planoEncontrado.id,
+              planoNome: planoEncontrado.plano,
+              planoValor: planoEncontrado.valor
+            }));
+          } else {
+            // Se não encontrou na lista, criar um objeto temporário
+            const planoTemp = {
+              id: associadoDTO.planoId,
+              idtipomodelo: 1,
+              plano: associadoDTO.planoNome || `Plano ${associadoDTO.planoId}`,
+              valor: associadoDTO.planoValor,
+              observacao: null
+            };
+            setPlanoSelecionado(planoTemp);
+            
+            setFormData(prev => ({
+              ...prev,
+              planoId: planoTemp.id,
+              planoNome: planoTemp.plano,
+              planoValor: planoTemp.valor
+            }));
           }
         }
 
-        // Se já tiver um plano selecionado, carregar ele
-        if (associadoDTO.planoId) {
-          const planoExistente = planosDisponiveis.find(p => p.id === associadoDTO.planoId);
-          if (planoExistente) {
-            setPlanoSelecionado(planoExistente);
+        // Carregar categoria selecionada
+        if (associadoDTO.categoriaId) {
+          const categoriaEncontrada = categoriasDisponiveis.find(c => c.id === associadoDTO.categoriaId);
+          if (categoriaEncontrada) {
+            setCategoriaSelecionada(categoriaEncontrada);
+            
+            setFormData(prev => ({
+              ...prev,
+              categoriaId: categoriaEncontrada.id
+            }));
+          } else {
+            // Se não encontrou na lista, criar objeto temporário
+            const categoriaTemp = {
+              id: associadoDTO.categoriaId,
+              descricao: `Categoria ${associadoDTO.categoriaId}`
+            };
+            setCategoriaSelecionada(categoriaTemp);
+            
+            setFormData(prev => ({
+              ...prev,
+              categoriaId: categoriaTemp.id
+            }));
           }
         }
         
@@ -732,41 +786,43 @@ const AssociadoForm: React.FC = () => {
           parametroFaturamento: parametroFaturamento,
           produtosHabilitados: produtosHabilitados,
           
-          // Converter arrays mantendo os tipos padrão se não existirem
+          // Endereços - preservar IDs
           enderecos: associadoDTO.enderecos && associadoDTO.enderecos.length > 0 
             ? associadoDTO.enderecos.map((endereco: EnderecoDTO) => ({
-                id: endereco.id,
-                cep: endereco.cep,
-                logradouro: endereco.logradouro,
-                numero: endereco.numero,
-                complemento: endereco.complemento,
-                bairro: endereco.bairro,
-                cidade: endereco.cidade,
-                estado: endereco.estado,
+                id: endereco.id, // IMPORTANTE: Manter o ID original
+                cep: endereco.cep || '',
+                logradouro: endereco.logradouro || '',
+                numero: endereco.numero || '',
+                complemento: endereco.complemento || '',
+                bairro: endereco.bairro || '',
+                cidade: endereco.cidade || '',
+                estado: endereco.estado || '',
                 tipoEndereco: (endereco.tipoEndereco as any) || 'COMERCIAL',
                 ativo: true,
                 principal: endereco.tipoEndereco === 'COMERCIAL',
               }))
             : inicializarTiposPadrao().enderecosPadrao,
           
+          // Telefones - preservar IDs
           telefones: associadoDTO.telefones && associadoDTO.telefones.length > 0
             ? associadoDTO.telefones.map((telefone: TelefoneDTO) => ({
-                id: telefone.id,
-                ddd: telefone.ddd,
-                numero: telefone.numero,
+                id: telefone.id, // IMPORTANTE: Manter o ID original
+                ddd: telefone.ddd || '',
+                numero: telefone.numero || '',
                 tipoTelefone: (telefone.tipoTelefone as any) || 'CELULAR',
-                whatsapp: telefone.whatsapp,
-                ativo: telefone.ativo,
+                whatsapp: telefone.whatsapp || false,
+                ativo: telefone.ativo !== undefined ? telefone.ativo : true,
                 principal: telefone.tipoTelefone === 'CELULAR',
               }))
             : inicializarTiposPadrao().telefonesPadrao,
           
+          // Emails - preservar IDs
           emails: associadoDTO.emails && associadoDTO.emails.length > 0
             ? associadoDTO.emails.map((email: EmailDTO) => ({
-                id: email.id,
-                email: email.email,
+                id: email.id, // IMPORTANTE: Manter o ID original
+                email: email.email || '',
                 tipoEmail: (email.tipoEmail as any) || 'COMERCIAL',
-                ativo: email.ativo,
+                ativo: email.ativo !== undefined ? email.ativo : true,
                 principal: email.tipoEmail === 'COMERCIAL',
               }))
             : inicializarTiposPadrao().emailsPadrao,
@@ -797,8 +853,11 @@ const AssociadoForm: React.FC = () => {
         produtosHabilitados: []
       }));
       
-      // Limpar configurações de faturamento para novo associado
+      // Limpar seleções para novo associado
+      setPlanoSelecionado(null);
+      setCategoriaSelecionada(null);
       setConfiguracoesFaturamento([]);
+      setProdutosHabilitados([]);
     }
   }, [id, isEditMode, navigate]);
 
@@ -1355,6 +1414,7 @@ const AssociadoForm: React.FC = () => {
       if (endereco.tipoEndereco !== 'COMERCIAL') {
         return {
           ...endereco,
+          id: endereco.id, // Preservar o ID
           cep: enderecoPrincipal.cep,
           logradouro: enderecoPrincipal.logradouro,
           numero: enderecoPrincipal.numero,
@@ -1392,6 +1452,7 @@ const AssociadoForm: React.FC = () => {
       if (telefone.tipoTelefone !== 'COMERCIAL') {
         return {
           ...telefone,
+          id: telefone.id, // Preservar o ID
           ddd: telefonePrincipal.ddd,
           numero: telefonePrincipal.numero,
           whatsapp: telefone.tipoTelefone === 'CELULAR' ? telefonePrincipal.whatsapp : false,
@@ -1425,6 +1486,7 @@ const AssociadoForm: React.FC = () => {
       if (email.tipoEmail !== 'COMERCIAL') {
         return {
           ...email,
+          id: email.id, // Preservar o ID
           email: emailPrincipal.email,
         };
       }
@@ -1464,22 +1526,26 @@ const AssociadoForm: React.FC = () => {
           produtoId: p.id,
           valorDefinido: p.configuracao?.valorDefinido,
           statusNoProcesso: p.configuracao?.statusNoProcesso || 'A',
-          observacao: p.configuracao?.observacao,
+          observacao: p.configuracao?.observacao || null,
           tipoProduto: produtoOriginal?.tipo || p.tipo,
           
           // Campos de notificação (podem vir undefined)
-          tipoEnvioId: p.configuracao?.tipoEnvioId,
-          dataAdesao: p.configuracao?.dataAdesao,
-          dataInicio: p.configuracao?.dataInicio,
-          dataFim: p.configuracao?.dataFim,
-          dataReinicio: p.configuracao?.dataReinicio,
-          envioPadrao: p.configuracao?.envioPadrao,
-          utilizaEnriquecimento: p.configuracao?.utilizaEnriquecimento,
-          deduzirDoPlano: p.configuracao?.deduzirDoPlano
+          tipoEnvioId: p.configuracao?.tipoEnvioId || null,
+          dataAdesao: p.configuracao?.dataAdesao || null,
+          dataInicio: p.configuracao?.dataInicio || null,
+          dataFim: p.configuracao?.dataFim || null,
+          dataReinicio: p.configuracao?.dataReinicio || null,
+          envioPadrao: p.configuracao?.envioPadrao || false,
+          utilizaEnriquecimento: p.configuracao?.utilizaEnriquecimento || false,
+          deduzirDoPlano: p.configuracao?.deduzirDoPlano || false
         };
       });
 
+      console.log('Enviando produtos para API:', produtosParaAPI);
+
       const result = await associadoProdutoService.criarEmLote(produtosParaAPI, 'SISTEMA');
+
+      console.log('Resposta da API (produtos):', result);
 
       // Mapear o resultado para o formato local
       const novosProdutosHabilitados = result.map((item, index) => {
@@ -1487,7 +1553,7 @@ const AssociadoForm: React.FC = () => {
         
         return {
           id: item.produtoId,
-          associadoProdutoId: item.id,
+          associadoProdutoId: item.id, // IMPORTANTE: Guardar o ID do registro
           tipo: produtoOriginal?.tipo || produtos[index].tipo,
           produto: produtoOriginal?.nome || produtos[index].produto,
           valor: item.valorDefinido || produtoOriginal?.valor || produtos[index].valor,
@@ -1529,11 +1595,11 @@ const AssociadoForm: React.FC = () => {
    */
   const handleSalvarConfiguracaoProduto = async (config: ConfiguracaoProduto) => {
     if (!produtoSelecionadoParaConfig) return;
-  
+
     try {
       // Calcular o valor a ser exibido
       const valorExibido = config.valorDefinido || produtoSelecionadoParaConfig.valor;
-  
+
       if (configuracaoEditando) {
         // É EDIÇÃO - atualizar o produto existente
         setProdutosHabilitados(prev => 
@@ -1551,9 +1617,44 @@ const AssociadoForm: React.FC = () => {
             return p;
           })
         );
+        
+        // Se for edição e o associado já existe, salvar no backend
+        if (formData.id) {
+          const produtoExistente = produtosHabilitados.find(p => p.id === produtoSelecionadoParaConfig.id);
+          if (produtoExistente?.associadoProdutoId) {
+            await associadoProdutoService.atualizar(
+              produtoExistente.associadoProdutoId,
+              {
+                associadoId: formData.id,
+                produtoId: produtoSelecionadoParaConfig.id,
+                valorDefinido: config.valorDefinido,
+                statusNoProcesso: config.statusNoProcesso || 'A',
+                observacao: config.observacao || null,
+                tipoProduto: produtoSelecionadoParaConfig.tipo,
+                tipoEnvioId: config.tipoEnvioId || null,
+                dataAdesao: config.dataAdesao || null,
+                dataInicio: config.dataInicio || null,
+                dataFim: config.dataFim || null,
+                dataReinicio: config.dataReinicio || null,
+                envioPadrao: config.envioPadrao || false,
+                utilizaEnriquecimento: config.utilizaEnriquecimento || false,
+                deduzirDoPlano: config.deduzirDoPlano || false
+              },
+              'SISTEMA'
+            );
+          }
+        }
+        
         showMessage('Produto atualizado com sucesso!', 'success');
       } else {
-        // É NOVO PRODUTO - adicionar à lista
+        // É NOVO PRODUTO - verificar se já existe antes de adicionar
+        const produtoJaExiste = produtosHabilitados.some(p => p.id === produtoSelecionadoParaConfig.id);
+        
+        if (produtoJaExiste) {
+          showMessage('Este produto já está na lista de habilitados', 'warning');
+          return;
+        }
+
         const novoProduto: ProdutoHabilitado = {
           id: produtoSelecionadoParaConfig.id,
           tipo: produtoSelecionadoParaConfig.tipo,
@@ -1564,17 +1665,47 @@ const AssociadoForm: React.FC = () => {
             valorDefinido: config.valorDefinido
           }
         };
-  
+
         setProdutosHabilitados(prev => [...prev, novoProduto]);
+        
+        // Se o associado já existe, salvar imediatamente no backend
+        if (formData.id) {
+          const result = await associadoProdutoService.criar({
+            associadoId: formData.id,
+            produtoId: produtoSelecionadoParaConfig.id,
+            valorDefinido: config.valorDefinido,
+            statusNoProcesso: config.statusNoProcesso || 'A',
+            observacao: config.observacao || null,
+            tipoProduto: produtoSelecionadoParaConfig.tipo,
+            tipoEnvioId: config.tipoEnvioId || null,
+            dataAdesao: config.dataAdesao || null,
+            dataInicio: config.dataInicio || null,
+            dataFim: config.dataFim || null,
+            dataReinicio: config.dataReinicio || null,
+            envioPadrao: config.envioPadrao || false,
+            utilizaEnriquecimento: config.utilizaEnriquecimento || false,
+            deduzirDoPlano: config.deduzirDoPlano || false
+          }, 'SISTEMA');
+          
+          // Atualizar o produto com o ID do registro
+          setProdutosHabilitados(prev => 
+            prev.map(p => 
+              p.id === produtoSelecionadoParaConfig.id 
+                ? { ...p, associadoProdutoId: result.id } 
+                : p
+            )
+          );
+        }
+        
         showMessage('Produto adicionado com sucesso!', 'success');
       }
       
-      // Fechar modal e limpar estados
+      // Limpar TODOS os estados relacionados ao modal
       setModalConfigProdutoAberto(false);
       setProdutoSelecionadoParaConfig(null);
       setConfiguracaoEditando(null);
-      setProdutosSelecionados([]);
-      setModalProdutosAberto(false);
+      setProdutosSelecionados([]); // IMPORTANTE: Limpar seleções
+      setModalProdutosAberto(false); // Fechar modal de produtos se estiver aberto
       
     } catch (error) {
       console.error('Erro ao salvar configuração:', error);
@@ -1645,34 +1776,56 @@ const AssociadoForm: React.FC = () => {
       if (produtosSelecionados.length === 1) {
         const produto = produtosDisponiveis.find(p => p.id === produtosSelecionados[0]);
         if (produto) {
+          // Verificar se produto já está na lista
+          const produtoJaExiste = produtosHabilitados.some(p => p.id === produto.id);
+          if (produtoJaExiste) {
+            showMessage('Este produto já está na lista de habilitados', 'warning');
+            setProdutosSelecionados([]); // Limpar seleção
+            setModalProdutosAberto(false); // Fechar modal
+            return;
+          }
+          
           setProdutoSelecionadoParaConfig(produto);
           setConfiguracaoEditando(null);
           setModalConfigProdutoAberto(true);
+          // NÃO fechar o modal de produtos ainda - vai fechar quando salvar configuração
         }
         return;
       }
 
-      // Se for múltiplos produtos, adiciona direto com valores padrão
-      const produtosParaAdicionar = produtosDisponiveis
+      // Se for múltiplos produtos, filtra os que já existem
+      const produtosNovos = produtosDisponiveis
         .filter(produto => produtosSelecionados.includes(produto.id))
-        .map(produto => ({
-          id: produto.id,
-          tipo: produto.tipo,
-          produto: produto.nome,
-          valor: produto.valor,
-          configuracao: {
-            valorDefinido: produto.valor,
-            statusNoProcesso: 'A' as const,
-            // Para notificação, campos opcionais ficam vazios
-            ...(isProdutoNotificacao(produto) ? {
-              envioPadrao: false,
-              utilizaEnriquecimento: false,
-              deduzirDoPlano: false
-            } : {})
-          }
-        }));
+        .filter(produto => !produtosHabilitados.some(p => p.id === produto.id)); // Exclui já existentes
+
+      if (produtosNovos.length === 0) {
+        showMessage('Todos os produtos selecionados já estão na lista', 'warning');
+        setProdutosSelecionados([]);
+        setModalProdutosAberto(false);
+        return;
+      }
+
+      // Adiciona direto com valores padrão
+      const produtosParaAdicionar = produtosNovos.map(produto => ({
+        id: produto.id,
+        tipo: produto.tipo,
+        produto: produto.nome,
+        valor: produto.valor,
+        configuracao: {
+          valorDefinido: produto.valor,
+          statusNoProcesso: 'A' as const,
+          // Para notificação, campos opcionais ficam vazios
+          ...(isProdutoNotificacao(produto) ? {
+            envioPadrao: false,
+            utilizaEnriquecimento: false,
+            deduzirDoPlano: false
+          } : {})
+        }
+      }));
 
       await salvarProdutosHabilitados(produtosParaAdicionar);
+      
+      // Limpar seleções e fechar modal
       setProdutosSelecionados([]);
       setModalProdutosAberto(false);
       
@@ -1912,7 +2065,7 @@ const AssociadoForm: React.FC = () => {
     });
   };
 
-  // ==================== FUNÇÃO CONVERTER PARA DTO ====================
+  // ==================== FUNÇÃO CONVERTER PARA DTO CORRIGIDA ====================
 
   const converterParaDTO = (data: AssociadoFormData): AssociadoDTO => {
     // Função auxiliar para converter string vazia para null
@@ -1933,42 +2086,36 @@ const AssociadoForm: React.FC = () => {
       return null;
     };
   
-    // Filtrar endereços que têm pelo menos CEP ou logradouro preenchidos
-    const enderecosValidos = (data.enderecos || [])
-      .filter(endereco => endereco.cep?.trim() || endereco.logradouro?.trim())
-      .map(endereco => ({
-        id: endereco.id,
-        cep: endereco.cep?.trim() || '',
-        logradouro: endereco.logradouro?.trim() || '',
-        numero: endereco.numero?.trim() || '',
-        complemento: endereco.complemento?.trim() || '',
-        bairro: endereco.bairro?.trim() || '',
-        cidade: endereco.cidade?.trim() || '',
-        estado: endereco.estado?.trim() || '',
-        tipoEndereco: endereco.tipoEndereco || 'COMERCIAL',
-      }));
+    // Endereços - preservar IDs e incluir TODOS os endereços
+    const enderecosParaEnviar = (data.enderecos || []).map(endereco => ({
+      id: endereco.id, // IMPORTANTE: Incluir o ID para atualização
+      cep: endereco.cep?.trim() || '',
+      logradouro: endereco.logradouro?.trim() || '',
+      numero: endereco.numero?.trim() || '',
+      complemento: endereco.complemento?.trim() || '',
+      bairro: endereco.bairro?.trim() || '',
+      cidade: endereco.cidade?.trim() || '',
+      estado: endereco.estado?.trim() || '',
+      tipoEndereco: endereco.tipoEndereco || 'COMERCIAL',
+    }));
   
-    // Filtrar telefones que têm DDD e número preenchidos
-    const telefonesValidos = (data.telefones || [])
-      .filter(telefone => telefone.ddd?.trim() && telefone.numero?.trim())
-      .map(telefone => ({
-        id: telefone.id,
-        ddd: telefone.ddd?.trim() || '',
-        numero: telefone.numero?.trim() || '',
-        tipoTelefone: telefone.tipoTelefone || 'CELULAR',
-        whatsapp: telefone.whatsapp || false,
-        ativo: telefone.ativo !== false,
-      }));
+    // Telefones - preservar IDs e incluir TODOS os telefones
+    const telefonesParaEnviar = (data.telefones || []).map(telefone => ({
+      id: telefone.id, // IMPORTANTE: Incluir o ID para atualização
+      ddd: telefone.ddd?.trim() || '',
+      numero: telefone.numero?.trim() || '',
+      tipoTelefone: telefone.tipoTelefone || 'CELULAR',
+      whatsapp: telefone.whatsapp || false,
+      ativo: telefone.ativo !== false,
+    }));
   
-    // Filtrar emails que têm email preenchido
-    const emailsValidos = (data.emails || [])
-      .filter(email => email.email?.trim())
-      .map(email => ({
-        id: email.id,
-        email: email.email?.trim() || '',
-        tipoEmail: email.tipoEmail || 'COMERCIAL',
-        ativo: email.ativo !== false,
-      }));
+    // Emails - preservar IDs e incluir TODOS os emails
+    const emailsParaEnviar = (data.emails || []).map(email => ({
+      id: email.id, // IMPORTANTE: Incluir o ID para atualização
+      email: email.email?.trim() || '',
+      tipoEmail: email.tipoEmail || 'COMERCIAL',
+      ativo: email.ativo !== false,
+    }));
   
     // Construir o DTO final
     const dto: AssociadoDTO = {
@@ -1995,10 +2142,10 @@ const AssociadoForm: React.FC = () => {
       motivoInativacao: emptyToNull(data.motivoInativacao),
       motivoSuspensao: emptyToNull(data.motivoSuspensao),
       
-      // Enviar apenas os arrays com dados válidos
-      enderecos: enderecosValidos,
-      telefones: telefonesValidos,
-      emails: emailsValidos,
+      // Enviar TODOS os arrays com IDs preservados, SEM FILTRAR
+      enderecos: enderecosParaEnviar,
+      telefones: telefonesParaEnviar,
+      emails: emailsParaEnviar,
     };
   
     console.log('DTO processado para envio:', JSON.stringify(dto, null, 2));
@@ -2023,10 +2170,17 @@ const AssociadoForm: React.FC = () => {
       
       if (isEditMode && formData.id) {
         await associadoService.atualizar(formData.id, dto);
+        
+        // Para edição, produtos já são salvos em tempo real
+        // Mas garantir que produtos sem ID sejam salvos
+        const produtosSemId = produtosHabilitados.filter(p => !p.associadoProdutoId);
+        if (produtosSemId.length > 0) {
+          await salvarProdutosHabilitados(produtosSemId);
+        }
+        
         showMessage('Associado atualizado com sucesso!', 'success');
       } else {
         const novoAssociado = await associadoService.criar(dto);
-        showMessage('Associado criado com sucesso!', 'success');
         
         // Se há produtos para adicionar e o associado foi criado
         if (produtosHabilitados.length > 0 && novoAssociado?.id) {
@@ -2036,23 +2190,37 @@ const AssociadoForm: React.FC = () => {
               produtoId: p.id,
               valorDefinido: p.configuracao?.valorDefinido,
               statusNoProcesso: p.configuracao?.statusNoProcesso || 'A',
-              observacao: p.configuracao?.observacao,
+              observacao: p.configuracao?.observacao || null,
               tipoProduto: p.tipo,
-              tipoEnvioId: p.configuracao?.tipoEnvioId,
-              dataAdesao: p.configuracao?.dataAdesao,
-              dataInicio: p.configuracao?.dataInicio,
-              dataFim: p.configuracao?.dataFim,
-              dataReinicio: p.configuracao?.dataReinicio,
-              envioPadrao: p.configuracao?.envioPadrao,
-              utilizaEnriquecimento: p.configuracao?.utilizaEnriquecimento,
-              deduzirDoPlano: p.configuracao?.deduzirDoPlano
+              tipoEnvioId: p.configuracao?.tipoEnvioId || null,
+              dataAdesao: p.configuracao?.dataAdesao || null,
+              dataInicio: p.configuracao?.dataInicio || null,
+              dataFim: p.configuracao?.dataFim || null,
+              dataReinicio: p.configuracao?.dataReinicio || null,
+              envioPadrao: p.configuracao?.envioPadrao || false,
+              utilizaEnriquecimento: p.configuracao?.utilizaEnriquecimento || false,
+              deduzirDoPlano: p.configuracao?.deduzirDoPlano || false
             }));
 
-            await associadoProdutoService.criarEmLote(produtosParaAPI, 'SISTEMA');
+            console.log('Salvando produtos para novo associado:', produtosParaAPI);
+            
+            const result = await associadoProdutoService.criarEmLote(produtosParaAPI, 'SISTEMA');
+            
+            // Atualizar os produtos com os IDs retornados
+            const produtosAtualizados = produtosHabilitados.map((p, index) => ({
+              ...p,
+              associadoProdutoId: result[index]?.id
+            }));
+            
+            setProdutosHabilitados(produtosAtualizados);
+            
+            showMessage('Associado e produtos criados com sucesso!', 'success');
           } catch (prodError) {
             console.error('Erro ao adicionar produtos:', prodError);
             showMessage('Associado criado, mas houve erro ao adicionar produtos', 'warning');
           }
+        } else {
+          showMessage('Associado criado com sucesso!', 'success');
         }
 
         // Se há configurações de faturamento para adicionar
@@ -2662,14 +2830,14 @@ const AssociadoForm: React.FC = () => {
             >
               <div className="text-left">
                 <span className="text-gray-700">
-                  {formData.planoId ? formatarPlanoSelecionado() : 'Selecionar plano...'}
+                  {planoSelecionado ? formatarPlanoSelecionado() : 'Selecionar plano...'}
                 </span>
-                {!formData.planoId && (
+                {!planoSelecionado && (
                   <p className="text-xs text-gray-500 mt-1">Clique para pesquisar planos disponíveis</p>
                 )}
               </div>
               <div className="flex items-center gap-2">
-                {formData.planoId && (
+                {planoSelecionado && (
                   <button
                     type="button"
                     onClick={(e) => {
@@ -2692,16 +2860,16 @@ const AssociadoForm: React.FC = () => {
               </div>
             </button>
             
-            {formData.planoId && (
+            {planoSelecionado && (
               <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-blue-800">
-                      {formData.planoNome}
+                      {planoSelecionado.plano}
                     </p>
-                    {formData.planoValor && (
+                    {planoSelecionado.valor && (
                       <p className="text-sm text-blue-700 mt-1">
-                        Valor: {formData.planoValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        Valor: {planoSelecionado.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </p>
                     )}
                   </div>
@@ -2734,16 +2902,14 @@ const AssociadoForm: React.FC = () => {
             >
               <div className="text-left">
                 <span className="text-gray-700">
-                  {formData.categoriaId ? 
-                    categoriasDisponiveis.find(c => c.id === formData.categoriaId)?.descricao || 'Categoria selecionada' 
-                    : 'Selecionar categoria...'}
+                  {categoriaSelecionada ? categoriaSelecionada.descricao : 'Selecionar categoria...'}
                 </span>
-                {!formData.categoriaId && (
+                {!categoriaSelecionada && (
                   <p className="text-xs text-gray-500 mt-1">Clique para pesquisar categorias disponíveis</p>
                 )}
               </div>
               <div className="flex items-center gap-2">
-                {formData.categoriaId && (
+                {categoriaSelecionada && (
                   <button
                     type="button"
                     onClick={(e) => {
@@ -2766,12 +2932,12 @@ const AssociadoForm: React.FC = () => {
               </div>
             </button>
             
-            {formData.categoriaId && (
+            {categoriaSelecionada && (
               <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-blue-800">
-                      {categoriasDisponiveis.find(c => c.id === formData.categoriaId)?.descricao}
+                      {categoriaSelecionada.descricao}
                     </p>
                   </div>
                   <button
@@ -3645,9 +3811,6 @@ const AssociadoForm: React.FC = () => {
   };
 
   if (loading) return <LoadingSpinner />;
-  if (modalProdutosAberto) return <ModalProdutos />;
-  if (modalPlanosAberto) return <ModalPlanos />;
-  if (modalCategoriasAberto) return <ModalCategorias />;
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -3720,6 +3883,11 @@ const AssociadoForm: React.FC = () => {
           </div>
         </form>
       </div>
+
+      {/* Renderizar modais condicionalmente dentro do JSX principal */}
+      {modalProdutosAberto && <ModalProdutos />}
+      {modalPlanosAberto && <ModalPlanos />}
+      {modalCategoriasAberto && <ModalCategorias />}
 
       {/* MODAL DE CONFIGURAÇÃO DE PRODUTO */}
       {modalConfigProdutoAberto && produtoSelecionadoParaConfig && (

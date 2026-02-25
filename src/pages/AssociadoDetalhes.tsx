@@ -2,7 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { associadoService, associadoOpcoes } from '../services/associadoService';
+import { associadoProdutoService } from '../services/associadoProdutoService';
+import { associadoDefFaturamentoService } from '../services/associadoDefFaturamentoService';
 import { AssociadoDTO } from '../types/associado';
+import { AssociadoProdutoResumo } from '../types/associadoProduto.types';
+import { AssociadoDefFaturamentoResumo } from '../types/associadoDefFaturamento.types';
 import BreadCrumb from '../components/BreadCrumb';
 import Loading from '../components/Loading';
 
@@ -11,22 +15,42 @@ const AssociadoDetalhes: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   
   const [associado, setAssociado] = useState<AssociadoDTO | null>(null);
+  const [produtosHabilitados, setProdutosHabilitados] = useState<AssociadoProdutoResumo[]>([]);
+  const [configuracoesFaturamento, setConfiguracoesFaturamento] = useState<AssociadoDefFaturamentoResumo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
-    carregarAssociado();
+    carregarDados();
   }, [id]);
   
-  const carregarAssociado = async () => {
+  const carregarDados = async () => {
     if (!id) return;
     
     try {
       setLoading(true);
       setError(null);
       
-      const data = await associadoService.buscarPorId(parseInt(id));
-      setAssociado(data);
+      // Carregar dados do associado
+      const associadoData = await associadoService.buscarPorId(parseInt(id));
+      setAssociado(associadoData);
+      
+      // Carregar produtos habilitados
+      try {
+        const produtosData = await associadoProdutoService.listarPorAssociado(parseInt(id));
+        setProdutosHabilitados(produtosData);
+      } catch (prodError) {
+        console.log('Produtos habilitados não disponíveis:', prodError);
+      }
+      
+      // Carregar configurações de faturamento
+      try {
+        const faturamentoData = await associadoDefFaturamentoService.listarPorAssociado(parseInt(id));
+        setConfiguracoesFaturamento(faturamentoData);
+      } catch (fatError) {
+        console.log('Configurações de faturamento não disponíveis:', fatError);
+      }
+      
     } catch (err: any) {
       setError(err.message || 'Erro ao carregar associado');
       console.error('Erro ao carregar associado:', err);
@@ -46,7 +70,7 @@ const AssociadoDetalhes: React.FC = () => {
   const handleEditarEndereco = (tipoEndereco?: string) => {
     navigate(`/associados/editar/${id}`, { 
       state: { 
-        abaAtiva: 'enderecos',
+        abaAtiva: 'enderecos-contatos',
         subAbaEnderecos: tipoEndereco || 'COMERCIAL'
       } 
     });
@@ -55,7 +79,7 @@ const AssociadoDetalhes: React.FC = () => {
   const handleEditarTelefones = (tipoTelefone?: string) => {
     navigate(`/associados/editar/${id}`, { 
       state: { 
-        abaAtiva: 'telefones',
+        abaAtiva: 'enderecos-contatos',
         subAbaTelefones: tipoTelefone || 'COMERCIAL'
       } 
     });
@@ -64,8 +88,24 @@ const AssociadoDetalhes: React.FC = () => {
   const handleEditarEmails = (tipoEmail?: string) => {
     navigate(`/associados/editar/${id}`, { 
       state: { 
-        abaAtiva: 'emails',
+        abaAtiva: 'enderecos-contatos',
         subAbaEmails: tipoEmail || 'COMERCIAL'
+      } 
+    });
+  };
+  
+  const handleEditarFaturamento = () => {
+    navigate(`/associados/editar/${id}`, { 
+      state: { 
+        abaAtiva: 'parametro-faturamento'
+      } 
+    });
+  };
+  
+  const handleEditarProdutos = () => {
+    navigate(`/associados/editar/${id}`, { 
+      state: { 
+        abaAtiva: 'produtos-habilitados'
       } 
     });
   };
@@ -103,7 +143,7 @@ const AssociadoDetalhes: React.FC = () => {
     if (!opcao) return { label: 'Desconhecido', color: 'bg-gray-100 text-gray-800' };
     
     const colorClass = status === 'A' ? 'bg-green-100 text-green-800' : 
-                      status === 'I' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800';
+                      status === 'I' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800';
     
     return { label: opcao.label, colorClass };
   };
@@ -137,6 +177,7 @@ const AssociadoDetalhes: React.FC = () => {
       case 'PESSOAL': return '👤';
       case 'FINANCEIRO': return '💰';
       case 'OUTRO': return '📧';
+      case 'FAX': return '📠';
       default: return '📞';
     }
   };
@@ -149,7 +190,7 @@ const AssociadoDetalhes: React.FC = () => {
     return (
       <div className="p-6 max-w-6xl mx-auto">
         <BreadCrumb 
-          links={[
+          items={[
             { label: 'Associados', path: '/associados' },
             { label: 'Detalhes do Associado' }
           ]}
@@ -176,7 +217,7 @@ const AssociadoDetalhes: React.FC = () => {
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <BreadCrumb 
-        links={[
+        items={[
           { label: 'Associados', path: '/associados' },
           { label: `Associado: ${associado.nomeRazao}` }
         ]}
@@ -259,7 +300,7 @@ const AssociadoDetalhes: React.FC = () => {
                   <p className="text-gray-800">{formatarData(associado.dataCadastro)}</p>
                 </div>
                 
-                {/* NOVO: Data de Filiação */}
+                {/* Data de Filiação */}
                 {associado.dataFiliacao && (
                   <div>
                     <label className="block text-sm font-medium text-gray-500 mb-1">Data de Filiação</label>
@@ -282,7 +323,7 @@ const AssociadoDetalhes: React.FC = () => {
                   <p className="text-gray-800">{formatarValor(associado.faturamentoMinimo)}</p>
                 </div>
                 
-                {/* Vendedores - ATUALIZADO */}
+                {/* Vendedores */}
                 <div className="md:col-span-2 border-t pt-4 mt-4">
                   <label className="block text-sm font-medium text-gray-500 mb-2">Vendedores Responsáveis</label>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -296,7 +337,7 @@ const AssociadoDetalhes: React.FC = () => {
                       </p>
                     </div>
                     
-                    {/* NOVO: Vendedor Externo */}
+                    {/* Vendedor Externo */}
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Vendedor Externo</label>
                       <p className="text-gray-800">
@@ -309,11 +350,18 @@ const AssociadoDetalhes: React.FC = () => {
                   </div>
                 </div>
                 
-                {/* Plano e Categoria */}
-                {associado.planoId && (
+                {/* Plano e Categoria - NOVO */}
+                {(associado.planoId || associado.planoNome) && (
                   <div>
                     <label className="block text-sm font-medium text-gray-500 mb-1">Plano</label>
-                    <p className="text-gray-800">ID: {associado.planoId}</p>
+                    <p className="text-gray-800 font-medium">
+                      {associado.planoNome || `ID: ${associado.planoId}`}
+                    </p>
+                    {associado.planoValor && (
+                      <p className="text-sm text-gray-600">
+                        Valor: {formatarValor(associado.planoValor)}
+                      </p>
+                    )}
                   </div>
                 )}
                 
@@ -509,6 +557,161 @@ const AssociadoDetalhes: React.FC = () => {
             )}
           </div>
         </div>
+
+        {/* Card Configurações de Faturamento - NOVO */}
+        {configuracoesFaturamento.length > 0 && (
+          <div className="mt-6 border border-gray-200 rounded-lg p-6">
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-6 bg-indigo-600 rounded"></div>
+                <h2 className="text-lg font-semibold text-gray-800">Configurações de Faturamento</h2>
+                <span className="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded-full">
+                  {configuracoesFaturamento.length}
+                </span>
+              </div>
+              <button
+                onClick={handleEditarFaturamento}
+                className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 flex items-center gap-1 transition-colors text-sm"
+              >
+                ✏️ Editar
+              </button>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Dia Emissão
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Dia Vencimento
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Plano
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Valor Definido
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Observação
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {configuracoesFaturamento.map((config) => (
+                    <tr key={config.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {config.diaEmissao}º dia
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {config.diaVencimento}º dia
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {config.planoNome || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {config.valorDef ? formatarValor(config.valorDef) : '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-xs truncate">
+                        {config.observacao || '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Card Produtos Habilitados - NOVO */}
+        {produtosHabilitados.length > 0 && (
+          <div className="mt-6 border border-gray-200 rounded-lg p-6">
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-6 bg-teal-600 rounded"></div>
+                <h2 className="text-lg font-semibold text-gray-800">Produtos Habilitados</h2>
+                <span className="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded-full">
+                  {produtosHabilitados.length}
+                </span>
+              </div>
+              <button
+                onClick={handleEditarProdutos}
+                className="px-3 py-1 bg-teal-50 text-teal-600 rounded-lg hover:bg-teal-100 flex items-center gap-1 transition-colors text-sm"
+              >
+                ✏️ Editar
+              </button>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Código
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Produto
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Tipo
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Valor Efetivo
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Tipo Envio
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {produtosHabilitados.map((produto) => (
+                    <tr key={produto.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {produto.produtoCodigo}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {produto.produtoNome}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                          {produto.tipoProduto || 'Geral'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {produto.valorDefinido ? (
+                          <div className="flex items-center gap-1">
+                            <span className="font-medium text-blue-600">
+                              {formatarValor(produto.valorEfetivo)}
+                            </span>
+                            <span className="text-xs text-gray-400 bg-gray-100 px-1 rounded">
+                              customizado
+                            </span>
+                          </div>
+                        ) : (
+                          formatarValor(produto.valorEfetivo)
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          produto.ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {produto.ativo ? 'Ativo' : 'Inativo'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {produto.tipoEnvioDescricao || '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
