@@ -355,6 +355,7 @@ export async function visualizarNotaPDF(notaId: number) {
    SERVIÇO DE PRODUTOS — ADICIONADO PARA COMPLETAR
    ============================================================================ */
 export const produtoAPI = {
+  
   async listarProdutos(params?: any) {
     const response = await api.get("/produtos", { params });
     return response.data;
