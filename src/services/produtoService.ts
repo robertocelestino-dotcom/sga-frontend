@@ -5,6 +5,7 @@ import { produtoAPI } from './api';
 export interface ProdutoResumoDTO {
   id: number;
   codigo: string;
+  codigoRm?: string; 
   nome: string;
   nomeCompleto: string;
   valorUnitario: number;
@@ -14,6 +15,7 @@ export interface ProdutoResumoDTO {
   modalidade?: string;
   temFranquia: boolean;
   totalFranquias: number;
+  
 }
 
 // Interface para Produto completo
@@ -37,10 +39,14 @@ export interface ProdutoDTO extends ProdutoResumoDTO {
   usuarioAtualizacao?: string;
   franquiasIds?: number[];
   produtosRelacionadosIds?: number[];
+
+  franquiaAssociadaId?: number;
+  
 }
 
 export interface ProdutoFiltros {
   codigo?: string;
+  codigoRm?: string; 
   nome?: string;
   tipoProduto?: string;
   categoria?: string;
@@ -66,6 +72,7 @@ export interface PaginatedResponse<T> {
 
 // Serviço principal
 export const produtoService = {
+
   // CRUD
   async criar(produto: ProdutoDTO): Promise<ProdutoDTO> {
     console.log('🔄 [produtoService] Criando produto:', produto);
@@ -95,6 +102,7 @@ export const produtoService = {
       sort: filtros.sort || 'nome',
       direction: filtros.direction || 'asc',
       codigo: filtros.codigo || '',
+      codigoRm: filtros.codigoRm || '', // 🔥 ADICIONADO: filtro por código RM
       nome: filtros.nome || '',
       tipoProduto: filtros.tipoProduto || '',
       categoria: filtros.categoria || '',
@@ -110,7 +118,8 @@ export const produtoService = {
       }
     });
     
-    //console.log('📤 [produtoService] Parâmetros enviados para API:', params);
+    // Log detalhado dos parâmetros enviados
+    console.log('📤 [produtoService] Parâmetros enviados para API:', params);
     
     try {
       //console.log('📞 [produtoService] Chamando produtoAPI.listarProdutos...');
@@ -190,7 +199,7 @@ export const produtoService = {
       return dataParaRetornar;
       
     } catch (error) {
-      //console.error('❌ [produtoService] Erro ao listar produtos:', error);
+      console.error('❌ [produtoService] Erro ao listar produtos:', error);
       
       // Retornar estrutura vazia em caso de erro
       return {

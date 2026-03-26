@@ -1,4 +1,4 @@
-// src/pages/Associados.tsx - VERSÃO SEM CARDS DE ESTATÍSTICAS
+// src/pages/Associados.tsx - VERSÃO COM BOTÃO DE IMPORTAÇÃO
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -604,6 +604,14 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
           >
             ➕ Novo Associado
           </button>
+          
+          {/* 🔥 BOTÃO DE IMPORTAÇÃO */}
+          <button
+            onClick={() => navigate('/importacao-associados')}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 transition-colors"
+          >
+            📥 Importar Associados
+          </button>
         </div>
       </div>
 
@@ -824,7 +832,7 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
                           <div className="text-xs text-gray-500">
                             {associado.codigoRm || 'Sem código RM'}
                           </div>
-                        </td>
+                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm font-medium text-gray-900">{associado.nomeRazao}</div>
                           {associado.nomeFantasia && (
@@ -841,7 +849,7 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
                               <span>👤 {associado.vendedorNome}</span>
                             )}
                           </div>
-                        </td>
+                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">
                             {formatarCnpjCpf(associado.cnpjCpf)}
@@ -849,12 +857,12 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
                           <div className="text-xs text-gray-500">
                             {associado.tipoPessoa === 'F' ? 'Pessoa Física' : 'Pessoa Jurídica'}
                           </div>
-                        </td>
+                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTipoPessoaColor(associado.tipoPessoa)}`}>
                             {getTipoPessoaText(associado.tipoPessoa)}
                           </span>
-                        </td>
+                          </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(associado.status)}`}>
                             {getStatusText(associado.status)}
@@ -864,7 +872,7 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
                               💰 {formatarValor(associado.faturamentoMinimo)}
                             </div>
                           )}
-                        </td>
+                          </td>
                         {/* ALTERAÇÃO: Exibir Data de Filiação com formatação especial */}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className={`text-sm ${dataFiliacaoFormatada.classe}`}>
@@ -880,7 +888,7 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
                               )}
                             </div>
                           )}
-                        </td>
+                          </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex gap-2">
                             <button
@@ -905,8 +913,8 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
                               🗑️
                             </button>
                           </div>
-                        </td>
-                      </tr>
+                          </td>
+                       </tr>
                     );
                   })}
                 </tbody>

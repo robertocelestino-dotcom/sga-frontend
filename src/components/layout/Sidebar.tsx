@@ -15,7 +15,8 @@ import {
   FaFileInvoiceDollar,
   FaClipboardList,
   FaTag,
-  FaDollarSign
+  FaDollarSign,
+  FaClipboardCheck
 } from 'react-icons/fa';
 
 const Sidebar = () => {
@@ -45,6 +46,13 @@ const Sidebar = () => {
       name: 'Cadastro',
       icon: <FaUserPlus size={18} />,
       submenu: [
+
+        {
+          name: 'Associados',
+          path: '/associados',
+          icon: <FaUsers size={16} />,
+          description: 'Cadastro de associados'
+        },
         {
           name: 'Produtos',
           path: '/produtos',
@@ -52,11 +60,12 @@ const Sidebar = () => {
           description: 'Gestão de produtos e serviços'
         },
         {
-          name: 'Associados',
-          path: '/associados',
-          icon: <FaUsers size={16} />,
-          description: 'Cadastro de associados'
+          name: 'Planos', // 🔥 NOVO ITEM
+          path: '/planos',
+          icon: <FaClipboardCheck size={16} />,
+          description: 'Gestão de planos e franquias'
         },
+       
         {
           name: 'Usuários',
           path: '/usuarios',
@@ -161,14 +170,12 @@ const Sidebar = () => {
       path: '/verificacao-dashboard',
       icon: <FaChartBar size={18} />
     },
-
     {
       name: 'Logs do Sistema',
       path: '/logs',
-      icon: <FaClipboardList size={18} />, // Ou escolha outro ícone: FaFileAlt, FaHistory, FaClipboardCheck
+      icon: <FaClipboardList size={18} />,
       exact: true
     },
-    
   ];
 
   const isActive = (path: string) => {

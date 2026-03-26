@@ -316,28 +316,33 @@ export async function exportResumoPDF(importacaoId: number) {
 /* ========================================================================
    NOTAS DE DÉBITO — GRID / PDF
    ======================================================================== */
-
-export async function listarNotas(
-  importacaoId: number,
-  page = 0,
-  size = 10,
-  filtro = ""
-) {
-  const response = await api.get(
-    `/notas-debito`,
-    {
-      params: {
-        importacaoId,
-        page,
-        size,
-        filtro,
-      },
-    }
-  );
-  return response.data;
-}
-
-export async function visualizarNotaPDF(notaId: number) {
+   export async function listarNotas(
+    importacaoId: number,
+    page = 0,
+    size = 10,
+    filtro = ""
+  ) {
+    const response = await api.get(
+      `/notas-debito`,
+      {
+        params: {
+          importacaoId,
+          page,
+          size,
+          filtro,
+        },
+      }
+    );
+    return response.data;
+  }
+  
+  // 🔥 NOVA FUNÇÃO: Buscar detalhes de uma nota específica
+  export async function getNotaDetalhes(notaId: number) {
+    const response = await api.get(`/notas-debito/${notaId}`);
+    return response.data;
+  }
+  
+ export async function visualizarNotaPDF(notaId: number) {
   const response = await api.get(
     `/notas-debito/${notaId}/pdf`,
     { responseType: "blob" }
@@ -347,9 +352,18 @@ export async function visualizarNotaPDF(notaId: number) {
     type: "application/pdf",
   });
 
-  const url = window.URL.createObjectURL(blob);
-  window.open(url, "_blank");
+  // Criar URL do blob e abrir em nova aba
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('target', '_blank');
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+
 }
+
 
 /* ============================================================================
    SERVIÇO DE PRODUTOS — ADICIONADO PARA COMPLETAR

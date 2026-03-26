@@ -1,4 +1,3 @@
-// src/pages/ProdutoForm.tsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -18,10 +17,8 @@ const ProdutoFormPage: React.FC = () => {
   
   const [loading, setLoading] = useState(false);
   const [salvando, setSalvando] = useState(false);
-  const [franquiasDisponiveis, setFranquiasDisponiveis] = useState<any[]>([]);
-  const [produtosDisponiveis, setProdutosDisponiveis] = useState<any[]>([]);
   const [erros, setErros] = useState<Record<string, string>>({});
-  
+
   const [formData, setFormData] = useState<ProdutoDTO>({
     codigo: '',
     codigoRm: '',
@@ -67,39 +64,17 @@ const ProdutoFormPage: React.FC = () => {
     };
 
     carregarDados();
-    carregarFranquiasDisponiveis();
-    carregarProdutosDisponiveis();
   }, [id, isEditMode, navigate, showToast]);
-
-  // Carregar franquias disponíveis
-  const carregarFranquiasDisponiveis = async () => {
-    try {
-      const franquias = await produtoService.listarFranquiasDisponiveis();
-      setFranquiasDisponiveis(franquias);
-    } catch (error) {
-      console.error('Erro ao carregar franquias:', error);
-    }
-  };
-
-  // Carregar produtos disponíveis para relacionamento
-  const carregarProdutosDisponiveis = async () => {
-    try {
-      const produtos = await produtoService.listar({ size: 1000 });
-      setProdutosDisponiveis(produtos.content);
-    } catch (error) {
-      console.error('Erro ao carregar produtos:', error);
-    }
-  };
 
   // Validar formulário
   const validarFormulario = (): boolean => {
     const novosErros: Record<string, string> = {};
 
-    if (!formData.codigo.trim()) {
+    if (!formData.codigo?.trim()) {
       novosErros.codigo = 'Código é obrigatório';
     }
 
-    if (!formData.nome.trim()) {
+    if (!formData.nome?.trim()) {
       novosErros.nome = 'Nome é obrigatório';
     }
 
@@ -139,36 +114,9 @@ const ProdutoFormPage: React.FC = () => {
       [name]: valorFinal
     }));
 
-    // Limpar erro do campo quando editado
     if (erros[name]) {
       setErros(prev => ({ ...prev, [name]: '' }));
     }
-  };
-
-  const handleToggleFranquia = (franquiaId: number) => {
-    setFormData(prev => {
-      const currentIds = prev.franquiasIds || [];
-      const newIds = currentIds.includes(franquiaId)
-        ? currentIds.filter(id => id !== franquiaId)
-        : [...currentIds, franquiaId];
-      
-      return {
-        ...prev,
-        franquiasIds: newIds,
-        temFranquia: newIds.length > 0
-      };
-    });
-  };
-
-  const handleToggleProdutoRelacionado = (produtoId: number) => {
-    setFormData(prev => {
-      const currentIds = prev.produtosRelacionadosIds || [];
-      const newIds = currentIds.includes(produtoId)
-        ? currentIds.filter(id => id !== produtoId)
-        : [...currentIds, produtoId];
-      
-      return { ...prev, produtosRelacionadosIds: newIds };
-    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -229,6 +177,14 @@ const ProdutoFormPage: React.FC = () => {
   };
 
   if (loading) return <Loading />;
+
+  // Opções de tipo de produto expandidas
+  const tipoProdutoOpcoesExpandidas = [
+    ...produtoOpcoes.tipoProduto,
+    { value: 'PRODUTO_CONSULTA', label: 'Produto de Consulta (SPC, SERASA, etc)' },
+    { value: 'INSUMO', label: 'Insumo (Ação, Pefin, Protesto, Cadin)' },
+    { value: 'PLANO', label: 'Plano (Assinatura Mensal)' }
+  ];
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -333,7 +289,7 @@ const ProdutoFormPage: React.FC = () => {
                   className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                     erros.nome ? 'border-red-500' : 'border-gray-300'
                   }`}
-                  placeholder="Ex: Consulta SPC Positivo"
+                  placeholder="Ex: SPC MIX POSITIVO FOR INTERNET"
                 />
                 {erros.nome && (
                   <p className="mt-1 text-sm text-red-600">{erros.nome}</p>
@@ -391,7 +347,7 @@ const ProdutoFormPage: React.FC = () => {
                   onChange={handleChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  {produtoOpcoes.tipoProduto.map(opcao => (
+                  {tipoProdutoOpcoesExpandidas.map(opcao => (
                     <option key={opcao.value} value={opcao.value}>
                       {opcao.label}
                     </option>
@@ -415,6 +371,7 @@ const ProdutoFormPage: React.FC = () => {
                       {opcao.label}
                     </option>
                   ))}
+                  <option value="CONSULTA">Consulta</option>
                 </select>
               </div>
 
@@ -498,13 +455,13 @@ const ProdutoFormPage: React.FC = () => {
                     className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                       erros.limiteFranquia ? 'border-red-500' : 'border-gray-300'
                     }`}
-                    placeholder="Ex: 100"
+                    placeholder="Ex: 20"
                   />
                   {erros.limiteFranquia && (
                     <p className="mt-1 text-sm text-red-600">{erros.limiteFranquia}</p>
                   )}
                   <p className="mt-1 text-sm text-gray-500">
-                    Número máximo de utilizações no período
+                    Número máximo de consultas incluso no plano
                   </p>
                 </div>
 
@@ -515,120 +472,42 @@ const ProdutoFormPage: React.FC = () => {
                   </label>
                   <select
                     name="periodoFranquia"
-                    value={formData.periodoFranquia || ''}
+                    value={formData.periodoFranquia || 'MENSAL'}
                     onChange={handleChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
-                    <option value="">Selecione...</option>
-                    {produtoOpcoes.periodoFranquia.map(opcao => (
-                      <option key={opcao.value} value={opcao.value}>
-                        {opcao.label}
-                      </option>
-                    ))}
+                    <option value="MENSAL">Mensal</option>
+                    <option value="BIMESTRAL">Bimestral</option>
+                    <option value="TRIMESTRAL">Trimestral</option>
+                    <option value="SEMESTRAL">Semestral</option>
+                    <option value="ANUAL">Anual</option>
                   </select>
+                </div>
+
+                {/* Valor Excedente */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Valor por Consulta Excedente (R$)
+                  </label>
+                  <input
+                    type="number"
+                    name="valorExcedente"
+                    value={formData.valorExcedente || ''}
+                    onChange={handleChange}
+                    step="0.01"
+                    min="0"
+                    className="w-full max-w-xs px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="0,00"
+                  />
                   <p className="mt-1 text-sm text-gray-500">
-                    Período para renovação do limite
+                    Valor cobrado por consulta além do limite
                   </p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Seção 3: Franquias Relacionadas (se não for franquia) */}
-          {formData.tipoProduto !== 'FRANQUIA' && franquiasDisponiveis.length > 0 && (
-            <div className="border border-gray-200 rounded-lg p-6">
-              <div className="flex items-center gap-2 mb-6">
-                <div className="w-1 h-6 bg-purple-600 rounded"></div>
-                <h2 className="text-lg font-semibold text-gray-800">Franquias Relacionadas</h2>
-                <span className="text-sm text-gray-500 ml-2">
-                  (Selecione as franquias inclusas neste produto)
-                </span>
-              </div>
-              
-              <div className="mb-4">
-                <p className="text-sm text-gray-600 mb-3">
-                  Produtos selecionados: {formData.franquiasIds?.length || 0}
-                </p>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-60 overflow-y-auto p-2">
-                  {franquiasDisponiveis.map(franquia => (
-                    <div
-                      key={franquia.id}
-                      className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-all ${
-                        formData.franquiasIds?.includes(franquia.id)
-                          ? 'bg-purple-50 border-purple-300'
-                          : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                      }`}
-                      onClick={() => handleToggleFranquia(franquia.id)}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={formData.franquiasIds?.includes(franquia.id) || false}
-                        onChange={() => handleToggleFranquia(franquia.id)}
-                        className="h-4 w-4 text-purple-600 rounded focus:ring-purple-500"
-                      />
-                      <div className="flex-1">
-                        <div className="font-medium text-gray-800">{franquia.nome}</div>
-                        <div className="text-sm text-gray-500">
-                          {franquia.codigo} • R$ {franquia.valorUnitario?.toFixed(2)}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Seção 4: Produtos Relacionados (para produtos MIX) */}
-          {formData.categoria === 'MIX' || formData.nome.includes('MIX') ? (
-            <div className="border border-gray-200 rounded-lg p-6">
-              <div className="flex items-center gap-2 mb-6">
-                <div className="w-1 h-6 bg-green-600 rounded"></div>
-                <h2 className="text-lg font-semibold text-gray-800">Produtos Relacionados (MIX)</h2>
-                <span className="text-sm text-gray-500 ml-2">
-                  (Selecione os produtos que compõem este MIX)
-                </span>
-              </div>
-              
-              <div className="mb-4">
-                <p className="text-sm text-gray-600 mb-3">
-                  Produtos selecionados: {formData.produtosRelacionadosIds?.length || 0}
-                </p>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-60 overflow-y-auto p-2">
-                  {produtosDisponiveis
-                    .filter(p => p.id !== parseInt(id || '0'))
-                    .map(produto => (
-                      <div
-                        key={produto.id}
-                        className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-all ${
-                          formData.produtosRelacionadosIds?.includes(produto.id)
-                            ? 'bg-green-50 border-green-300'
-                            : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                        }`}
-                        onClick={() => handleToggleProdutoRelacionado(produto.id)}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={formData.produtosRelacionadosIds?.includes(produto.id) || false}
-                          onChange={() => handleToggleProdutoRelacionado(produto.id)}
-                          className="h-4 w-4 text-green-600 rounded focus:ring-green-500"
-                        />
-                        <div className="flex-1">
-                          <div className="font-medium text-gray-800">{produto.nome}</div>
-                          <div className="text-sm text-gray-500">
-                            {produto.codigo} • {produto.tipoProduto}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          {/* Seção 5: Regras de Faturamento */}
+          {/* Seção 3: Regras de Faturamento */}
           <div className="border border-gray-200 rounded-lg p-6">
             <div className="flex items-center gap-2 mb-6">
               <div className="w-1 h-6 bg-yellow-600 rounded"></div>
@@ -647,10 +526,10 @@ const ProdutoFormPage: React.FC = () => {
                 />
                 <div>
                   <label className="font-medium text-gray-700">
-                    Gerar cobrança automaticamente
+                    Gerar cobrança automaticamente na importação
                   </label>
                   <p className="text-sm text-gray-500">
-                    Cobrança será gerada automaticamente na importação
+                    Quando este produto aparecer na bilhetagem, gera cobrança automática
                   </p>
                 </div>
               </div>
@@ -712,7 +591,7 @@ const ProdutoFormPage: React.FC = () => {
                       min="1"
                       max="31"
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Ex: 10 (dia do mês)"
+                      placeholder="Ex: 10"
                     />
                   </div>
                 </div>

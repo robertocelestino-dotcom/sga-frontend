@@ -1,6 +1,5 @@
-// src/pages/AssociadoDetalhes.tsx - VERSÃO ATUALIZADA
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { associadoService, associadoOpcoes } from '../services/associadoService';
 import { associadoProdutoService } from '../services/associadoProdutoService';
 import { associadoDefFaturamentoService } from '../services/associadoDefFaturamentoService';
@@ -255,6 +254,17 @@ const AssociadoDetalhes: React.FC = () => {
               ✏️ Editar Associado
             </button>
           </div>
+        </div>
+        
+        {/* 🔥 NOVO BOTÃO DE CONSUMO DE FRANQUIA */}
+        <div className="mb-6 flex justify-end">
+          <Link
+            to={`/associados/${id}/consumo-franquia`}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 transition-colors"
+          >
+            <span>📊</span>
+            Ver Consumo de Franquias
+          </Link>
         </div>
         
         {/* Grid Principal */}
@@ -558,7 +568,7 @@ const AssociadoDetalhes: React.FC = () => {
           </div>
         </div>
 
-        {/* Card Configurações de Faturamento - NOVO */}
+        {/* Card Configurações de Faturamento */}
         {configuracoesFaturamento.length > 0 && (
           <div className="mt-6 border border-gray-200 rounded-lg p-6">
             <div className="flex justify-between items-center mb-6">
@@ -624,7 +634,7 @@ const AssociadoDetalhes: React.FC = () => {
           </div>
         )}
 
-        {/* Card Produtos Habilitados - NOVO */}
+        {/* Card Produtos Habilitados */}
         {produtosHabilitados.length > 0 && (
           <div className="mt-6 border border-gray-200 rounded-lg p-6">
             <div className="flex justify-between items-center mb-6">

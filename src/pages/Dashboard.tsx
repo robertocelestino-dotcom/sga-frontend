@@ -1,4 +1,4 @@
-// src/pages/Dashboard.tsx - VERSÃO ATUALIZADA
+// src/pages/Dashboard.tsx - VERSÃO ATUALIZADA COM LINK PARA IMPORTAÇÃO DE ASSOCIADOS
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { dashboardService } from '../services/dashboardService';
@@ -107,8 +107,6 @@ const Dashboard = () => {
   };
 
   const getChangeType = (statName: string, value: number) => {
-    // Lógica para determinar se a mudança é positiva ou negativa
-    // Pode ser baseada em dados históricos quando disponíveis
     switch (statName) {
       case 'Total de Produtos':
         return value > 150 ? 'positive' : 'negative';
@@ -124,7 +122,6 @@ const Dashboard = () => {
   };
 
   const getChangeValue = (statName: string, value: number) => {
-    // Valores de exemplo - podem vir de uma API de histórico
     switch (statName) {
       case 'Total de Produtos':
         return '+8%';
@@ -311,6 +308,34 @@ const Dashboard = () => {
               </div>
             </Link>
           ))}
+          
+          {/* 🔥 NOVA AÇÃO RÁPIDA: Importar Associados */}
+          <Link
+            to="/importacao-associados"
+            className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl shadow-sm p-4 sm:p-5 hover:shadow-lg transition-all hover:-translate-y-1 cursor-pointer border border-purple-200 hover:border-purple-300 group"
+          >
+            <div className="flex flex-col h-full">
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-2xl sm:text-3xl transition-transform group-hover:scale-110">
+                  📥
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="px-2 py-0.5 bg-purple-200 text-purple-800 text-xs font-medium rounded-full">
+                    Novo
+                  </span>
+                  <span className="text-purple-400 group-hover:text-purple-600 transition-colors">→</span>
+                </div>
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-800 text-sm sm:text-base mb-1 group-hover:text-purple-700 transition-colors">
+                  Importar Associados
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-600 line-clamp-2">
+                  Importação em lote de associados via arquivo CSV
+                </p>
+              </div>
+            </div>
+          </Link>
         </div>
       </div>
 
@@ -401,6 +426,21 @@ const Dashboard = () => {
                   <span className={`group-hover:translate-x-1 transition-transform ${link.textColor}`}>→</span>
                 </Link>
               ))}
+              
+              {/* 🔥 NOVO LINK: Importar Associados */}
+              <Link
+                to="/importacao-associados"
+                className="flex items-center justify-between p-3 rounded-lg transition-colors group hover:bg-purple-50"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="text-xl group-hover:scale-110 transition-transform">📥</div>
+                  <div>
+                    <h3 className="font-medium text-gray-800 group-hover:text-purple-700">Importar Associados</h3>
+                    <p className="text-xs text-gray-600">Importação em lote de associados</p>
+                  </div>
+                </div>
+                <span className="text-gray-400 group-hover:text-purple-500 group-hover:translate-x-1 transition-transform">→</span>
+              </Link>
             </div>
           </div>
 

@@ -1,4 +1,3 @@
-// src/App.tsx
 import React, { useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './stores/authStore'
@@ -10,8 +9,8 @@ import Dashboard from './pages/Dashboard'
 
 // Importe todas as páginas que você tem na estrutura
 import Associados from './pages/Associados'
-import AssociadoForm from './pages/AssociadoForm' // ADICIONE ESTE IMPORT
-import AssociadoDetalhes from './pages/AssociadoDetalhes' // ADICIONE ESTE IMPORT
+import AssociadoForm from './pages/AssociadoForm'
+import AssociadoDetalhes from './pages/AssociadoDetalhes'
 import AtualizacaoAssociados from './pages/AtualizacaoAssociados'
 import Beneficios from './pages/Beneficios'
 import GestaoSPC from './pages/GestaoSPC'
@@ -28,12 +27,20 @@ import TabelaValores from './pages/TabelaValores'
 import Usuarios from './pages/Usuarios'
 import VerificacaoDashboard from './pages/VerificacaoDashboard'
 import VerificacaoImportacao from './pages/VerificacaoImportacao'
-import LogsSistema from './pages/LogsSistema';
+import LogsSistema from './pages/LogsSistema'
 
 // PÁGINAS DE PRODUTOS
 import Produtos from './pages/Produtos'
 import ProdutoForm from './pages/ProdutoForm'
 import ProdutoDetalhes from './pages/ProdutoDetalhes'
+
+// 🔥 NOVA PÁGINA DE CONSUMO DE FRANQUIAS
+import ConsumoFranquiaPage from './pages/ConsumoFranquiaPage'
+
+// 🔥 NOVAS PÁGINAS DE PLANOS
+import Planos from './pages/Planos'
+import PlanoForm from './pages/PlanoForm'
+import PlanoDetalhes from './pages/PlanoDetalhes'
 
 // Adicione esta animação ao seu index.css
 import './styles/animations.css'
@@ -94,9 +101,13 @@ function App() {
 
               {/* Cadastro */}
               <Route path="associados" element={<Associados />} />
-              <Route path="associados/novo" element={<AssociadoForm />} /> {/* ADICIONE ESTA LINHA */}
-              <Route path="associados/editar/:id" element={<AssociadoForm />} /> {/* ADICIONE ESTA LINHA */}
-              <Route path="associados/:id" element={<AssociadoDetalhes />} /> {/* ADICIONE ESTA LINHA */}
+              <Route path="associados/novo" element={<AssociadoForm />} />
+              <Route path="associados/editar/:id" element={<AssociadoForm />} />
+              <Route path="associados/:id" element={<AssociadoDetalhes />} />
+              
+              {/* 🔥 NOVA ROTA DE CONSUMO DE FRANQUIAS */}
+              <Route path="associados/:id/consumo-franquia" element={<ConsumoFranquiaPage />} />
+              
               <Route path="usuarios" element={<Usuarios />} />
               <Route path="parametrizacao-associados" element={<ParametrizacaoAssociados />} />
               <Route path="tabela-precos" element={<TabelaPrecos />} />
@@ -107,6 +118,12 @@ function App() {
               <Route path="produtos/novo" element={<ProdutoForm />} />
               <Route path="produtos/editar/:id" element={<ProdutoForm />} />
               <Route path="produtos/:id" element={<ProdutoDetalhes />} />
+
+              {/* 🔥 NOVAS ROTAS DE PLANOS */}
+              <Route path="planos" element={<Planos />} />
+              <Route path="planos/novo" element={<PlanoForm />} />
+              <Route path="planos/editar/:id" element={<PlanoForm />} />
+              <Route path="planos/:id" element={<PlanoDetalhes />} />
 
               {/* Importação */}
               <Route path="importacao-spc" element={<ImportacaoSPC />} />

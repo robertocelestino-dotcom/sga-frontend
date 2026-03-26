@@ -1,4 +1,4 @@
-// src/pages/Produtos.tsx - VERSÃO COM DEBOUNCE
+// src/pages/Produtos.tsx - VERSÃO CORRIGIDA COM FRANQUIA ASSOCIADA
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -7,6 +7,8 @@ import {
   ProdutoFiltros,
   produtoOpcoes
 } from '../services/produtoService';
+import { planoProdutoFranquiaService } from '../services/planoProdutoFranquiaService';
+import api from '../services/api';
 import BreadCrumb from '../components/BreadCrumb';
 import Loading from '../components/Loading';
 import { useMessage } from '../providers/MessageProvider';
@@ -28,6 +30,88 @@ const useDebounce = <T,>(value: T, delay: number): T => {
   return debouncedValue;
 };
 
+// 🔥 MODAL PARA MOSTRAR FRANQUIA DO PRODUTO - CORRIGIDO
+// 🔥 MODAL PARA MOSTRAR FRANQUIA DO PRODUTO - CORRIGIDO
+const ModalFranquia: React.FC<{
+  aberto: boolean;
+  onFechar: () => void;
+  produto: any;
+  franquia: any;
+}> = ({ aberto, onFechar, produto, franquia }) => {
+  if (!aberto) return null;
+
+  // Log detalhado do que o modal recebeu
+  console.log('🎯 Modal recebeu produto:', produto);
+  console.log('   - nome:', produto?.nome);
+  console.log('   - codigoRm:', produto?.codigoRm);
+  console.log('   - codigo:', produto?.codigo);
+  console.log('   - id:', produto?.id);
+
+  return (
+    <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Franquia do Produto
+            </h3>
+            <button
+              onClick={onFechar}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+        
+        <div className="p-6">
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-500 mb-1">Produto</label>
+            <p className="text-gray-900 font-medium">{produto?.nome}</p>
+            <p className="text-sm text-gray-500">
+              Código RM: {produto?.codigoRm || produto?.codigo || 'N/A'}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">ID interno: {produto?.id}</p>
+          </div>
+          
+          {franquia ? (
+            <div className="bg-purple-50 p-4 rounded-lg">
+              <label className="block text-sm font-medium text-purple-700 mb-1">Franquia Associada</label>
+              <p className="text-gray-900 font-medium">{franquia.nome}</p>
+              <p className="text-sm text-gray-600">
+                Código RM: {franquia.codigoRm || franquia.codigo || 'N/A'}
+              </p>
+              {franquia.limiteFranquia && (
+                <p className="text-sm text-gray-600 mt-2">
+                  Limite: {franquia.limiteFranquia} consultas
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="bg-gray-50 p-4 rounded-lg text-center">
+              <p className="text-gray-500">Este produto não possui franquia associada</p>
+              <p className="text-xs text-gray-400 mt-2">
+                Código RM: {produto?.codigoRm || produto?.codigo}
+              </p>
+            </div>
+          )}
+          
+          <div className="mt-6 flex justify-end">
+            <button
+              onClick={onFechar}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ProdutosPage: React.FC = () => {
   const navigate = useNavigate();
   const { showToast, showConfirm } = useMessage();
@@ -36,7 +120,12 @@ const ProdutosPage: React.FC = () => {
   const [produtos, setProdutos] = useState<ProdutoResumoDTO[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Estado para os valores dos inputs (atualiza a cada tecla)
+  // 🔥 Estado para o modal de franquia
+  const [modalFranquiaAberto, setModalFranquiaAberto] = useState(false);
+  const [franquiaSelecionada, setFranquiaSelecionada] = useState<any>(null);
+  const [produtoSelecionado, setProdutoSelecionado] = useState<any>(null);
+  
+  // Estado para os valores dos inputs
   const [inputValues, setInputValues] = useState({
     codigo: '',
     nome: '',
@@ -45,7 +134,7 @@ const ProdutosPage: React.FC = () => {
     categoria: ''
   });
   
-  // Estado para os filtros ativos (usados na busca)
+  // Estado para os filtros ativos
   const [filtrosAtivos, setFiltrosAtivos] = useState<ProdutoFiltros>({
     page: 0,
     size: 10,
@@ -70,32 +159,53 @@ const ProdutosPage: React.FC = () => {
   const debouncedNome = useDebounce(inputValues.nome, 500);
   const debouncedCodigo = useDebounce(inputValues.codigo, 500);
 
-  // Atualizar filtros ativos quando os valores com debounce mudarem
-  useEffect(() => {
-    const novosFiltros: ProdutoFiltros = {
-      ...filtrosAtivos,
-      page: 0, // Sempre voltar para primeira página ao filtrar
-      nome: debouncedNome || undefined,
-      codigo: debouncedCodigo || undefined,
-      status: inputValues.status || undefined,
-      tipoProduto: inputValues.tipoProduto || undefined,
-      categoria: inputValues.categoria || undefined
+  // Função para mapear inputValues para ProdutoFiltros
+  const mapearFiltros = useCallback((): ProdutoFiltros => {
+    const filtros: ProdutoFiltros = {
+      page: 0,
+      size: filtrosAtivos.size,
+      sort: filtrosAtivos.sort,
+      direction: filtrosAtivos.direction
     };
 
-    // Remover campos undefined
-    Object.keys(novosFiltros).forEach(key => {
-      if (novosFiltros[key as keyof ProdutoFiltros] === undefined) {
-        delete novosFiltros[key as keyof ProdutoFiltros];
-      }
-    });
+    if (debouncedCodigo) {
+      filtros.codigoRm = debouncedCodigo;
+    }
 
-    setFiltrosAtivos(novosFiltros);
-  }, [debouncedNome, debouncedCodigo, inputValues.status, inputValues.tipoProduto, inputValues.categoria]);
+    if (debouncedNome) {
+      filtros.nome = debouncedNome;
+    }
+
+    if (inputValues.status) {
+      filtros.status = inputValues.status;
+    }
+
+    if (inputValues.tipoProduto) {
+      filtros.tipoProduto = inputValues.tipoProduto;
+    }
+
+    if (inputValues.categoria) {
+      filtros.categoria = inputValues.categoria;
+    }
+
+    return filtros;
+  }, [debouncedCodigo, debouncedNome, inputValues.status, inputValues.tipoProduto, inputValues.categoria, filtrosAtivos.size, filtrosAtivos.sort, filtrosAtivos.direction]);
+
+  useEffect(() => {
+    const novosFiltros = mapearFiltros();
+    setFiltrosAtivos(prev => ({
+      ...prev,
+      ...novosFiltros,
+      page: 0
+    }));
+  }, [debouncedNome, debouncedCodigo, inputValues.status, inputValues.tipoProduto, inputValues.categoria, mapearFiltros]);
 
   // Carregar produtos quando filtrosAtivos mudar
   const carregarProdutos = useCallback(async () => {
     try {
       setLoading(true);
+      console.log('🔍 Carregando produtos com filtros:', filtrosAtivos);
+      
       const response = await produtoService.listar(filtrosAtivos);
       
       if (response && response.content && Array.isArray(response.content)) {
@@ -106,6 +216,7 @@ const ProdutosPage: React.FC = () => {
           size: response.size,
           number: response.number
         });
+        console.log(`✅ Carregados ${response.content.length} produtos`);
       } else {
         setProdutos([]);
         showToast('Nenhum produto encontrado', 'info');
@@ -119,7 +230,85 @@ const ProdutosPage: React.FC = () => {
     }
   }, [filtrosAtivos, showToast]);
 
-  // Efeito para carregar produtos quando filtrosAtivos mudam
+  // 🔥 Buscar franquia do produto - VERSÃO FINAL CORRIGIDA
+  // 🔥 Buscar franquia do produto - VERSÃO COM LOGS DETALHADOS
+const handleVerFranquia = async (produto: ProdutoResumoDTO) => {
+  try {
+    console.log('🔍 ===== INICIANDO BUSCA DE FRANQUIA =====');
+    console.log('📦 Produto original recebido:', produto);
+    console.log('📦 Campos do produto original:');
+    console.log('   - id:', produto.id);
+    console.log('   - codigo:', produto.codigo);
+    console.log('   - codigoRm:', produto.codigoRm);
+    console.log('   - nome:', produto.nome);
+    console.log('   - temFranquia:', produto.temFranquia);
+    
+    // 🔥 Garantir que o código RM seja priorizado
+    const produtoCompleto = {
+      ...produto,
+      // Forçar codigoRm a ter o valor correto
+      codigoRm: produto.codigoRm || produto.codigo,
+      // Manter referência ao código original
+      codigoOriginal: produto.codigo,
+    };
+    
+    console.log('📦 Produto completo criado:', produtoCompleto);
+    console.log('   - codigoRm após correção:', produtoCompleto.codigoRm);
+    
+    setProdutoSelecionado(produtoCompleto);
+    
+    // 🔥 Buscar associações na tabela plano_produto_franquia
+    console.log('🔍 Buscando associações para produto ID:', produto.id);
+    const associacoes = await planoProdutoFranquiaService.listarPorProduto(produto.id);
+    console.log('📊 Associações encontradas:', associacoes);
+    
+    let franquiaEncontrada = null;
+    
+    if (associacoes && associacoes.length > 0) {
+      console.log(`✅ Encontradas ${associacoes.length} associações`);
+      
+      const primeiraAssoc = associacoes[0];
+      console.log('📋 Primeira associação:', primeiraAssoc);
+      
+      // Tentar obter a franquia
+      if (primeiraAssoc.franquia) {
+        console.log('✅ Franquia já vem na associação');
+        franquiaEncontrada = primeiraAssoc.franquia;
+      } 
+      else if (primeiraAssoc.franquiaId) {
+        console.log('🔍 Buscando franquia por ID:', primeiraAssoc.franquiaId);
+        franquiaEncontrada = await produtoService.buscarPorId(primeiraAssoc.franquiaId);
+      }
+      else if (primeiraAssoc.franquiaNome) {
+        console.log('✅ Criando franquia a partir dos dados');
+        franquiaEncontrada = {
+          id: primeiraAssoc.franquiaId,
+          nome: primeiraAssoc.franquiaNome,
+          codigoRm: primeiraAssoc.franquiaCodigo,
+          codigo: primeiraAssoc.franquiaCodigo,
+          limiteFranquia: primeiraAssoc.limiteFranquia,
+          periodoFranquia: primeiraAssoc.periodoFranquia
+        };
+      }
+    }
+    
+    if (franquiaEncontrada) {
+      console.log('✅ Franquia encontrada:', franquiaEncontrada);
+      setFranquiaSelecionada(franquiaEncontrada);
+    } else {
+      console.log('❌ Nenhuma franquia encontrada');
+      setFranquiaSelecionada(null);
+    }
+    
+    console.log('🔍 Abrindo modal com produto:', produtoCompleto);
+    setModalFranquiaAberto(true);
+    
+  } catch (error) {
+    console.error('❌ Erro ao buscar franquia:', error);
+    showToast('Erro ao buscar franquia do produto', 'error');
+  }
+};
+
   useEffect(() => {
     carregarProdutos();
   }, [carregarProdutos]);
@@ -132,22 +321,13 @@ const ProdutosPage: React.FC = () => {
     }));
   };
 
-  // Handlers para selects (busca imediata)
   const handleSelectChange = (campo: keyof typeof inputValues, valor: string) => {
     setInputValues(prev => ({
       ...prev,
       [campo]: valor
     }));
-    
-    // Para selects, atualizar filtros imediatamente
-    setFiltrosAtivos(prev => ({
-      ...prev,
-      [campo]: valor || undefined,
-      page: 0
-    }));
   };
 
-  // Limpar todos os filtros
   const limparFiltros = () => {
     setInputValues({
       codigo: '',
@@ -157,16 +337,8 @@ const ProdutosPage: React.FC = () => {
       categoria: ''
     });
     
-    setFiltrosAtivos({
-      page: 0,
-      size: 10,
-      sort: 'nome',
-      direction: 'asc'
-    });
-    
     showToast('Filtros limpos', 'info');
     
-    // Dar foco ao campo nome após limpar
     setTimeout(() => {
       if (nomeInputRef.current) {
         nomeInputRef.current.focus();
@@ -174,17 +346,10 @@ const ProdutosPage: React.FC = () => {
     }, 100);
   };
 
-  // Busca manual (para quando o usuário quiser forçar uma busca)
   const handleBuscarAgora = () => {
-    setFiltrosAtivos(prev => ({
-      ...prev,
-      nome: inputValues.nome || undefined,
-      codigo: inputValues.codigo || undefined,
-      page: 0
-    }));
+    carregarProdutos();
   };
 
-  // Handlers para ações dos produtos
   const handleNovoProduto = () => {
     navigate('/produtos/novo');
   };
@@ -226,7 +391,6 @@ const ProdutosPage: React.FC = () => {
     }));
   };
 
-  // Formatar valores monetários
   const formatarValor = (valor: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -234,7 +398,6 @@ const ProdutosPage: React.FC = () => {
     }).format(valor);
   };
 
-  // Cores para status
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'ATIVO': return 'bg-green-100 text-green-800';
@@ -244,22 +407,20 @@ const ProdutosPage: React.FC = () => {
     }
   };
 
-  // Cores para tipos de produto
   const getTipoProdutoColor = (tipo: string) => {
     switch (tipo) {
       case 'FRANQUIA': return 'bg-purple-100 text-purple-800';
-      case 'SERVICO': return 'bg-blue-100 text-blue-800';
-      case 'PRODUTO': return 'bg-green-100 text-green-800';
-      case 'ASSINATURA': return 'bg-yellow-100 text-yellow-800';
+      case 'PLANO': return 'bg-indigo-100 text-indigo-800';
+      case 'CONSULTA': return 'bg-blue-100 text-blue-800';
+      case 'INSUMO': return 'bg-green-100 text-green-800';
+      case 'SERVICO': return 'bg-yellow-100 text-yellow-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  // Indicador de loading específico para filtros
   const isFiltrando = debouncedNome !== inputValues.nome || 
                       debouncedCodigo !== inputValues.codigo;
 
-  // Loading inicial
   if (loading && produtos.length === 0) {
     return <Loading />;
   }
@@ -280,16 +441,8 @@ const ProdutosPage: React.FC = () => {
         
         <div className="flex flex-wrap gap-3">
           <button
-            onClick={() => {
-              setMostrarFiltros(!mostrarFiltros);
-              // Dar foco ao campo nome quando abrir os filtros
-              setTimeout(() => {
-                if (nomeInputRef.current && mostrarFiltros === false) {
-                  nomeInputRef.current.focus();
-                }
-              }, 100);
-            }}
-            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center gap-2 transition-colors"
+            onClick={() => setMostrarFiltros(!mostrarFiltros)}
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center gap-2"
           >
             🔍 {mostrarFiltros ? 'Ocultar Filtros' : 'Mostrar Filtros'}
           </button>
@@ -297,14 +450,14 @@ const ProdutosPage: React.FC = () => {
           <button
             onClick={carregarProdutos}
             disabled={loading}
-            className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+            className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 disabled:opacity-50 flex items-center gap-2"
           >
             {loading ? '⏳ Carregando...' : '🔄 Atualizar'}
           </button>
           
           <button
             onClick={handleNovoProduto}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 transition-colors"
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
           >
             ➕ Novo Produto
           </button>
@@ -320,13 +473,13 @@ const ProdutosPage: React.FC = () => {
               <button
                 onClick={handleBuscarAgora}
                 disabled={loading}
-                className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50"
               >
                 🔍 Buscar Agora
               </button>
               <button
                 onClick={limparFiltros}
-                className="px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded hover:bg-gray-300 transition-colors"
+                className="px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded hover:bg-gray-300"
               >
                 🗑️ Limpar Tudo
               </button>
@@ -334,10 +487,10 @@ const ProdutosPage: React.FC = () => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-            {/* Campo: Código */}
+            {/* Campos de filtro */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Código
+                Código RM
                 {inputValues.codigo && debouncedCodigo !== inputValues.codigo && (
                   <span className="ml-2 text-xs text-blue-500">digitando...</span>
                 )}
@@ -347,12 +500,11 @@ const ProdutosPage: React.FC = () => {
                 type="text"
                 value={inputValues.codigo}
                 onChange={(e) => handleInputChange('codigo', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                placeholder="Ex: PROD001"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Ex: 04.01.03.69832"
               />
             </div>
             
-            {/* Campo: Nome */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Nome
@@ -365,94 +517,51 @@ const ProdutosPage: React.FC = () => {
                 type="text"
                 value={inputValues.nome}
                 onChange={(e) => handleInputChange('nome', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Digite para buscar..."
               />
-              <p className="text-xs text-gray-500 mt-1">
-                Busca automática após 0.5s
-              </p>
             </div>
             
-            {/* Campo: Status */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
               <select
                 value={inputValues.status}
                 onChange={(e) => handleSelectChange('status', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="">Todos os Status</option>
                 {produtoOpcoes.status.map(opt => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
             </div>
             
-            {/* Campo: Tipo de Produto */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
               <select
                 value={inputValues.tipoProduto}
                 onChange={(e) => handleSelectChange('tipoProduto', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="">Todos os Tipos</option>
                 {produtoOpcoes.tipoProduto.map(opt => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
             </div>
             
-            {/* Campo: Categoria */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
               <select
                 value={inputValues.categoria}
                 onChange={(e) => handleSelectChange('categoria', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="">Todas as Categorias</option>
                 {produtoOpcoes.categoria.map(opt => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
-            </div>
-          </div>
-          
-          {/* Indicadores ativos */}
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <div className="flex flex-wrap gap-2">
-              {inputValues.codigo && (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                  Código: {inputValues.codigo}
-                </span>
-              )}
-              {inputValues.nome && (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  Nome: {inputValues.nome}
-                </span>
-              )}
-              {inputValues.status && (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                  Status: {produtoOpcoes.status.find(s => s.value === inputValues.status)?.label || inputValues.status}
-                </span>
-              )}
-              {inputValues.tipoProduto && (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                  Tipo: {produtoOpcoes.tipoProduto.find(t => t.value === inputValues.tipoProduto)?.label || inputValues.tipoProduto}
-                </span>
-              )}
-              {inputValues.categoria && (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                  Categoria: {produtoOpcoes.categoria.find(c => c.value === inputValues.categoria)?.label || inputValues.categoria}
-                </span>
-              )}
             </div>
           </div>
         </div>
@@ -476,7 +585,7 @@ const ProdutosPage: React.FC = () => {
             </p>
             <button
               onClick={handleNovoProduto}
-              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors"
+              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
             >
               ➕ Criar Primeiro Produto
             </button>
@@ -487,38 +596,22 @@ const ProdutosPage: React.FC = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Código
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Nome
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Valor
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tipo
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Franquias
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Ações
-                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Código RM</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Valor</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Franquia</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {produtos.map((produto) => (
-                    <tr 
-                      key={produto.id} 
-                      className="hover:bg-gray-50 transition-colors"
-                    >
+                    <tr key={produto.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-mono font-medium text-gray-900">
-                          {produto.codigo}
+                          {/* 🔥 CORRIGIDO: Usar codigoRm primeiro */}
+                          {produto.codigoRm || produto.codigo}
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -542,9 +635,14 @@ const ProdutosPage: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         {produto.temFranquia ? (
-                          <span className="text-green-600 font-medium">
-                            ✅ {produto.totalFranquias} franquia(s)
-                          </span>
+                          <button
+                            onClick={() => handleVerFranquia(produto)}
+                            className="px-3 py-1 bg-purple-100 text-purple-700 rounded hover:bg-purple-200 transition-colors flex items-center gap-1"
+                            title="Ver franquia do produto"
+                          >
+                            <span>📦</span>
+                            Ver Franquia
+                          </button>
                         ) : (
                           <span className="text-gray-400">❌ Sem franquia</span>
                         )}
@@ -553,21 +651,21 @@ const ProdutosPage: React.FC = () => {
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleVerDetalhes(produto.id)}
-                            className="p-1 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded transition-colors"
+                            className="p-1 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded"
                             title="Ver detalhes"
                           >
                             👁️
                           </button>
                           <button
                             onClick={() => handleEditarProduto(produto.id)}
-                            className="p-1 text-yellow-600 hover:text-yellow-900 hover:bg-yellow-50 rounded transition-colors"
+                            className="p-1 text-yellow-600 hover:text-yellow-900 hover:bg-yellow-50 rounded"
                             title="Editar"
                           >
                             ✏️
                           </button>
                           <button
                             onClick={() => handleExcluirProduto(produto.id, produto.nome)}
-                            className="p-1 text-red-600 hover:text-red-900 hover:bg-red-50 rounded transition-colors"
+                            className="p-1 text-red-600 hover:text-red-900 hover:bg-red-50 rounded"
                             title="Excluir"
                           >
                             🗑️
@@ -592,7 +690,7 @@ const ProdutosPage: React.FC = () => {
                     <button
                       onClick={() => handlePaginaChange(paginaInfo.number - 1)}
                       disabled={paginaInfo.number === 0}
-                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                     >
                       ← Anterior
                     </button>
@@ -603,7 +701,7 @@ const ProdutosPage: React.FC = () => {
                     <button
                       onClick={() => handlePaginaChange(paginaInfo.number + 1)}
                       disabled={paginaInfo.number === paginaInfo.totalPages - 1}
-                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                     >
                       Próxima →
                     </button>
@@ -614,6 +712,14 @@ const ProdutosPage: React.FC = () => {
           </>
         )}
       </div>
+
+      {/* 🔥 Modal de Franquia */}
+      <ModalFranquia
+        aberto={modalFranquiaAberto}
+        onFechar={() => setModalFranquiaAberto(false)}
+        produto={produtoSelecionado}
+        franquia={franquiaSelecionada}
+      />
     </div>
   );
 };
