@@ -59,4 +59,7 @@ export interface AssociadoImportacaoLinha {
       dados: AssociadoImportacaoLinha;
     }>;
     detalhes: AssociadoImportacaoLinha[];
+    criados?: number;
+    atualizados?: number;
+    configuracoesCriadas?: number; // 🔥 NOVO CAMPO
   }

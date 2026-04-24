@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { associadoImportacaoService } from '../services/associadoImportacaoService';
 import BreadCrumb from '../components/BreadCrumb';
 import Loading from '../components/Loading';
 import { useMessage } from '../providers/MessageProvider';
@@ -38,6 +39,8 @@ interface ResultadoImportacao {
   linhasProcessadas: number;
   linhasComErro: number;
   associadosImportados: number;
+  criados?: number;
+  atualizados?: number;
   erros: Array<{
     linha: number;
     mensagem: string;
@@ -91,76 +94,94 @@ const ImportacaoAssociados: React.FC = () => {
   }, []);
   
   const handleDownloadModelo = () => {
-    // Cabeçalho do arquivo modelo
+    associadoImportacaoService.downloadModelo();
+    showToast('Modelo baixado com sucesso!', 'success');
+  };
+  
+  // 🔥 FUNÇÃO PARA BAIXAR LOG DE ERROS
+  const handleBaixarLogErros = () => {
+    if (!resultado || resultado.erros.length === 0) {
+      showToast('Nenhum erro para exportar', 'warning');
+      return;
+    }
+    
+    // Criar cabeçalho do CSV
     const cabecalho = [
-      'tipo_pessoa',
-      'cnpj_cpf',
-      'nome_razao',
-      'nome_fantasia',
-      'codigo_vendedor',
-      'codigo_vendedor_externo',
-      'codigo_plano',
-      'codigo_categoria',
-      'codigo_spc',
-      'codigo_rm',
-      'cep',
-      'logradouro',
-      'numero',
-      'complemento',
-      'bairro',
-      'cidade',
-      'estado',
-      'ddd',
-      'telefone',
-      'email',
-      'faturamento_minimo',
-      'data_filiacao',
-      'status'
+      'Linha',
+      'Erro',
+      'Tipo Pessoa',
+      'CNPJ/CPF',
+      'Nome/Razão Social',
+      'Nome Fantasia',
+      'Código Vendedor',
+      'Código Vendedor Externo',
+      'Código Plano',
+      'Código Categoria',
+      'Código SPC',
+      'Código RM',
+      'CEP',
+      'Logradouro',
+      'Número',
+      'Complemento',
+      'Bairro',
+      'Cidade',
+      'Estado',
+      'DDD',
+      'Telefone',
+      'Email',
+      'Faturamento Mínimo',
+      'Data Filiação',
+      'Status'
     ];
     
-    // Exemplo de dados
-    const exemplo = [
-      'F',
-      '12345678901',
-      'JOÃO DA SILVA',
-      'JOAO',
-      '',
-      '',
-      '',
-      '',
-      'SPC001',
-      'RM001',
-      '01001000',
-      'RUA EXEMPLO',
-      '100',
-      'APTO 101',
-      'CENTRO',
-      'SÃO PAULO',
-      'SP',
-      '11',
-      '999999999',
-      'joao@email.com',
-      '1000.00',
-      '01/01/2025',
-      'A'
-    ];
+    // Criar linhas do CSV
+    const linhasCSV = resultado.erros.map(erro => {
+      const dados = erro.dados;
+      return [
+        erro.linha,
+        `"${erro.mensagem.replace(/"/g, '""')}"`,
+        dados.tipoPessoa || '',
+        dados.cnpjCpf || '',
+        `"${(dados.nomeRazao || '').replace(/"/g, '""')}"`,
+        `"${(dados.nomeFantasia || '').replace(/"/g, '""')}"`,
+        dados.codigoVendedor || '',
+        dados.codigoVendedorExterno || '',
+        dados.codigoPlano || '',
+        dados.codigoCategoria || '',
+        dados.codigoSpc || '',
+        dados.codigoRm || '',
+        dados.cep || '',
+        `"${(dados.logradouro || '').replace(/"/g, '""')}"`,
+        dados.numero || '',
+        `"${(dados.complemento || '').replace(/"/g, '""')}"`,
+        `"${(dados.bairro || '').replace(/"/g, '""')}"`,
+        `"${(dados.cidade || '').replace(/"/g, '""')}"`,
+        dados.estado || '',
+        dados.ddd || '',
+        dados.telefone || '',
+        dados.email || '',
+        dados.faturamentoMinimo || '',
+        dados.dataFiliacao || '',
+        dados.status || ''
+      ].join(';');
+    });
     
-    const conteudo = [
-      cabecalho.join(';'),
-      exemplo.join(';')
-    ].join('\n');
+    // Montar conteúdo do CSV
+    const conteudo = [cabecalho.join(';'), ...linhasCSV].join('\n');
     
-    const blob = new Blob([conteudo], { type: 'text/csv;charset=utf-8;' });
+    // Adicionar BOM para UTF-8 (acentuação correta)
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + conteudo], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'modelo_importacao_associados.csv');
+    link.setAttribute('download', `erros_importacao_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     
-    showToast('Modelo baixado com sucesso!', 'success');
+    showToast(`Log de erros exportado com ${resultado.erros.length} registro(s)!`, 'success');
   };
   
   const handleImportar = async () => {
@@ -170,70 +191,49 @@ const ImportacaoAssociados: React.FC = () => {
     }
     
     setIsLoading(true);
-    setProgresso(10);
-    setMensagemProgresso('Lendo arquivo...');
+    setProgresso(0);
+    setMensagemProgresso('Iniciando importação...');
     
-    // Simular processo de importação (substituir pela chamada real ao serviço)
-    setTimeout(() => {
-      setProgresso(30);
-      setMensagemProgresso('Validando dados...');
+    try {
+      console.log('🚀 Iniciando importação do arquivo:', arquivo.name);
       
-      setTimeout(() => {
-        setProgresso(60);
-        setMensagemProgresso('Importando associados...');
-        
-        setTimeout(() => {
-          setProgresso(90);
-          setMensagemProgresso('Finalizando...');
-          
-          setTimeout(() => {
-            setProgresso(100);
-            setMensagemProgresso('Importação concluída!');
-            
-            // Simular resultado
-            const resultadoSimulado: ResultadoImportacao = {
-              totalLinhas: 10,
-              linhasProcessadas: 8,
-              linhasComErro: 2,
-              associadosImportados: 8,
-              erros: [
-                {
-                  linha: 3,
-                  mensagem: 'CNPJ/CPF inválido',
-                  dados: {
-                    linha: 3,
-                    tipoPessoa: 'J',
-                    cnpjCpf: '123',
-                    nomeRazao: 'Empresa Teste'
-                  }
-                },
-                {
-                  linha: 7,
-                  mensagem: 'E-mail inválido',
-                  dados: {
-                    linha: 7,
-                    tipoPessoa: 'F',
-                    cnpjCpf: '12345678901',
-                    nomeRazao: 'João Teste',
-                    email: 'email_invalido'
-                  }
-                }
-              ]
-            };
-            
-            setResultado(resultadoSimulado);
-            
-            if (resultadoSimulado.linhasComErro === 0) {
-              showToast(`${resultadoSimulado.associadosImportados} associados importados com sucesso!`, 'success');
-            } else {
-              showToast(`${resultadoSimulado.associadosImportados} importados, ${resultadoSimulado.linhasComErro} com erro`, 'warning');
-            }
-            
-            setIsLoading(false);
-          }, 500);
-        }, 500);
-      }, 500);
-    }, 500);
+      const resultadoImportacao = await associadoImportacaoService.importarAssociados(
+        arquivo,
+        (progressoAtual, mensagem) => {
+          setProgresso(progressoAtual);
+          setMensagemProgresso(mensagem);
+        }
+      );
+      
+      console.log('📊 Resultado da importação:', resultadoImportacao);
+      setResultado(resultadoImportacao);
+      
+      if (resultadoImportacao.linhasComErro === 0) {
+        if (resultadoImportacao.criados !== undefined && resultadoImportacao.atualizados !== undefined) {
+          showToast(
+            `${resultadoImportacao.criados} associados criados e ${resultadoImportacao.atualizados} atualizados com sucesso!`,
+            'success'
+          );
+        } else {
+          showToast(`${resultadoImportacao.associadosImportados} associados importados com sucesso!`, 'success');
+        }
+      } else {
+        if (resultadoImportacao.criados !== undefined && resultadoImportacao.atualizados !== undefined) {
+          showToast(
+            `${resultadoImportacao.criados} criados, ${resultadoImportacao.atualizados} atualizados, ${resultadoImportacao.linhasComErro} com erro`,
+            'warning'
+          );
+        } else {
+          showToast(`${resultadoImportacao.associadosImportados} importados, ${resultadoImportacao.linhasComErro} com erro`, 'warning');
+        }
+      }
+      
+    } catch (error: any) {
+      console.error('❌ Erro na importação:', error);
+      showToast(error.message || 'Erro ao importar associados', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   const handleVerAssociados = () => {
@@ -378,15 +378,15 @@ const ImportacaoAssociados: React.FC = () => {
                 <li>• cnpj_cpf (11 ou 14 dígitos)</li>
                 <li>• nome_razao</li>
               </ul>
-              <li>4. Campos opcionais podem ser deixados em branco</li>
-              <li>5. O sistema validará os dados antes de importar</li>
-              <li>6. Associados com erro serão listados para correção</li>
+              <li>4. Status deve ser A (Ativo), I (Inativo) ou S (Suspenso)</li>
+              <li>5. Campos opcionais podem ser deixados em branco</li>
+              <li>6. O sistema validará os dados antes de importar</li>
+              <li>7. Associados com CNPJ/CPF existente serão atualizados</li>
             </ul>
             
             <div className="mt-4 p-3 bg-blue-50 rounded-lg">
               <p className="text-xs text-blue-700">
                 💡 Dica: Para vendedores, planos e categorias, utilize os códigos cadastrados no sistema.
-                Os valores serão validados automaticamente.
               </p>
             </div>
           </div>
@@ -395,9 +395,23 @@ const ImportacaoAssociados: React.FC = () => {
         {/* Resultado da Importação */}
         {resultado && (
           <div className="mt-8 border-t border-gray-200 pt-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">📊 Resultado da Importação</h2>
+            {/* 🔥 CABEÇALHO COM BOTÃO DE EXPORTAÇÃO */}
+            <div className="flex flex-wrap justify-between items-center mb-4 gap-3">
+              <h2 className="text-lg font-semibold text-gray-800">📊 Resultado da Importação</h2>
+              
+              {/* 🔥 BOTÃO PARA BAIXAR LOG DE ERROS - VISÍVEL QUANDO HÁ ERROS */}
+              {resultado.erros.length > 0 && (
+                <button
+                  onClick={handleBaixarLogErros}
+                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 flex items-center gap-2 transition-colors shadow-md"
+                >
+                  <span>📥</span>
+                  Baixar Log de Erros ({resultado.erros.length})
+                </button>
+              )}
+            </div>
             
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
               <div className="bg-blue-50 p-4 rounded-lg text-center">
                 <div className="text-2xl font-bold text-blue-600">{resultado.totalLinhas}</div>
                 <div className="text-sm text-gray-600">Total de Linhas</div>
@@ -412,9 +426,66 @@ const ImportacaoAssociados: React.FC = () => {
               </div>
               <div className="bg-purple-50 p-4 rounded-lg text-center">
                 <div className="text-2xl font-bold text-purple-600">{resultado.associadosImportados}</div>
-                <div className="text-sm text-gray-600">Associados Importados</div>
+                <div className="text-sm text-gray-600">Total Processados</div>
               </div>
+              
+              {(resultado.criados !== undefined || resultado.atualizados !== undefined) && (
+                <div className="bg-yellow-50 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-yellow-600">
+                    {resultado.criados || 0} / {resultado.atualizados || 0}
+                  </div>
+                  <div className="text-sm text-gray-600">Criados / Atualizados</div>
+                </div>
+              )}
             </div>
+
+            {/* 🔥 SEÇÃO DE CONFIGURAÇÕES DE FATURAMENTO CRIADAS */}
+            {(resultado.configuracoesCriadas !== undefined && resultado.configuracoesCriadas > 0) && (
+              <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xl">📋</span>
+                  <h3 className="font-semibold text-blue-800">Configurações de Faturamento</h3>
+                </div>
+                <p className="text-sm text-blue-700">
+                  Foram criadas <strong>{resultado.configuracoesCriadas}</strong> configuração(ões) de faturamento 
+                  com os valores padrão:
+                </p>
+                <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                  <div className="bg-white p-2 rounded border border-blue-200">
+                    <span className="font-medium">Plano ID:</span> 5
+                  </div>
+                  <div className="bg-white p-2 rounded border border-blue-200">
+                    <span className="font-medium">Dia Emissão:</span> 26
+                  </div>
+                  <div className="bg-white p-2 rounded border border-blue-200">
+                    <span className="font-medium">Dia Vencimento:</span> 10
+                  </div>
+                  <div className="bg-white p-2 rounded border border-blue-200">
+                    <span className="font-medium">Valor Default:</span> R$ 85,00
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Barra de progresso visual da importação */}
+            {(resultado.criados !== undefined || resultado.atualizados !== undefined) && (
+              <div className="mb-6">
+                <div className="flex justify-between text-sm text-gray-600 mb-1">
+                  <span>Taxa de sucesso</span>
+                  <span>
+                    {Math.round(((resultado.criados || 0) + (resultado.atualizados || 0)) / resultado.totalLinhas * 100)}%
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-green-500 h-2 rounded-full"
+                    style={{ 
+                      width: `${((resultado.criados || 0) + (resultado.atualizados || 0)) / resultado.totalLinhas * 100}%` 
+                    }}
+                  />
+                </div>
+              </div>
+            )}
             
             {/* Lista de Erros */}
             {resultado.erros.length > 0 && (
@@ -455,6 +526,24 @@ const ImportacaoAssociados: React.FC = () => {
                     </table>
                   </div>
                 )}
+              </div>
+            )}
+            
+            {/* Mensagem quando nenhum associado foi importado */}
+            {resultado.linhasComErro === 0 && resultado.criados === 0 && resultado.atualizados === 0 && (
+              <div className="mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                <p className="text-sm text-yellow-700 text-center">
+                  ⚠️ Nenhum associado foi importado. Verifique se o arquivo contém dados válidos.
+                </p>
+              </div>
+            )}
+            
+            {/* Mensagem de sucesso */}
+            {resultado.linhasComErro === 0 && (resultado.criados || 0) > 0 && (
+              <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                <p className="text-sm text-green-700 text-center">
+                  ✅ Importação concluída com sucesso! {resultado.criados} associados criados e {resultado.atualizados || 0} atualizados.
+                </p>
               </div>
             )}
           </div>

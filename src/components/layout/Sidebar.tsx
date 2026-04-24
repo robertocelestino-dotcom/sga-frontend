@@ -1,4 +1,4 @@
-// src/components/layout/Sidebar.tsx - ATUALIZAR
+// src/components/layout/Sidebar.tsx - ATUALIZADO COM RÉGUA DE FATURAMENTO
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
@@ -16,7 +16,12 @@ import {
   FaClipboardList,
   FaTag,
   FaDollarSign,
-  FaClipboardCheck
+  FaClipboardCheck,
+  FaCalendarAlt,
+  FaPlay,
+  FaTrashAlt,
+  FaExchangeAlt,
+  FaCloudUploadAlt
 } from 'react-icons/fa';
 
 const Sidebar = () => {
@@ -35,6 +40,10 @@ const Sidebar = () => {
     }));
   };
 
+  const isActive = (path: string) => {
+    return location.pathname === path || location.pathname.startsWith(`${path}/`);
+  };
+
   const menuItems = [
     {
       name: 'Dashboard',
@@ -46,7 +55,6 @@ const Sidebar = () => {
       name: 'Cadastro',
       icon: <FaUserPlus size={18} />,
       submenu: [
-
         {
           name: 'Associados',
           path: '/associados',
@@ -60,12 +68,11 @@ const Sidebar = () => {
           description: 'Gestão de produtos e serviços'
         },
         {
-          name: 'Planos', // 🔥 NOVO ITEM
+          name: 'Planos',
           path: '/planos',
           icon: <FaClipboardCheck size={16} />,
           description: 'Gestão de planos e franquias'
         },
-       
         {
           name: 'Usuários',
           path: '/usuarios',
@@ -116,6 +123,13 @@ const Sidebar = () => {
           path: '/importacao-faturamentos',
           icon: <FaFileInvoiceDollar size={16} />
         },
+        // 🔥 NOVO ITEM: Importação de Cancelamentos
+        {
+          name: 'Importar Cancelamentos',
+          path: '/importacao-cancelamentos',
+          icon: <FaCloudUploadAlt size={16} />,
+          description: 'Importar cancelamentos de serviços'
+        },
         {
           name: 'Verificar Importação',
           path: '/verificacao-importacao',
@@ -127,11 +141,42 @@ const Sidebar = () => {
       name: 'Faturamento',
       icon: <FaMoneyBillWave size={18} />,
       submenu: [
+        // 🔥 ITEM: Régua de Faturamento
+        {
+          name: 'Régua de Faturamento',
+          path: '/faturamento/regua',
+          icon: <FaCalendarAlt size={16} />,
+          description: 'Configuração de períodos de faturamento'
+        },
+        // 🔥 ITEM: Processar Faturamento
         {
           name: 'Processar Faturamento',
-          path: '/processar-faturamento',
-          icon: <FaFileInvoiceDollar size={16} />
+          path: '/faturamento/processar',
+          icon: <FaPlay size={16} />,
+          description: 'Executar processamento do faturamento'
         },
+        // 🔥 ITEM: Faturas Geradas
+        {
+          name: 'Faturas Geradas',
+          path: '/faturamento/faturas',
+          icon: <FaFileInvoiceDollar size={16} />,
+          description: 'Consulta de faturas emitidas'
+        },
+        // 🔥 ITEM: Cancelamentos
+        {
+          name: 'Cancelamentos',
+          path: '/faturamento/cancelamentos',
+          icon: <FaTrashAlt size={16} />,
+          description: 'Gestão de cancelamentos'
+        },
+        // 🔥 ITEM: Integração RM
+        {
+          name: 'Integração RM',
+          path: '/faturamento/integracoes/rm',
+          icon: <FaExchangeAlt size={16} />,
+          description: 'Configurações e exportação para RM'
+        },
+        // Mantém os itens existentes
         {
           name: 'Tabelas de Faturamento',
           path: '/tabelas-faturamento',
@@ -177,10 +222,6 @@ const Sidebar = () => {
       exact: true
     },
   ];
-
-  const isActive = (path: string) => {
-    return location.pathname === path || location.pathname.startsWith(`${path}/`);
-  };
 
   return (
     <div className="h-full bg-gray-900 text-white w-64 flex-shrink-0 overflow-y-auto">

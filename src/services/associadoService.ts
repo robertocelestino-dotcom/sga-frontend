@@ -350,6 +350,20 @@ export const associadoService = {
     }
   },
   
+  // 🔥 NOVO MÉTODO: Listar vendedores externos
+  listarVendedoresExternos: async (): Promise<VendedorResumoDTO[]> => {
+    try {
+      console.log('🔄 Buscando vendedores externos...');
+      const { vendedorService } = await import('./vendedorService');
+      const vendedores = await vendedorService.listarAtivos();
+      // Filtrar vendedores externos (tipo 2)
+      return vendedores.filter(v => v.tipoVendedor === 2);
+    } catch (error) {
+      console.error('❌ Erro ao buscar vendedores externos:', error);
+      return [];
+    }
+  },
+
   atualizarEnderecos: async (associadoId: number, enderecos: EnderecoDTO[]): Promise<EnderecoDTO[]> => {
     try {
       console.log('📤 Atualizando endereços para associado ID:', associadoId);
@@ -438,6 +452,17 @@ export const associadoService = {
     } catch (error) {
       console.error('Erro ao buscar planos:', error);
       return [];
+    }
+  },
+
+  // Adicione este método:
+  async buscarConfiguracoesFaturamento(associadoId: number): Promise<any[]> {
+    try {
+      const response = await api.get(`/associados/${associadoId}/configuracoes-faturamento`);
+      return response.data;
+    } catch (error) {
+      console.warn(`Erro ao buscar configurações do associado ${associadoId}:`, error);
+      return []; // Retorna array vazio em caso de erro
     }
   },
 

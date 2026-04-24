@@ -1,3 +1,4 @@
+// App.tsx - ATUALIZADO COM TODAS AS IMPORTAÇÕES DAS PÁGINAS DE FATURAMENTO
 import React, { useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './stores/authStore'
@@ -34,13 +35,26 @@ import Produtos from './pages/Produtos'
 import ProdutoForm from './pages/ProdutoForm'
 import ProdutoDetalhes from './pages/ProdutoDetalhes'
 
-// 🔥 NOVA PÁGINA DE CONSUMO DE FRANQUIAS
+// PÁGINA DE CONSUMO DE FRANQUIAS
 import ConsumoFranquiaPage from './pages/ConsumoFranquiaPage'
 
-// 🔥 NOVAS PÁGINAS DE PLANOS
+// PÁGINAS DE PLANOS
 import Planos from './pages/Planos'
 import PlanoForm from './pages/PlanoForm'
 import PlanoDetalhes from './pages/PlanoDetalhes'
+
+// 🔥 PÁGINAS DE FATURAMENTO
+import ReguaFaturamentoPage from './pages/faturamento/ReguaFaturamento'
+import ReguaFaturamentoForm from './pages/faturamento/ReguaFaturamentoForm'
+import ReguaAssociados from './pages/faturamento/ReguaAssociados'
+import ReguaDetalhes from './pages/faturamento/ReguaDetalhes'
+import CancelamentosPage from './pages/faturamento/Cancelamentos'
+import IntegracaoRmPage from './pages/faturamento/IntegracaoRm'
+import FaturasGeradas from './pages/faturamento/FaturasGeradas'
+import FaturaDetalhes from './pages/faturamento/FaturaDetalhes'
+
+// 🔥 NOVAS PÁGINAS
+import ImportacaoCancelamentos from './pages/ImportacaoCancelamentos'
 
 // Adicione esta animação ao seu index.css
 import './styles/animations.css'
@@ -105,7 +119,7 @@ function App() {
               <Route path="associados/editar/:id" element={<AssociadoForm />} />
               <Route path="associados/:id" element={<AssociadoDetalhes />} />
               
-              {/* 🔥 NOVA ROTA DE CONSUMO DE FRANQUIAS */}
+              {/* ROTA DE CONSUMO DE FRANQUIAS */}
               <Route path="associados/:id/consumo-franquia" element={<ConsumoFranquiaPage />} />
               
               <Route path="usuarios" element={<Usuarios />} />
@@ -119,7 +133,7 @@ function App() {
               <Route path="produtos/editar/:id" element={<ProdutoForm />} />
               <Route path="produtos/:id" element={<ProdutoDetalhes />} />
 
-              {/* 🔥 NOVAS ROTAS DE PLANOS */}
+              {/* Planos */}
               <Route path="planos" element={<Planos />} />
               <Route path="planos/novo" element={<PlanoForm />} />
               <Route path="planos/editar/:id" element={<PlanoForm />} />
@@ -130,6 +144,9 @@ function App() {
               <Route path="importacao-associados" element={<ImportacaoAssociados />} />
               <Route path="importacao-beneficios" element={<ImportacaoBeneficios />} />
               <Route path="importacao-faturamentos" element={<ImportacaoFaturamentos />} />
+              
+              {/* 🔥 NOVA ROTA: Importação de Cancelamentos */}
+              <Route path="importacao-cancelamentos" element={<ImportacaoCancelamentos />} />
 
               {/* Rotas de verificação */}
               <Route
@@ -141,7 +158,21 @@ function App() {
                 element={<VerificacaoImportacao />}
               />
 
-              {/* Faturamento */}
+              {/* 🔥 ROTAS DE FATURAMENTO */}
+              <Route path="faturamento">
+                <Route path="regua" element={<ReguaFaturamentoPage />} />
+                <Route path="regua/novo" element={<ReguaFaturamentoForm />} />
+                <Route path="regua/editar/:id" element={<ReguaFaturamentoForm />} />
+                <Route path="regua/:id/detalhes" element={<ReguaDetalhes />} />
+                <Route path="regua/:id/associados" element={<ReguaAssociados />} />
+                <Route path="processar" element={<ProcessarFaturamento />} />
+                <Route path="faturas" element={<FaturasGeradas />} />
+                <Route path="faturas/:id" element={<FaturaDetalhes />} />
+                <Route path="cancelamentos" element={<CancelamentosPage />} />
+                <Route path="integracoes/rm" element={<IntegracaoRmPage />} />
+              </Route>
+
+              {/* Faturamento (legado) */}
               <Route path="processar-faturamento" element={<ProcessarFaturamento />} />
               <Route path="tabelas-faturamento" element={<TabelasFaturamento />} />
 
@@ -157,12 +188,6 @@ function App() {
               {/* Logs do Sistema */}
               <Route path="logs" element={<LogsSistema />} />
 
-              {/* Páginas extras que podem não ter sido criadas ainda - deixe comentadas */}
-              {/* 
-              <Route path="importacao-produtos" element={<ImportacaoProdutos />} />
-              <Route path="relatorios-produtos" element={<RelatoriosProdutos />} />
-              */}
-              
             </Route>
 
             {/* FALLBACK - Redireciona para dashboard se rota não existir */}
