@@ -1,4 +1,4 @@
-// src/components/layout/Sidebar.tsx - ATUALIZADO COM RÉGUA DE FATURAMENTO
+// src/components/layout/Sidebar.tsx
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
@@ -21,7 +21,8 @@ import {
   FaPlay,
   FaTrashAlt,
   FaExchangeAlt,
-  FaCloudUploadAlt
+  FaCloudUploadAlt,
+  FaEnvelope // 🔥 Ícone para Notificações
 } from 'react-icons/fa';
 
 const Sidebar = () => {
@@ -79,24 +80,6 @@ const Sidebar = () => {
           icon: <FaUserPlus size={16} />,
           description: 'Gestão de usuários'
         },
-        {
-          name: 'Parâmetros',
-          path: '/parametrizacao-associados',
-          icon: <FaCog size={16} />,
-          description: 'Configurações do sistema'
-        },
-        {
-          name: 'Tabela de Preços',
-          path: '/tabela-precos',
-          icon: <FaTag size={16} />,
-          description: 'Preços e valores'
-        },
-        {
-          name: 'Tabela de Valores',
-          path: '/tabela-valores',
-          icon: <FaDollarSign size={16} />,
-          description: 'Valores e tarifas'
-        }
       ]
     },
     {
@@ -104,36 +87,20 @@ const Sidebar = () => {
       icon: <FaFileImport size={18} />,
       submenu: [
         {
-          name: 'Importar SPC',
-          path: '/importacao-spc',
-          icon: <FaFileImport size={16} />
-        },
-        {
           name: 'Importar Associados',
           path: '/importacao-associados',
           icon: <FaUsers size={16} />
         },
         {
-          name: 'Importar Benefícios',
-          path: '/importacao-beneficios',
-          icon: <FaClipboardList size={16} />
+          name: 'Importar Faturamento SPC',
+          path: '/importacao-spc',
+          icon: <FaFileImport size={16} />
         },
-        {
-          name: 'Importar Faturamentos',
-          path: '/importacao-faturamentos',
-          icon: <FaFileInvoiceDollar size={16} />
-        },
-        // 🔥 NOVO ITEM: Importação de Cancelamentos
         {
           name: 'Importar Cancelamentos',
           path: '/importacao-cancelamentos',
           icon: <FaCloudUploadAlt size={16} />,
           description: 'Importar cancelamentos de serviços'
-        },
-        {
-          name: 'Verificar Importação',
-          path: '/verificacao-importacao',
-          icon: <FaChartBar size={16} />
         }
       ]
     },
@@ -141,46 +108,29 @@ const Sidebar = () => {
       name: 'Faturamento',
       icon: <FaMoneyBillWave size={18} />,
       submenu: [
-        // 🔥 ITEM: Régua de Faturamento
         {
           name: 'Régua de Faturamento',
           path: '/faturamento/regua',
           icon: <FaCalendarAlt size={16} />,
           description: 'Configuração de períodos de faturamento'
         },
-        // 🔥 ITEM: Processar Faturamento
         {
           name: 'Processar Faturamento',
           path: '/faturamento/processar',
           icon: <FaPlay size={16} />,
           description: 'Executar processamento do faturamento'
         },
-        // 🔥 ITEM: Faturas Geradas
         {
           name: 'Faturas Geradas',
           path: '/faturamento/faturas',
           icon: <FaFileInvoiceDollar size={16} />,
           description: 'Consulta de faturas emitidas'
         },
-        // 🔥 ITEM: Cancelamentos
-        {
-          name: 'Cancelamentos',
-          path: '/faturamento/cancelamentos',
-          icon: <FaTrashAlt size={16} />,
-          description: 'Gestão de cancelamentos'
-        },
-        // 🔥 ITEM: Integração RM
         {
           name: 'Integração RM',
           path: '/faturamento/integracoes/rm',
           icon: <FaExchangeAlt size={16} />,
           description: 'Configurações e exportação para RM'
-        },
-        // Mantém os itens existentes
-        {
-          name: 'Tabelas de Faturamento',
-          path: '/tabelas-faturamento',
-          icon: <FaClipboardList size={16} />
         }
       ]
     },
@@ -204,9 +154,27 @@ const Sidebar = () => {
           icon: <FaChartBar size={16} />
         },
         {
-          name: 'Atualização Associados',
-          path: '/atualizacao-associados',
-          icon: <FaUsers size={16} />
+          name: 'Parâmetros',
+          path: '/parametrizacao-associados',
+          icon: <FaCog size={16} />,
+          description: 'Configurações do sistema'
+        },
+        {
+          name: 'Tabela de Preços',
+          path: '/tabela-precos',
+          icon: <FaTag size={16} />,
+          description: 'Preços e valores'
+        },
+        {
+          name: 'Tabela de Valores',
+          path: '/tabela-valores',
+          icon: <FaDollarSign size={16} />,
+          description: 'Valores e tarifas'
+        },
+        {
+          name: 'Tabelas de Faturamento',
+          path: '/tabelas-faturamento',
+          icon: <FaClipboardList size={16} />
         }
       ]
     },
@@ -219,6 +187,13 @@ const Sidebar = () => {
       name: 'Logs do Sistema',
       path: '/logs',
       icon: <FaClipboardList size={18} />,
+      exact: true
+    },
+    // 🔥 NOVO ITEM: Notificações
+    {
+      name: 'Notificações',
+      path: '/notificacoes',
+      icon: <FaEnvelope size={18} />,
       exact: true
     },
   ];

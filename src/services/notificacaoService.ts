@@ -1,0 +1,128 @@
+// src/services/notificacaoService.ts
+import api from './api';
+import { NotificacaoSumarizada, NotificacaoAssociado, SincronizacaoResponse } from '../types/notificacao';
+
+class NotificacaoService {
+  
+  // ========== SINCRONIZAÇÃO ==========
+  
+  async sincronizar(mes?: number, ano?: number, codigoAssociado?: string): Promise<SincronizacaoResponse> {
+    const params: any = {};
+    if (mes) params.mes = mes;
+    if (ano) params.ano = ano;
+    if (codigoAssociado) params.codigoAssociado = codigoAssociado;
+    
+    const response = await api.post('/notificacoes/sincronizar', null, { params });
+    return response.data;
+  }
+
+  // 🔥 NOVO: Sincronização com período
+  async sincronizarPorPeriodo(dataInicio: string, dataFim: string, codigoAssociado?: string): Promise<SincronizacaoResponse> {
+    const params: any = { dataInicio, dataFim };
+    if (codigoAssociado) params.codigoAssociado = codigoAssociado;
+    
+    const response = await api.post('/notificacoes/sincronizar-por-periodo', null, { params });
+    return response.data;
+  }
+
+  // ========== CONSULTAS ==========
+
+  async buscarSumarizadas(codigoAssociado?: string): Promise<NotificacaoSumarizada[]> {
+    const params: any = {};
+    if (codigoAssociado) params.codigoAssociado = codigoAssociado;
+    
+    try {
+      const response = await api.get('/notificacoes/sumarizadas', { params });
+      return response.data || [];
+    } catch (error: any) {
+      console.error('❌ Erro ao buscar notificações sumarizadas:', error);
+      return [];
+    }
+  }
+
+  async buscarAgrupadas(mes: number, ano: number, codigoAssociado?: string): Promise<any[]> {
+    const params: any = { mes, ano };
+    if (codigoAssociado) params.codigoAssociado = codigoAssociado;
+    
+    try {
+      const response = await api.get('/notificacoes/agrupadas', { params });
+      return response.data || [];
+    } catch (error: any) {
+      console.error('❌ Erro ao buscar notificações agrupadas:', error);
+      return [];
+    }
+  }
+
+  // 🔥 NOVO: Buscar notificações por período
+  async buscarPorPeriodo(dataInicio: string, dataFim: string, codigoAssociado?: string): Promise<any[]> {
+    const params: any = { dataInicio, dataFim };
+    if (codigoAssociado) params.codigoAssociado = codigoAssociado;
+    
+    try {
+      const response = await api.get('/notificacoes/por-periodo', { params });
+      return response.data || [];
+    } catch (error: any) {
+      console.error('❌ Erro ao buscar notificações por período:', error);
+      return [];
+    }
+  }
+
+  async buscarDetalhadas(mes: number, ano: number, codigoAssociado: string): Promise<any[]> {
+    const params: any = { mes, ano, codigoAssociado };
+    
+    try {
+      const response = await api.get('/notificacoes/detalhadas', { params });
+      return response.data || [];
+    } catch (error: any) {
+      console.error('❌ Erro ao buscar notificações detalhadas:', error);
+      return [];
+    }
+  }
+
+  async buscarPorAssociado(associadoId: number, mes: number, ano: number): Promise<NotificacaoAssociado> {
+    const response = await api.get(`/notificacoes/associado/${associadoId}`, {
+      params: { mes, ano }
+    });
+    return response.data;
+  }
+
+  async buscarNaoProcessados(mes: number, ano: number): Promise<NotificacaoAssociado[]> {
+    const response = await api.get('/notificacoes/nao-processados', {
+      params: { mes, ano }
+    });
+    return response.data;
+  }
+
+  async health(): Promise<any> {
+    const response = await api.get('/notificacoes/health');
+    return response.data;
+  }
+
+  // 🔥 NOVO: Buscar agrupado por período
+  async buscarAgrupadasPorPeriodo(dataInicio: string, dataFim: string, codigoAssociado?: string): Promise<any[]> {
+    const params: any = { dataInicio, dataFim };
+    if (codigoAssociado) params.codigoAssociado = codigoAssociado;
+    
+    try {
+        const response = await api.get('/notificacoes/agrupadas-por-periodo', { params });
+        console.log('📊 Dados agrupados por período recebidos:', response.data);
+        return response.data || [];
+    } catch (error: any) {
+        console.error('❌ Erro ao buscar notificações agrupadas por período:', error);
+        return [];
+    }
+  }
+
+  // 🔥 NOVO: Sincronizar agrupado por período
+  async sincronizarAgrupadoPorPeriodo(dataInicio: string, dataFim: string, codigoAssociado?: string): Promise<any> {
+    const params: any = { dataInicio, dataFim };
+    if (codigoAssociado) params.codigoAssociado = codigoAssociado;
+    
+    const response = await api.post('/notificacoes/sincronizar-agrupado-periodo', null, { params });
+    return response.data;
+  }
+
+
+}
+
+export default new NotificacaoService();

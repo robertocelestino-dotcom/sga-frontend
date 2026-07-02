@@ -40,7 +40,10 @@ interface ProcessamentoConfig {
   integrarRM: boolean;
 }
 
-const PAGE_SIZE = 15; // 🔥 15 associados por página
+const PAGE_SIZE = 15;
+
+// Nome exato da régua de faturamento consolidado (ajuste conforme seu banco)
+const REGUA_CONSOLIDADO_NOME = "Faturamento Consolidado";
 
 const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
   isOpen,
@@ -61,10 +64,12 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
   const [filtroNome, setFiltroNome] = useState('');
   const [filtroCnpjCpf, setFiltroCnpjCpf] = useState('');
   const [reguaSelecionadaId, setReguaSelecionadaId] = useState<number | undefined>(undefined);
+  const [reguaSelecionadaNome, setReguaSelecionadaNome] = useState<string>('');
   
   // Seleção
   const [associadosSelecionados, setAssociadosSelecionados] = useState<Set<number>>(new Set());
   const [selecionarTodos, setSelecionarTodos] = useState(false);
+  const [todosIdsAssociados, setTodosIdsAssociados] = useState<number[]>([]);
   
   // Configuração do processamento
   const [configProcessamento, setConfigProcessamento] = useState<ProcessamentoConfig>({
@@ -80,16 +85,21 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
   const [totalPaginas, setTotalPaginas] = useState(0);
   const [totalItens, setTotalItens] = useState(0);
   
-  // 🔥 Carregar réguas ativas
+  // Verificar se a régua selecionada é a de faturamento consolidado
+  const isReguaConsolidado = useCallback(() => {
+    return reguaSelecionadaNome === REGUA_CONSOLIDADO_NOME;
+  }, [reguaSelecionadaNome]);
+  
+  // Carregar réguas ativas
   const carregarReguas = useCallback(async () => {
     setLoading(true);
     try {
       const response = await api.get('/regua-faturamento/ativas');
       setReguas(response.data);
       
-      // Selecionar primeira régua por padrão
       if (response.data.length > 0 && !reguaSelecionadaId) {
         setReguaSelecionadaId(response.data[0].id);
+        setReguaSelecionadaNome(response.data[0].nome);
         setConfigProcessamento(prev => ({ ...prev, reguaId: response.data[0].id }));
       }
     } catch (error) {
@@ -100,12 +110,13 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
     }
   }, [reguaSelecionadaId, showToast]);
   
-  // 🔥 Carregar associados APÓS selecionar a régua
+  // Carregar associados (com suporte a régua consolidada)
   const carregarAssociados = useCallback(async () => {
     if (!reguaSelecionadaId) {
       setAssociados([]);
       setTotalItens(0);
       setTotalPaginas(0);
+      setTodosIdsAssociados([]);
       return;
     }
     
@@ -116,36 +127,49 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
       params.append('size', PAGE_SIZE.toString());
       if (filtroNome) params.append('nome', filtroNome);
       if (filtroCnpjCpf) params.append('cnpjCpf', filtroCnpjCpf);
-      params.append('reguaId', reguaSelecionadaId.toString());
       
-      // 🔥 Endpoint para buscar associados da régua selecionada
-      const response = await api.get(`/regua-faturamento/${reguaSelecionadaId}/associados/paginado?${params}`);
+      let response;
+      let idsResponse;
+      
+      // 🔥 VERIFICA SE É RÉGUA CONSOLIDADA
+      if (isReguaConsolidado()) {
+        console.log('📌 Régua Consolidada selecionada - filtrando apenas associados com notas no último consolidado');
+        
+        // 🔥 CORRIGIDO: Removido os parâmetros mes e ano (busca automática no backend)
+        response = await api.get(`/regua-faturamento/${reguaSelecionadaId}/associados-consolidado/paginado`, {
+          params: {
+            page: pagina,
+            size: PAGE_SIZE,
+            nome: filtroNome || undefined,
+            cnpjCpf: filtroCnpjCpf || undefined
+          }
+        });
+        
+        // 🔥 CORRIGIDO: Removido os parâmetros mes e ano
+        idsResponse = await api.get(`/regua-faturamento/${reguaSelecionadaId}/associados-consolidado/todos-ids`);
+        
+        console.log('📊 IDs retornados do consolidado:', idsResponse.data?.length || 0);
+      } else {
+        // Busca normal (todos associados da régua)
+        response = await api.get(`/regua-faturamento/${reguaSelecionadaId}/associados/paginado?${params}`);
+        
+        idsResponse = await api.get(`/regua-faturamento/${reguaSelecionadaId}/associados/todos-ids`);
+      }
       
       setAssociados(response.data.content);
       setTotalPaginas(response.data.totalPages);
       setTotalItens(response.data.totalElements);
+      setTodosIdsAssociados(idsResponse.data || []);
+      
+      console.log(`✅ Carregados ${response.data.content.length} associados (total: ${idsResponse.data?.length || 0})`);
       
     } catch (error) {
       console.error('Erro ao carregar associados:', error);
-      // Se o endpoint específico não existir, tenta o alternativo
-      try {
-        const params = new URLSearchParams();
-        params.append('page', pagina.toString());
-        params.append('size', PAGE_SIZE.toString());
-        if (filtroNome) params.append('nome', filtroNome);
-        if (filtroCnpjCpf) params.append('cnpjCpf', filtroCnpjCpf);
-        
-        const response = await api.get(`/regua-faturamento/associados/disponiveis?${params}`);
-        setAssociados(response.data.content);
-        setTotalPaginas(response.data.totalPages);
-        setTotalItens(response.data.totalElements);
-      } catch (err) {
-        showToast('Erro ao carregar lista de associados', 'error');
-      }
+      showToast('Erro ao carregar lista de associados', 'error');
     } finally {
       setCarregandoAssociados(false);
     }
-  }, [pagina, filtroNome, filtroCnpjCpf, reguaSelecionadaId, showToast]);
+  }, [pagina, filtroNome, filtroCnpjCpf, reguaSelecionadaId, isReguaConsolidado, showToast]);
   
   // Efeitos
   useEffect(() => {
@@ -154,20 +178,19 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
     }
   }, [isOpen, carregarReguas]);
   
-  // 🔥 Carregar associados quando a régua mudar ou página mudar
   useEffect(() => {
     if (isOpen && reguaSelecionadaId) {
       carregarAssociados();
     }
   }, [isOpen, reguaSelecionadaId, pagina, carregarAssociados]);
   
-  // 🔥 Resetar página quando mudar a régua
   useEffect(() => {
     setPagina(0);
     setAssociadosSelecionados(new Set());
+    setSelecionarTodos(false);
   }, [reguaSelecionadaId]);
   
-  // Selecionar/Deselecionar associado
+  // Toggle seleção de associado
   const toggleSelecionarAssociado = (id: number) => {
     const novosSelecionados = new Set(associadosSelecionados);
     if (novosSelecionados.has(id)) {
@@ -176,19 +199,22 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
       novosSelecionados.add(id);
     }
     setAssociadosSelecionados(novosSelecionados);
-    setSelecionarTodos(novosSelecionados.size === associados.length && associados.length > 0);
+    const todosDaPaginaSelecionados = associados.length > 0 && 
+      associados.every(a => novosSelecionados.has(a.id));
+    setSelecionarTodos(todosDaPaginaSelecionados);
   };
   
-  // Selecionar/Deselecionar todos
+  // Selecionar todos os associados
   const toggleSelecionarTodos = () => {
     if (selecionarTodos) {
       setAssociadosSelecionados(new Set());
+      setSelecionarTodos(false);
     } else {
-      const novosSelecionados = new Set<number>();
-      associados.forEach(a => novosSelecionados.add(a.id));
+      const novosSelecionados = new Set(todosIdsAssociados);
       setAssociadosSelecionados(novosSelecionados);
+      setSelecionarTodos(true);
+      console.log(`✅ Selecionados ${novosSelecionados.size} associados`);
     }
-    setSelecionarTodos(!selecionarTodos);
   };
   
   // Limpar filtros
@@ -224,7 +250,6 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
     }
   };
   
-  // Obter cor do status
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'A': return 'bg-green-100 text-green-800';
@@ -248,10 +273,8 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4">
-        {/* Overlay */}
         <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={onClose} />
         
-        {/* Modal */}
         <div className="relative bg-white rounded-xl shadow-xl w-full max-w-7xl max-h-[90vh] overflow-hidden">
           {/* Header */}
           <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
@@ -269,10 +292,7 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
                   <label className="block text-sm font-medium text-gray-700 mb-1">Mês Referência</label>
                   <select
                     value={configProcessamento.mesReferencia}
-                    onChange={(e) => setConfigProcessamento({
-                      ...configProcessamento,
-                      mesReferencia: parseInt(e.target.value)
-                    })}
+                    onChange={(e) => setConfigProcessamento({ ...configProcessamento, mesReferencia: parseInt(e.target.value) })}
                     className="w-full p-2 border rounded-lg"
                   >
                     {['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
@@ -287,10 +307,7 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
                   <input
                     type="number"
                     value={configProcessamento.anoReferencia}
-                    onChange={(e) => setConfigProcessamento({
-                      ...configProcessamento,
-                      anoReferencia: parseInt(e.target.value)
-                    })}
+                    onChange={(e) => setConfigProcessamento({ ...configProcessamento, anoReferencia: parseInt(e.target.value) })}
                     className="w-full p-2 border rounded-lg"
                     min={2020}
                     max={2030}
@@ -306,7 +323,9 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
                       value={reguaSelecionadaId || ''}
                       onChange={(e) => {
                         const novaReguaId = e.target.value ? parseInt(e.target.value) : undefined;
+                        const novaRegua = reguas.find(r => r.id === novaReguaId);
                         setReguaSelecionadaId(novaReguaId);
+                        setReguaSelecionadaNome(novaRegua?.nome || '');
                         setConfigProcessamento({ ...configProcessamento, reguaId: novaReguaId });
                       }}
                       className="w-full p-2 border rounded-lg"
@@ -326,10 +345,7 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
                     <input
                       type="checkbox"
                       checked={configProcessamento.gerarNotas}
-                      onChange={(e) => setConfigProcessamento({
-                        ...configProcessamento,
-                        gerarNotas: e.target.checked
-                      })}
+                      onChange={(e) => setConfigProcessamento({ ...configProcessamento, gerarNotas: e.target.checked })}
                       className="rounded"
                     />
                     <span className="text-sm text-gray-700">Gerar Notas</span>
@@ -339,19 +355,26 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
                     <input
                       type="checkbox"
                       checked={configProcessamento.integrarRM}
-                      onChange={(e) => setConfigProcessamento({
-                        ...configProcessamento,
-                        integrarRM: e.target.checked
-                      })}
+                      onChange={(e) => setConfigProcessamento({ ...configProcessamento, integrarRM: e.target.checked })}
                       className="rounded"
                     />
                     <span className="text-sm text-gray-700">Integrar RM</span>
                   </label>
                 </div>
               </div>
+              
+              {/* 🔥 INDICADOR VISUAL PARA RÉGUA CONSOLIDADA */}
+              {isReguaConsolidado() && (
+                <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 flex items-center gap-2">
+                  <span>📋</span>
+                  <span>
+                    <strong>Faturamento Consolidado</strong> - Serão exibidos apenas associados que possuem notas no último arquivo consolidado importado (busca automática)
+                  </span>
+                </div>
+              )}
             </div>
             
-            {/* Filtros - só aparece se tiver régua selecionada */}
+            {/* Filtros */}
             {reguaSelecionadaId && (
               <div className="bg-white p-4 rounded-lg border mb-6">
                 <h3 className="font-semibold text-gray-700 mb-3">🔍 Filtros</h3>
@@ -370,23 +393,17 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
                     onChange={(e) => setFiltroCnpjCpf(e.target.value)}
                     className="p-2 border rounded-lg"
                   />
-                  <button
-                    onClick={aplicarFiltros}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                  >
+                  <button onClick={aplicarFiltros} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                     Buscar
                   </button>
-                  <button
-                    onClick={limparFiltros}
-                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                  >
+                  <button onClick={limparFiltros} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
                     Limpar
                   </button>
                 </div>
               </div>
             )}
             
-            {/* Mensagem quando não há régua selecionada */}
+            {/* Mensagem quando não há régua */}
             {!reguaSelecionadaId && (
               <div className="text-center py-8 text-gray-500">
                 <div className="text-5xl mb-4">📏</div>
@@ -394,7 +411,7 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
               </div>
             )}
             
-            {/* Tabela de Associados - só mostra se tiver régua selecionada */}
+            {/* Tabela de Associados */}
             {reguaSelecionadaId && (
               <>
                 <div className="overflow-x-auto">
@@ -402,13 +419,18 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-4 py-3 text-left">
-                          <input
-                            type="checkbox"
-                            checked={selecionarTodos && associados.length > 0}
-                            onChange={toggleSelecionarTodos}
-                            className="rounded"
-                            disabled={carregandoAssociados}
-                          />
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={selecionarTodos && todosIdsAssociados.length > 0}
+                              onChange={toggleSelecionarTodos}
+                              className="rounded"
+                              disabled={carregandoAssociados}
+                            />
+                            <span className="text-xs text-gray-500">
+                              {todosIdsAssociados.length > 0 && `(${associadosSelecionados.size} de ${todosIdsAssociados.length})`}
+                            </span>
+                          </div>
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome/Razão</th>
@@ -429,7 +451,9 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
                       ) : associados.length === 0 ? (
                         <tr>
                           <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                            Nenhum associado encontrado para esta régua
+                            {isReguaConsolidado() 
+                              ? 'Nenhum associado encontrado no último arquivo consolidado importado'
+                              : 'Nenhum associado encontrado para esta régua'}
                           </td>
                         </tr>
                       ) : (
@@ -443,7 +467,9 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
                                 className="rounded"
                               />
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-900">{associado.id}</td>
+                            <td className="px-4 py-3 text-sm font-mono text-blue-600">
+                              {associado.codigoSpc || associado.id}
+                            </td>
                             <td className="px-4 py-3 text-sm text-gray-900 font-medium">{associado.nomeRazao}</td>
                             <td className="px-4 py-3 text-sm text-gray-600">{associado.cnpjCpf}</td>
                             <td className="px-4 py-3 text-sm text-gray-600">{associado.planoTitulo || '-'}</td>
@@ -489,7 +515,10 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
           {/* Footer */}
           <div className="px-6 py-4 border-t border-gray-200 flex justify-between items-center bg-gray-50">
             <div className="text-sm text-gray-500">
-              {associadosSelecionados.size} associado(s) selecionado(s)
+              {associadosSelecionados.size} de {todosIdsAssociados.length} associado(s) selecionado(s)
+              {isReguaConsolidado() && todosIdsAssociados.length === 0 && (
+                <span className="ml-2 text-yellow-600"> (Nenhum associado com notas no último consolidado)</span>
+              )}
             </div>
             <div className="flex gap-3">
               {onSimulate && (
@@ -501,10 +530,7 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
                   Simular
                 </button>
               )}
-              <button
-                onClick={onClose}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-              >
+              <button onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
                 Cancelar
               </button>
               <button

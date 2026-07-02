@@ -34,7 +34,6 @@ interface MessageProviderProps {
   children: ReactNode;
 }
 
-// 🔥 Contador global para IDs únicos
 let messageCounter = 0;
 
 export const MessageProvider: React.FC<MessageProviderProps> = ({ children }) => {
@@ -46,6 +45,8 @@ export const MessageProvider: React.FC<MessageProviderProps> = ({ children }) =>
 
   const addMessage = useCallback((message: Omit<Message, 'id'>) => {
     const id = generateUniqueId();
+    
+    console.log('📢 Adicionando mensagem:', message.text, message.type); // 🔥 LOG
     
     setMessages(prev => [...prev, { ...message, id }]);
 
@@ -61,6 +62,7 @@ export const MessageProvider: React.FC<MessageProviderProps> = ({ children }) =>
     type: 'success' | 'error' | 'warning' | 'info', 
     duration: number = 5000
   ) => {
+    console.log('🔔 showToast chamado:', { text, type }); // 🔥 LOG
     addMessage({ type, text, duration });
   }, [addMessage]);
 
@@ -114,12 +116,16 @@ export const MessageProvider: React.FC<MessageProviderProps> = ({ children }) =>
     }}>
       {children}
       
-      {/* Toast Container */}
-      <div className="fixed bottom-4 right-4 z-50 space-y-2">
+      {/* Toast Container - COM Z-INDEX ALTO */}
+      <div className="fixed bottom-4 right-4 z-[9999] space-y-2">
         {messages.map((message) => (
           <div
             key={message.id}
-            className={`p-4 rounded-lg shadow-lg border min-w-[300px] max-w-md animate-slide-in ${getMessageStyles(message.type)}`}
+            className={`p-4 rounded-lg shadow-lg border min-w-[300px] max-w-md ${getMessageStyles(message.type)}`}
+            style={{ 
+              animation: 'slideInRight 0.3s ease-out',
+              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+            }}
             role="alert"
           >
             <div className="flex items-start gap-3">
@@ -141,6 +147,20 @@ export const MessageProvider: React.FC<MessageProviderProps> = ({ children }) =>
           </div>
         ))}
       </div>
+      
+      {/* Adicionar keyframes globalmente */}
+      <style>{`
+        @keyframes slideInRight {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+      `}</style>
     </MessageContext.Provider>
   );
 };

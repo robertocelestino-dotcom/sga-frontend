@@ -56,6 +56,8 @@ import FaturaDetalhes from './pages/faturamento/FaturaDetalhes'
 // 🔥 NOVAS PÁGINAS
 import ImportacaoCancelamentos from './pages/ImportacaoCancelamentos'
 
+import Notificacoes from './pages/Notificacoes';
+
 // Adicione esta animação ao seu index.css
 import './styles/animations.css'
 
@@ -175,6 +177,9 @@ function App() {
               {/* Faturamento (legado) */}
               <Route path="processar-faturamento" element={<ProcessarFaturamento />} />
               <Route path="tabelas-faturamento" element={<TabelasFaturamento />} />
+
+              {/* Notificações (legado) */}
+              <Route path="/notificacoes" element={<Notificacoes />} />
 
               {/* Gestão */}
               <Route path="beneficios" element={<Beneficios />} />

@@ -9,19 +9,36 @@
 11/11/2025  15:12               621 eslint.config.js
 11/11/2025  16:50               386 index.html
 17/12/2025  08:45    <DIR>          node_modules
-17/12/2025  08:45           227.594 package-lock.json
-17/12/2025  08:45             1.533 package.json
+17/06/2026  10:17           227.959 package-lock.json
+17/06/2026  10:17             1.568 package.json
 11/11/2025  17:01                83 postcss.config.js
 11/11/2025  15:12    <DIR>          public
 18/12/2025  08:37               535 README.md
-20/04/2026  17:11                 0 sga-frontend.txt
+30/06/2026  11:10                 0 sga-frontend.txt
 18/12/2025  13:01    <DIR>          src
 11/11/2025  17:02               191 tailwind.config.js
 11/11/2025  15:12               732 tsconfig.app.json
 11/11/2025  16:10               693 tsconfig.json
 11/11/2025  15:12               653 tsconfig.node.json
 11/11/2025  16:39               360 vite.config.ts
-              13 arquivo(s)        233.634 bytes
+              13 arquivo(s)        234.034 bytes
+
+ Pasta de E:\Users\roberto\Documents\Desenvolvimento\Web\sga-frontend\.git
+
+28/01/2026  10:50    <DIR>          ..
+24/04/2026  08:39                82 COMMIT_EDITMSG
+18/11/2025  13:26               394 config
+18/11/2025  11:37                73 description
+18/12/2025  08:37               107 FETCH_HEAD
+18/11/2025  13:26                21 HEAD
+18/11/2025  11:37    <DIR>          hooks
+24/04/2026  08:39            13.619 index
+18/11/2025  11:37    <DIR>          info
+18/11/2025  11:39    <DIR>          logs
+24/04/2026  08:39    <DIR>          objects
+18/12/2025  08:37                41 ORIG_HEAD
+18/11/2025  13:26    <DIR>          refs
+               7 arquivo(s)         14.337 bytes
 
  Pasta de E:\Users\roberto\Documents\Desenvolvimento\Web\sga-frontend\public
 
@@ -68,7 +85,7 @@
 17/12/2025  08:29             2.469 BreadCrumb.tsx
 16/12/2025  17:47             5.026 BuscaProdutos.tsx
 06/02/2026  10:56            14.811 EnderecoCEPField.tsx
-07/04/2026  13:12    <DIR>          faturamento
+19/06/2026  14:50    <DIR>          faturamento
 09/03/2026  11:41             3.722 FranquiaConsumoCard.tsx
 21/11/2025  16:38    <DIR>          importacao
 11/11/2025  15:57    <DIR>          layout
@@ -87,11 +104,15 @@
 
  Pasta de E:\Users\roberto\Documents\Desenvolvimento\Web\sga-frontend\src\components\faturamento
 
-07/04/2026  13:12    <DIR>          .
+19/06/2026  14:50    <DIR>          .
 07/04/2026  13:11    <DIR>          ..
-07/04/2026  13:16            10.487 ModalResultadoProcessamento.tsx
-07/04/2026  16:23            21.561 ModalSelecaoAssociados.tsx
-               2 arquivo(s)         32.048 bytes
+15/06/2026  16:18             9.814 ModalConfirmacaoProcessamento.tsx
+19/06/2026  15:05            14.865 ModalEdicaoFatura.tsx
+09/06/2026  14:57             4.679 ModalExportacaoRm.tsx
+24/06/2026  15:14            22.694 ModalResultadoExportacaoRm.tsx
+09/06/2026  10:19            14.141 ModalResultadoProcessamento.tsx
+10/06/2026  17:37            23.662 ModalSelecaoAssociados.tsx
+               6 arquivo(s)         89.855 bytes
 
  Pasta de E:\Users\roberto\Documents\Desenvolvimento\Web\sga-frontend\src\components\importacao
 
@@ -109,18 +130,18 @@
 07/04/2026  13:11    <DIR>          ..
 12/11/2025  13:10             2.326 Header.tsx
 12/11/2025  13:10               513 Layout.tsx
-08/04/2026  15:35             9.866 Sidebar.tsx
-               3 arquivo(s)         12.705 bytes
+10/06/2026  15:48             9.052 Sidebar.tsx
+               3 arquivo(s)         11.891 bytes
 
  Pasta de E:\Users\roberto\Documents\Desenvolvimento\Web\sga-frontend\src\components\ui
 
 17/03/2026  10:54    <DIR>          .
 07/04/2026  13:11    <DIR>          ..
 11/11/2025  15:45             1.734 Button.tsx
-17/12/2025  09:36             1.791 ConfirmModal.tsx
+24/06/2026  16:07             5.420 ConfirmModal.tsx
 17/03/2026  11:00             2.472 Modal.tsx
 17/12/2025  09:35             2.510 Toast.tsx
-               4 arquivo(s)          8.507 bytes
+               4 arquivo(s)         12.136 bytes
 
  Pasta de E:\Users\roberto\Documents\Desenvolvimento\Web\sga-frontend\src\config
 
@@ -150,14 +171,14 @@
 
 08/04/2026  15:27    <DIR>          .
 18/12/2025  13:01    <DIR>          ..
-07/04/2026  09:23            32.739 AssociadoDetalhes.tsx
+18/06/2026  10:00            32.731 AssociadoDetalhes.tsx
 24/02/2026  17:59           163.363 AssociadoForm.tsx
 24/03/2026  17:44            37.454 Associados.tsx
 11/11/2025  17:17             2.203 AtualizacaoAssociados.tsx
 12/11/2025  10:56               592 Beneficios.tsx
 09/03/2026  11:42             8.678 ConsumoFranquiaPage.tsx
 24/03/2026  17:50            22.428 Dashboard.tsx
-07/04/2026  16:38    <DIR>          faturamento
+19/06/2026  14:50    <DIR>          faturamento
 12/11/2025  10:56               567 GestaoSPC.tsx
 07/04/2026  11:21            22.683 ImportacaoAssociados.tsx
 12/11/2025  10:57               612 ImportacaoBeneficios.tsx
@@ -171,7 +192,7 @@
 10/03/2026  10:40            12.343 PlanoDetalhes.tsx
 10/03/2026  10:31            32.762 PlanoForm.tsx
 10/03/2026  10:43            10.228 Planos.tsx
-20/04/2026  16:48             6.200 ProcessarFaturamento.tsx
+15/06/2026  17:45            16.142 ProcessarFaturamento.tsx
 16/12/2025  17:27            38.170 ProdutoDetalhes.tsx
 10/03/2026  10:24            27.400 ProdutoForm.tsx
 17/03/2026  08:08            28.937 Produtos.tsx
@@ -184,28 +205,29 @@
 18/12/2025  16:10            18.529 Vendedores.tsx
 24/03/2026  17:57            31.144 VerificacaoDashboard.tsx
 02/12/2025  13:55             2.424 VerificacaoImportacao.tsx
-              33 arquivo(s)        618.372 bytes
+              33 arquivo(s)        628.306 bytes
 
  Pasta de E:\Users\roberto\Documents\Desenvolvimento\Web\sga-frontend\src\pages\faturamento
 
-07/04/2026  16:38    <DIR>          .
+19/06/2026  14:50    <DIR>          .
 08/04/2026  15:27    <DIR>          ..
 01/04/2026  16:59               555 Cancelamentos.tsx
-08/04/2026  14:45            11.326 FaturaDetalhes.tsx
-08/04/2026  14:44            15.939 FaturasGeradas.tsx
-08/04/2026  15:28            18.909 IntegracaoRm.tsx
+23/06/2026  13:32            36.154 FaturaDetalhes.tsx
+24/06/2026  16:25            33.428 FaturasGeradas.tsx
+22/04/2026  13:59            26.037 IntegracaoRm.tsx
+05/06/2026  16:11            23.636 ModalSelecaoAssociados.tsx
 01/04/2026  16:51            10.701 ReguaAssociados.tsx
 02/04/2026  11:34            21.032 ReguaDetalhes.tsx
 20/04/2026  16:28            12.055 ReguaFaturamento.tsx
-20/04/2026  16:21            47.281 ReguaFaturamentoForm.tsx
-               8 arquivo(s)        137.798 bytes
+22/04/2026  07:56            48.022 ReguaFaturamentoForm.tsx
+               9 arquivo(s)        211.620 bytes
 
  Pasta de E:\Users\roberto\Documents\Desenvolvimento\Web\sga-frontend\src\providers
 
 17/12/2025  09:37    <DIR>          .
 18/12/2025  13:01    <DIR>          ..
-08/04/2026  14:53             4.653 MessageProvider.tsx
-               1 arquivo(s)          4.653 bytes
+09/06/2026  10:50             5.270 MessageProvider.tsx
+               1 arquivo(s)          5.270 bytes
 
  Pasta de E:\Users\roberto\Documents\Desenvolvimento\Web\sga-frontend\src\services
 
@@ -213,7 +235,7 @@
 18/12/2025  13:01    <DIR>          ..
 20/03/2026  16:56            19.427 api.ts
 23/02/2026  17:48             3.699 associadoDefFaturamentoService.ts
-07/04/2026  11:17            21.328 associadoImportacaoService.ts
+21/05/2026  15:50            23.058 associadoImportacaoService.ts
 09/03/2026  11:39             1.777 associadoPlanoService.ts
 23/02/2026  15:59             3.569 associadoProdutoService.ts
 15/04/2026  17:20            18.995 associadoService.ts
@@ -222,17 +244,17 @@
 03/02/2026  16:16               926 cepService.ts
 09/03/2026  11:40             2.474 consumoFranquiaService.ts
 18/12/2025  13:13             9.970 dashboardService.ts
-08/04/2026  14:44             4.428 faturamentoService.ts
-08/04/2026  15:27             2.740 integracaoRmService.ts
+24/06/2026  16:16            10.596 faturamentoService.ts
+22/04/2026  13:23             1.747 integracaoRmService.ts
 13/03/2026  11:34             2.974 planoProdutoFranquiaService.ts
 10/03/2026  10:32             1.471 planoService.ts
-13/03/2026  11:08            15.154 produtoService.ts
+23/06/2026  13:19            13.949 produtoService.ts
 20/04/2026  07:50             3.297 reguaFaturamentoService.ts
 29/01/2026  11:13             7.248 sistemaLogService.ts
 23/02/2026  14:32             1.942 tipoEnvioService.ts
 05/02/2026  17:52             4.093 vendedorService.ts
 23/01/2026  13:09             2.490 vendedorTipoService.ts
-              21 arquivo(s)        131.407 bytes
+              21 arquivo(s)        137.107 bytes
 
  Pasta de E:\Users\roberto\Documents\Desenvolvimento\Web\sga-frontend\src\stores
 
@@ -278,10 +300,10 @@
 07/04/2026  13:16    <DIR>          .
 18/12/2025  13:01    <DIR>          ..
 20/02/2026  15:15             2.213 cnpjUtils.ts
-16/12/2025  13:37             1.963 exportUtils.ts
-07/04/2026  13:16             5.289 formatUtils.ts
-               3 arquivo(s)          9.465 bytes
+19/06/2026  13:58             3.490 exportUtils.ts
+19/06/2026  14:02             6.535 formatUtils.ts
+               3 arquivo(s)         12.238 bytes
 
      Total de Arquivos na Lista:
-           73109 arquivo(s)    381.081.529 bytes
-            8326 pasta(s)   17.496.117.248 bytes dispon¡veis
+           73131 arquivo(s)    355.822.730 bytes
+            8362 pasta(s)   24.824.565.760 bytes dispon¡veis

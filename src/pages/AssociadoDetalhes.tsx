@@ -329,7 +329,7 @@ const AssociadoDetalhes: React.FC = () => {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Faturamento Mínimo</label>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">Faturamento</label>
                   <p className="text-gray-800">{formatarValor(associado.faturamentoMinimo)}</p>
                 </div>
                 

@@ -1,5 +1,34 @@
+// src/utils/exportUtils.ts
+
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+
+/* ============================================================
+   📤 GERAR NOME DE ARQUIVO PADRONIZADO
+   ============================================================ */
+
+/**
+ * Gera nome de arquivo padronizado para exportação RM
+ * Formato: exportacao_rm_faturas_YYYY-MM-DD_HH-MM-SS.txt
+ */
+export function gerarNomeArquivoRm(): string {
+  const agora = new Date();
+  const data = agora.toISOString().slice(0, 10); // YYYY-MM-DD
+  const hora = agora.toTimeString().slice(0, 8).replace(/:/g, '-'); // HH:MM:SS -> HH-MM-SS
+  return `exportacao_rm_faturas_${data}_${hora}.txt`;
+}
+
+/**
+ * Gera nome de arquivo para listagem Excel
+ * @param tipo - 'analitico' ou 'sintetico'
+ * Formato: analitico_itens_YYYY-MM-DD_HH-MM-SS.xlsx
+ */
+export function gerarNomeArquivoExcel(tipo: 'analitico' | 'sintetico'): string {
+  const agora = new Date();
+  const data = agora.toISOString().slice(0, 10); // YYYY-MM-DD
+  const hora = agora.toTimeString().slice(0, 8).replace(/:/g, '-'); // HH:MM:SS -> HH-MM-SS
+  return `${tipo}_itens_${data}_${hora}.xlsx`;
+}
 
 /* ============================================================
    📤 EXPORTAR CSV
@@ -54,6 +83,21 @@ export function exportJson(nome: string, dados: any) {
   });
 
   saveAs(blob, `${nome}.json`);
+}
+
+/**
+ * Prepara dados para exportação, formatando datas sem timezone
+ */
+  export function prepararDadosParaExportacao(dados: any[], camposData: string[]): any[] {
+  return dados.map(item => {
+    const novoItem = { ...item };
+    camposData.forEach(campo => {
+      if (novoItem[campo]) {
+        novoItem[campo] = formatDateWithoutTimezone(novoItem[campo]);
+      }
+    });
+    return novoItem;
+  });
 }
 
 /* ============================================================

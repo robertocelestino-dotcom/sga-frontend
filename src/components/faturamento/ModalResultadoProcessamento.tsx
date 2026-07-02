@@ -21,6 +21,7 @@ interface AssociadoProcessamento {
   valorDebito: number;
   valorNota: number;
   processado: boolean;
+  gerouNota?: boolean;
   mensagemErro?: string;
   itensFatura?: FaturaItemDTO[];
 }
@@ -29,6 +30,7 @@ interface ResultadoProcessamento {
   totalAssociados: number;
   associadosProcessados: number;
   associadosComErro: number;
+  associadosJaFaturados?: number;
   totalNotasGeradas: number;
   valorTotalFaturamento: number;
   valorTotalFranquia: number;
@@ -42,6 +44,7 @@ interface ResultadoProcessamento {
 interface ModalResultadoProcessamentoProps {
   isOpen: boolean;
   onClose: () => void;
+  onVoltarSelecao?: () => void;
   resultado: ResultadoProcessamento | null;
   titulo?: string;
 }
@@ -58,20 +61,10 @@ const formatCurrency = (value: number): string => {
   }).format(value);
 };
 
-const formatDate = (dateStr: string): string => {
-  if (!dateStr) return '-';
-  try {
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return '-';
-    return date.toLocaleDateString('pt-BR');
-  } catch {
-    return '-';
-  }
-};
-
 const ModalResultadoProcessamento: React.FC<ModalResultadoProcessamentoProps> = ({
   isOpen,
   onClose,
+  onVoltarSelecao,
   resultado,
   titulo = 'Resultado do Processamento'
 }) => {
@@ -84,6 +77,13 @@ const ModalResultadoProcessamento: React.FC<ModalResultadoProcessamentoProps> = 
     setAssociadoExpandido(associadoExpandido === associadoId ? null : associadoId);
   };
   
+  const handleVoltar = () => {
+    onClose();
+    if (onVoltarSelecao) onVoltarSelecao();
+  };
+  
+  const isSimulacao = resultado.totalNotasGeradas === 0 && resultado.associadosProcessados > 0;
+  
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4">
@@ -92,14 +92,21 @@ const ModalResultadoProcessamento: React.FC<ModalResultadoProcessamentoProps> = 
         <div className="relative bg-white rounded-xl shadow-xl w-full max-w-7xl max-h-[90vh] overflow-hidden">
           {/* Header */}
           <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 sticky top-0">
-            <h2 className="text-xl font-semibold text-gray-800">{titulo}</h2>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-800">{titulo}</h2>
+              {isSimulacao && (
+                <span className="ml-2 px-2 py-0.5 text-xs bg-yellow-100 text-yellow-800 rounded-full">
+                  SIMULAÇÃO
+                </span>
+              )}
+            </div>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
           </div>
           
           {/* Body */}
           <div className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 100px)' }}>
             {/* Cards de Resumo */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
               <div className="bg-green-50 p-4 rounded-lg text-center">
                 <div className="text-2xl font-bold text-green-600">{resultado.associadosProcessados || 0}</div>
                 <div className="text-sm text-gray-600">Associados Processados</div>
@@ -108,9 +115,13 @@ const ModalResultadoProcessamento: React.FC<ModalResultadoProcessamentoProps> = 
                 <div className="text-2xl font-bold text-red-600">{resultado.associadosComErro || 0}</div>
                 <div className="text-sm text-gray-600">Com Erro</div>
               </div>
+              <div className="bg-yellow-50 p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-yellow-600">{resultado.associadosJaFaturados || 0}</div>
+                <div className="text-sm text-gray-600">Já Faturados</div>
+              </div>
               <div className="bg-blue-50 p-4 rounded-lg text-center">
                 <div className="text-2xl font-bold text-blue-600">{resultado.totalNotasGeradas || 0}</div>
-                <div className="text-sm text-gray-600">Notas Geradas</div>
+                <div className="text-sm text-gray-600">Faturas Geradas</div>
               </div>
               <div className="bg-purple-50 p-4 rounded-lg text-center">
                 <div className="text-2xl font-bold text-purple-600">{formatCurrency(resultado.valorTotalDebito || 0)}</div>
@@ -132,16 +143,27 @@ const ModalResultadoProcessamento: React.FC<ModalResultadoProcessamentoProps> = 
               <div className="space-y-4">
                 {resultado.detalhes.map((det, idx) => (
                   <div key={det.associadoId || idx} className="border rounded-lg overflow-hidden">
-                    {/* Cabeçalho do Associado - Clicável */}
+                    {/* Cabeçalho do Associado */}
                     <div 
-                      className="bg-gray-50 px-4 py-3 flex justify-between items-center cursor-pointer hover:bg-gray-100"
+                      className={`px-4 py-3 flex justify-between items-center cursor-pointer hover:bg-gray-100 ${
+                        det.processado ? 'bg-green-50' : 'bg-red-50'
+                      }`}
                       onClick={() => toggleExpandirAssociado(det.associadoId)}
                     >
                       <div className="flex-1">
-                        <div className="font-medium text-gray-900">{det.associadoNome || '-'}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-gray-900">{det.associadoNome || '-'}</span>
+                          {det.mensagemErro && det.mensagemErro.includes('já possui fatura') && (
+                            <span className="px-2 py-0.5 text-xs bg-yellow-200 text-yellow-800 rounded-full">
+                              Já Faturado
+                            </span>
+                          )}
+                        </div>
                         <div className="text-xs text-gray-500">{det.cnpjCpf || '-'}</div>
                         {det.mensagemErro && (
-                          <div className="text-xs text-red-500 mt-1">{det.mensagemErro}</div>
+                          <div className={`text-xs mt-1 ${det.mensagemErro.includes('já possui') ? 'text-yellow-600' : 'text-red-500'}`}>
+                            {det.mensagemErro}
+                          </div>
                         )}
                       </div>
                       <div className="flex items-center gap-6">
@@ -153,11 +175,11 @@ const ModalResultadoProcessamento: React.FC<ModalResultadoProcessamentoProps> = 
                           <div className="text-sm text-gray-500">Status</div>
                           {det.processado ? (
                             <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                              ✓ Processado
+                              ✓ {det.gerouNota ? 'Fatura Gerada' : 'Processado'}
                             </span>
                           ) : (
                             <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
-                              ✗ Erro
+                              ✗ {det.mensagemErro?.includes('já possui') ? 'Já Faturado' : 'Erro'}
                             </span>
                           )}
                         </div>
@@ -167,10 +189,12 @@ const ModalResultadoProcessamento: React.FC<ModalResultadoProcessamentoProps> = 
                       </div>
                     </div>
                     
-                    {/* Grid de Itens da Fatura (expansível) */}
+                    {/* Itens da Fatura */}
                     {associadoExpandido === det.associadoId && det.itensFatura && det.itensFatura.length > 0 && (
                       <div className="p-4 bg-white border-t">
-                        <h4 className="text-sm font-semibold text-gray-700 mb-3">📋 Itens da Fatura</h4>
+                        <h4 className="text-sm font-semibold text-gray-700 mb-3">
+                          📋 Itens da {isSimulacao ? 'Simulação' : 'Fatura'}
+                        </h4>
                         <div className="overflow-x-auto">
                           <table className="min-w-full divide-y divide-gray-200 text-sm">
                             <thead className="bg-gray-50">
@@ -195,8 +219,12 @@ const ModalResultadoProcessamento: React.FC<ModalResultadoProcessamentoProps> = 
                             </tbody>
                             <tfoot className="bg-gray-50">
                               <tr>
-                                <td colSpan={4} className="px-3 py-2 text-right font-medium text-gray-700">Total da Fatura:</td>
-                                <td className="px-3 py-2 text-right font-bold text-blue-600">{formatCurrency(det.valorNota || 0)}</td>
+                                <td colSpan={4} className="px-3 py-2 text-right font-medium text-gray-700">
+                                  Total da {isSimulacao ? 'Simulação' : 'Fatura'}:
+                                </td>
+                                <td className="px-3 py-2 text-right font-bold text-blue-600">
+                                  {formatCurrency(det.valorNota || 0)}
+                                </td>
                               </tr>
                             </tfoot>
                           </table>
@@ -207,7 +235,7 @@ const ModalResultadoProcessamento: React.FC<ModalResultadoProcessamentoProps> = 
                     {/* Mensagem quando não há itens */}
                     {associadoExpandido === det.associadoId && (!det.itensFatura || det.itensFatura.length === 0) && det.processado && (
                       <div className="p-4 bg-white border-t text-center text-gray-500 text-sm">
-                        Nenhum item encontrado para este associado
+                        {det.gerouNota ? 'Nenhum item encontrado para esta fatura' : 'Nenhum item gerado na simulação'}
                       </div>
                     )}
                   </div>
@@ -236,7 +264,23 @@ const ModalResultadoProcessamento: React.FC<ModalResultadoProcessamentoProps> = 
           </div>
           
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-gray-200 flex justify-end bg-gray-50 sticky bottom-0">
+          <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 bg-gray-50 sticky bottom-0">
+            {onVoltarSelecao && (
+              <button
+                onClick={handleVoltar}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                ← Voltar para Seleção
+              </button>
+            )}
+            {isSimulacao && (
+              <button
+                onClick={onClose}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                ✅ Prosseguir para Faturamento
+              </button>
+            )}
             <button
               onClick={onClose}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"

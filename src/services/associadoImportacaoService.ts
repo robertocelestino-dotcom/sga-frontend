@@ -13,12 +13,39 @@ const CONFIG_FATURAMENTO_PADRAO = {
   observacao: 'Importado em lote - Configuração padrão'
 };
 
-// 🔥 FUNÇÃO PARA CONVERTER DATA DO FORMATO DD/MM/YYYY PARA YYYY-MM-DD
-const converterDataParaISO = (dataStr: string): string => {
-  if (!dataStr) return '';
+// 🔥 FUNÇÃO PARA LIMPAR VALORES PROBLEMÁTICOS (aspas, caracteres especiais)
+const limparValor = (valor: string): string => {
+  if (!valor) return '';
   
+  let limpo = valor.trim();
+  
+  // Remover aspas duplas no início e fim
+  if (limpo.startsWith('"') && limpo.endsWith('"')) {
+    limpo = limpo.slice(1, -1);
+  }
+  // Remover aspas isoladas no início
+  limpo = limpo.replace(/^"+|"+$/g, '');
+  // Remover ponto e vírgula do final se existir
+  if (limpo.endsWith(';')) {
+    limpo = limpo.slice(0, -1);
+  }
+  // Remover caracteres de escape
+  limpo = limpo.replace(/\\"/g, '"');
+  
+  return limpo;
+};
+
+// 🔥 FUNÇÃO PARA CONVERTER DATA DO FORMATO DD/MM/YYYY PARA YYYY-MM-DD
+const converterDataParaISO = (dataStr: string): string | null => {
+  if (!dataStr || dataStr.trim() === '' || dataStr === '0.00' || dataStr === '0') {
+    return null;
+  }
+  
+  const valorLimpo = limparValor(dataStr);
+  
+  // Tentar formato DD/MM/YYYY
   const regexDDMMYYYY = /^(\d{2})\/(\d{2})\/(\d{4})$/;
-  const match = dataStr.match(regexDDMMYYYY);
+  const match = valorLimpo.match(regexDDMMYYYY);
   
   if (match) {
     const dia = match[1];
@@ -27,13 +54,15 @@ const converterDataParaISO = (dataStr: string): string => {
     return `${ano}-${mes}-${dia}`;
   }
   
+  // Tentar formato YYYY-MM-DD
   const regexYYYYMMDD = /^(\d{4})-(\d{2})-(\d{2})$/;
-  if (regexYYYYMMDD.test(dataStr)) {
-    return dataStr;
+  if (regexYYYYMMDD.test(valorLimpo)) {
+    return valorLimpo;
   }
   
+  // Tentar criar data via Date
   try {
-    const data = new Date(dataStr);
+    const data = new Date(valorLimpo);
     if (!isNaN(data.getTime())) {
       return data.toISOString().split('T')[0];
     }
@@ -41,43 +70,48 @@ const converterDataParaISO = (dataStr: string): string => {
     console.warn('Erro ao converter data:', dataStr);
   }
   
-  return dataStr;
+  return null;
 };
 
 // 🔥 FUNÇÃO PARA NORMALIZAR TELEFONE (separar DDD do número)
 const normalizarTelefone = (ddd: string, telefone: string): { ddd: string; numero: string } => {
-  if (!ddd && !telefone) return { ddd: '', numero: '' };
+  const dddLimpo = limparValor(ddd);
+  const telefoneLimpo = limparValor(telefone);
   
-  if (!ddd && telefone && telefone.length >= 10) {
-    const telefoneLimpo = telefone.replace(/\D/g, '');
-    if (telefoneLimpo.length >= 10) {
-      const novoDdd = telefoneLimpo.substring(0, 2);
-      const novoNumero = telefoneLimpo.substring(2);
+  if (!dddLimpo && !telefoneLimpo) return { ddd: '', numero: '' };
+  
+  if (!dddLimpo && telefoneLimpo && telefoneLimpo.length >= 10) {
+    const apenasNumeros = telefoneLimpo.replace(/\D/g, '');
+    if (apenasNumeros.length >= 10) {
+      const novoDdd = apenasNumeros.substring(0, 2);
+      const novoNumero = apenasNumeros.substring(2);
       return { ddd: novoDdd, numero: novoNumero };
     }
   }
   
-  return { ddd: ddd || '', numero: telefone || '' };
+  return { ddd: dddLimpo || '', numero: telefoneLimpo || '' };
 };
 
 // 🔥 FUNÇÃO PARA LIMPAR E NORMALIZAR EMAIL (com fallback padrão)
 const normalizarEmail = (email: string, usarPadrao: boolean = true): string => {
-  if (!email || email.trim() === '') {
+  const emailLimpo = limparValor(email);
+  
+  if (!emailLimpo || emailLimpo === '') {
     return usarPadrao ? 'sistema_sga@cdlfor.com.br' : '';
   }
   
-  let emailLimpo = email.trim().toLowerCase();
+  let emailProcessado = emailLimpo.toLowerCase();
   
   // Remover caracteres inválidos
-  emailLimpo = emailLimpo.replace(/\s/g, '');
-  emailLimpo = emailLimpo.replace(/[\(\)\[\]\{\}]/g, '');
+  emailProcessado = emailProcessado.replace(/\s/g, '');
+  emailProcessado = emailProcessado.replace(/[\(\)\[\]\{\}]/g, '');
   
   // Se não tiver @, retorna padrão
-  if (!emailLimpo.includes('@')) {
+  if (!emailProcessado.includes('@')) {
     return usarPadrao ? 'sistema_sga@cdlfor.com.br' : '';
   }
   
-  const [usuario, dominio] = emailLimpo.split('@');
+  const [usuario, dominio] = emailProcessado.split('@');
   
   if (!usuario || !dominio) {
     return usarPadrao ? 'sistema_sga@cdlfor.com.br' : '';
@@ -85,19 +119,18 @@ const normalizarEmail = (email: string, usarPadrao: boolean = true): string => {
   
   // Se o domínio não tiver ponto, adicionar .com.br
   if (!dominio.includes('.')) {
-    emailLimpo = `${usuario}@${dominio}.com.br`;
+    emailProcessado = `${usuario}@${dominio}.com.br`;
   }
   
-  if (emailLimpo.endsWith('.')) {
-    emailLimpo = emailLimpo.slice(0, -1);
+  if (emailProcessado.endsWith('.')) {
+    emailProcessado = emailProcessado.slice(0, -1);
   }
   
-  return emailLimpo;
+  return emailProcessado;
 };
 
 // 🔥 FUNÇÃO PARA CRIAR CONFIGURAÇÕES DE FATURAMENTO (SEMPRE INCLUÍDA)
 const criarConfiguracoesFaturamento = (planoId?: number, valorDef?: number) => {
-  // Configuração padrão: dia_emissao = 26, dia_vencimento = 10, planoId = 5, valor_def = 85.00
   const config = {
     planoId: planoId || CONFIG_FATURAMENTO_PADRAO.planoId,
     diaEmissao: CONFIG_FATURAMENTO_PADRAO.diaEmissao,
@@ -159,19 +192,19 @@ const carregarMapeamento = async () => {
   try {
     const vendedores = await associadoService.listarVendedores();
     vendedores.forEach(v => {
-      mapaVendedores.set(v.nomeRazao, v.id);
+      mapaVendedores.set(v.codigo?.toString() || v.nomeRazao, v.id);
       if (v.id) mapaVendedores.set(v.id.toString(), v.id);
     });
     
     const planos = await associadoService.listarPlanos();
     planos.forEach(p => {
-      mapaPlanos.set(p.nome, p.id);
+      mapaPlanos.set(p.codigo?.toString() || p.nome, p.id);
       if (p.id) mapaPlanos.set(p.id.toString(), p.id);
     });
     
     const categorias = await associadoService.listarCategorias();
     categorias.forEach(c => {
-      mapaCategorias.set(c.descricao, c.id);
+      mapaCategorias.set(c.codigo?.toString() || c.descricao, c.id);
       if (c.id) mapaCategorias.set(c.id.toString(), c.id);
     });
     
@@ -249,8 +282,14 @@ export const associadoImportacaoService = {
           };
           
           cabecalho.forEach((campo, idx) => {
-            const valor = valores[idx]?.trim() || '';
+            let valor = valores[idx]?.trim() || '';
             const campoLower = campo.toLowerCase();
+            
+            // 🔥 APLICAR LIMPEZA EM CAMPOS DE TEXTO
+            const camposQueLimpar = ['logradouro', 'complemento', 'bairro', 'cidade', 'nome_razao', 'nome_fantasia'];
+            if (camposQueLimpar.includes(campoLower)) {
+              valor = limparValor(valor);
+            }
             
             switch (campoLower) {
               case 'tipo_pessoa':
@@ -314,7 +353,8 @@ export const associadoImportacaoService = {
                 linha.email = valor;
                 break;
               case 'faturamento_minimo':
-                linha.faturamentoMinimo = parseFloat(valor.replace(',', '.')) || undefined;
+                const fatMin = parseFloat(valor.replace(',', '.'));
+                linha.faturamentoMinimo = isNaN(fatMin) ? 0 : fatMin;
                 break;
               case 'data_filiacao':
                 linha.dataFiliacao = valor;
@@ -347,7 +387,7 @@ export const associadoImportacaoService = {
     onProgress?.(10, `Arquivo lido: ${linhas.length} linhas`);
     
     onProgress?.(15, 'Carregando opções de mapeamento...');
-    const { mapaVendedores, mapaPlanos, mapaCategorias } = await carregarMapeamento();
+    const { mapaVendedores, mapaVendedoresExternos, mapaPlanos, mapaCategorias } = await carregarMapeamento();
     
     onProgress?.(20, 'Validando dados...');
     const linhasComErro: Array<{ linha: number; mensagem: string; dados: AssociadoImportacaoLinha }> = [];
@@ -375,8 +415,9 @@ export const associadoImportacaoService = {
         console.log(`📧 Email normalizado: "${emailOriginal}" -> "${emailNormalizado}"`);
       }
       
+      // 🔥 Buscar IDs pelos códigos
       const vendedorId = linha.codigoVendedor ? mapaVendedores.get(linha.codigoVendedor) : undefined;
-      // 🔥 Plano padrão = 5 (garantido)
+      const vendedorExternoId = linha.codigoVendedorExterno ? mapaVendedores.get(linha.codigoVendedorExterno) : undefined;
       const planoId = linha.codigoPlano ? mapaPlanos.get(linha.codigoPlano) : CONFIG_FATURAMENTO_PADRAO.planoId;
       const categoriaId = linha.codigoCategoria ? mapaCategorias.get(linha.codigoCategoria) : undefined;
       
@@ -387,8 +428,8 @@ export const associadoImportacaoService = {
         continue;
       }
       
-      // Preparar DTO
-      const dataFiliacaoISO = linha.dataFiliacao ? converterDataParaISO(linha.dataFiliacao) : '';
+      // 🔥 Preparar DTO com data tratada
+      const dataFiliacaoISO = converterDataParaISO(linha.dataFiliacao);
       const telefoneNormalizado = normalizarTelefone(linha.ddd || '', linha.telefone || '');
       
       // 🔥 CRIAR ENDEREÇO COMERCIAL (se disponível)
@@ -446,6 +487,7 @@ export const associadoImportacaoService = {
         emails.push(...replicarEmailComercial(emailComercial));
       }
       
+      // 🔥 DTO COMPLETO
       const dto: any = {
         tipoPessoa: linha.tipoPessoa,
         cnpjCpf: normalizarCnpjCpf(linha.cnpjCpf),
@@ -455,11 +497,12 @@ export const associadoImportacaoService = {
         codigoSpc: linha.codigoSpc || undefined,
         codigoRm: linha.codigoRm || undefined,
         faturamentoMinimo: linha.faturamentoMinimo || 0,
-        dataFiliacao: dataFiliacaoISO,
+        dataFiliacao: dataFiliacaoISO, // 🔥 PODE SER NULL
         vendedorId: vendedorId,
+        vendedorExternoId: vendedorExternoId,
         planoId: planoId,
         categoriaId: categoriaId,
-        // 🔥 CONFIGURAÇÕES DE FATURAMENTO (SEMPRE INCLUÍDAS)
+        forcarAtualizacao: true,
         definicoesFaturamento: criarConfiguracoesFaturamento(planoId, CONFIG_FATURAMENTO_PADRAO.valorDef),
         enderecos: enderecos,
         telefones: telefones,
@@ -563,16 +606,17 @@ export const associadoImportacaoService = {
     
     const exemplos = [
       'F;12345678901;JOÃO DA SILVA;JOAO;;;;;SPC001;RM001;01001000;RUA EXEMPLO;100;APTO 101;CENTRO;SÃO PAULO;SP;11;912345678;joao.silva@email.com;1000.00;2025-01-01;A',
-      'J;12345678000199;EMPRESA EXEMPLO LTDA;EMPRESA;;;;;SPC002;RM002;02002000;AVENIDA TESTE;200;SALA 202;JARDINS;RIO DE JANEIRO;RJ;21;987654321;contato@empresa.com;5000.00;2025-03-10;A'
+      'J;12345678000199;EMPRESA EXEMPLO LTDA;EMPRESA;9;2;5;1;SPC002;RM002;02002000;AVENIDA TESTE;200;SALA 202;JARDINS;RIO DE JANEIRO;RJ;21;987654321;contato@empresa.com;5000.00;2025-03-10;A'
     ];
     
-    // Adicionar instruções sobre configuração de faturamento
     const instrucoes = [
       '# ============================================================',
       '# INSTRUÇÕES DE IMPORTAÇÃO:',
       '# - A configuração de faturamento será CRIADA AUTOMATICAMENTE para cada associado',
       '# - Valores padrão: Plano ID=5, Dia Emissão=26, Dia Vencimento=10, Valor=R$85,00',
       '# - Para associados já existentes, a configuração será criada apenas se não existir',
+      '# - O campo "codigo_vendedor_externo" será atualizado em associados existentes',
+      '# - Data deve estar no formato DD/MM/AAAA ou AAAA-MM-DD',
       '# ============================================================',
       ''
     ];

@@ -1,11 +1,12 @@
-// src/services/produtoService.ts - VERSÃO AJUSTADA
+// src/services/produtoService.ts - VERSÃO COMPLETA AJUSTADA
+
 import { produtoAPI } from './api';
 
 // Interface para Produto resumido (retornado na listagem)
 export interface ProdutoResumoDTO {
   id: number;
   codigo: string;
-  codigoRm?: string; 
+  codigoRm?: string;
   nome: string;
   nomeCompleto: string;
   valorUnitario: number;
@@ -15,7 +16,6 @@ export interface ProdutoResumoDTO {
   modalidade?: string;
   temFranquia: boolean;
   totalFranquias: number;
-  
 }
 
 // Interface para Produto completo
@@ -39,14 +39,12 @@ export interface ProdutoDTO extends ProdutoResumoDTO {
   usuarioAtualizacao?: string;
   franquiasIds?: number[];
   produtosRelacionadosIds?: number[];
-
   franquiaAssociadaId?: number;
-  
 }
 
 export interface ProdutoFiltros {
   codigo?: string;
-  codigoRm?: string; 
+  codigoRm?: string;
   nome?: string;
   tipoProduto?: string;
   categoria?: string;
@@ -73,7 +71,8 @@ export interface PaginatedResponse<T> {
 // Serviço principal
 export const produtoService = {
 
-  // CRUD
+  // ========== CRUD ==========
+
   async criar(produto: ProdutoDTO): Promise<ProdutoDTO> {
     console.log('🔄 [produtoService] Criando produto:', produto);
     const response = await produtoAPI.criarProduto(produto);
@@ -102,7 +101,7 @@ export const produtoService = {
       sort: filtros.sort || 'nome',
       direction: filtros.direction || 'asc',
       codigo: filtros.codigo || '',
-      codigoRm: filtros.codigoRm || '', // 🔥 ADICIONADO: filtro por código RM
+      codigoRm: filtros.codigoRm || '',
       nome: filtros.nome || '',
       tipoProduto: filtros.tipoProduto || '',
       categoria: filtros.categoria || '',
@@ -118,47 +117,29 @@ export const produtoService = {
       }
     });
     
-    // Log detalhado dos parâmetros enviados
     console.log('📤 [produtoService] Parâmetros enviados para API:', params);
     
     try {
-      //console.log('📞 [produtoService] Chamando produtoAPI.listarProdutos...');
       const response = await produtoAPI.listarProdutos(params);
       
-      // LOG CRÍTICO: Verificar estrutura completa da resposta
       console.log('📥 [produtoService] Resposta COMPLETA da API:', {
-        // Verifique se response é direto ou tem .data
         responseType: typeof response,
         isArray: Array.isArray(response),
         keys: Object.keys(response),
-        // Verificar estrutura
         hasContent: 'content' in response,
         contentLength: response.content?.length,
-        contentType: typeof response.content,
-        // Verificar se tem .data
         hasData: 'data' in response,
         dataKeys: response.data ? Object.keys(response.data) : undefined,
-        // Dados completos para debug
-        fullResponse: response
       });
       
-      // CORREÇÃO: Verificar se precisamos acessar response.data
       let dataParaRetornar;
       
       if (response && typeof response === 'object') {
-        // Se response JÁ TEM a propriedade 'content' (é o objeto paginado)
         if ('content' in response) {
-          //console.log('✅ [produtoService] Retornando response (tem content)');
           dataParaRetornar = response;
-        }
-        // Se response TEM .data e .data tem content
-        else if (response.data && 'content' in response.data) {
-          //console.log('✅ [produtoService] Retornando response.data (tem .data.content)');
+        } else if (response.data && 'content' in response.data) {
           dataParaRetornar = response.data;
-        }
-        // Se response É UM ARRAY (endpoint retorna array direto)
-        else if (Array.isArray(response)) {
-          //console.log('⚠️ [produtoService] Response é array direto, convertendo para paginated');
+        } else if (Array.isArray(response)) {
           dataParaRetornar = {
             content: response,
             totalElements: response.length,
@@ -169,10 +150,7 @@ export const produtoService = {
             last: true,
             empty: response.length === 0
           };
-        }
-        // Fallback
-        else {
-          //console.warn('⚠️ [produtoService] Estrutura inesperada, usando fallback');
+        } else {
           dataParaRetornar = {
             content: [],
             totalElements: 0,
@@ -185,7 +163,6 @@ export const produtoService = {
           };
         }
       } else {
-        //console.error('❌ [produtoService] Response inválida:', response);
         throw new Error('Resposta inválida da API');
       }
       
@@ -201,7 +178,6 @@ export const produtoService = {
     } catch (error) {
       console.error('❌ [produtoService] Erro ao listar produtos:', error);
       
-      // Retornar estrutura vazia em caso de erro
       return {
         content: [],
         totalElements: 0,
@@ -215,116 +191,183 @@ export const produtoService = {
     }
   },
 
+  // 🔥 NOVO MÉTODO: Listagem simplificada para busca de produtos (dropdown)
+  async listarSimples(filtros: {
+    termo?: string;
+    page?: number;
+    size?: number;
+    ativo?: boolean;
+  } = {}): Promise<PaginatedResponse<ProdutoResumoDTO>> {
+    console.log('🔄 [produtoService] Listando produtos simplificado:', filtros);
+    
+    const params: any = {
+      page: filtros.page || 0,
+      size: filtros.size || 20,
+      sort: 'nome',
+      direction: 'asc'
+    };
+    
+    if (filtros.termo && filtros.termo.length > 0) {
+      params.nome = filtros.termo;
+      if (/^\d+$/.test(filtros.termo)) {
+        params.codigoRm = filtros.termo;  // Busca por código RM também
+      }
+    }
+    
+    if (filtros.ativo !== undefined) {
+      params.status = filtros.ativo ? 'ATIVO' : 'INATIVO';
+    } else {
+      params.status = 'ATIVO';
+    }
+    
+    console.log('📤 [produtoService] Parâmetros listagem simplificada:', params);
+    
+    try {
+      const response = await produtoAPI.listarProdutos(params);
+      
+      let dataParaRetornar;
+      
+      if (response && typeof response === 'object') {
+        if ('content' in response) {
+          dataParaRetornar = response;
+        } else if (response.data && 'content' in response.data) {
+          dataParaRetornar = response.data;
+        } else if (Array.isArray(response)) {
+          dataParaRetornar = {
+            content: response,
+            totalElements: response.length,
+            totalPages: 1,
+            size: response.length,
+            number: 0,
+            first: true,
+            last: true,
+            empty: response.length === 0
+          };
+        } else {
+          dataParaRetornar = {
+            content: [],
+            totalElements: 0,
+            totalPages: 0,
+            size: 20,
+            number: 0,
+            first: true,
+            last: true,
+            empty: true
+          };
+        }
+      } else {
+        dataParaRetornar = {
+          content: [],
+          totalElements: 0,
+          totalPages: 0,
+          size: 20,
+          number: 0,
+          first: true,
+          last: true,
+          empty: true
+        };
+      }
+      
+      // 🔥 GARANTIR QUE O CODIGO_RM ESTÁ SENDO RETORNADO
+      console.log('✅ [produtoService] Primeiro produto retornado:', dataParaRetornar.content?.[0]);
+      console.log('✅ [produtoService] codigo_rm do primeiro:', dataParaRetornar.content?.[0]?.codigoRm);
+      
+      return dataParaRetornar;
+      
+    } catch (error) {
+      console.error('❌ [produtoService] Erro ao listar produtos simplificado:', error);
+      return {
+        content: [],
+        totalElements: 0,
+        totalPages: 0,
+        size: 20,
+        number: 0,
+        first: true,
+        last: true,
+        empty: true
+      };
+    }
+  },
+
   async excluir(id: number): Promise<void> {
-    //console.log('🔄 [produtoService] Excluindo produto:', id);
     await produtoAPI.excluirProduto(id);
   },
 
-  // Métodos específicos
+  // ========== MÉTODOS ESPECÍFICOS ==========
+
   async listarFranquiasDisponiveis(): Promise<ProdutoResumoDTO[]> {
-    //console.log('🔄 [produtoService] Buscando franquias disponíveis');
     const response = await produtoAPI.listarFranquiasDisponiveis();
-    //console.log(`✅ [produtoService] ${response.length} franquias encontradas`);
     return response;
   },
 
   async listarProdutosComFranquia(): Promise<ProdutoResumoDTO[]> {
-    //console.log('🔄 [produtoService] Buscando produtos com franquia');
     const response = await produtoAPI.listarProdutosComFranquia();
-    //console.log(`✅ [produtoService] ${response.length} produtos com franquia encontrados`);
     return response;
   },
 
   async listarProdutosSPC(): Promise<ProdutoResumoDTO[]> {
-    //console.log('🔄 [produtoService] Buscando produtos SPC');
     const response = await produtoAPI.listarProdutosSPC();
-    //console.log(`✅ [produtoService] ${response.length} produtos SPC encontrados`);
     return response;
   },
 
   async listarProdutosMix(): Promise<ProdutoResumoDTO[]> {
-    //console.log('🔄 [produtoService] Buscando produtos MIX');
     const response = await produtoAPI.listarProdutosMix();
-    //console.log(`✅ [produtoService] ${response.length} produtos MIX encontrados`);
     return response;
   },
 
   async listarProdutosAtivos(): Promise<ProdutoResumoDTO[]> {
-    //console.log('🔄 [produtoService] Buscando produtos ativos');
     const response = await produtoAPI.listarProdutosAtivos();
-    //console.log(`✅ [produtoService] ${response.length} produtos ativos encontrados`);
     return response;
   },
 
   async getFranquiasDoProduto(produtoId: number): Promise<ProdutoResumoDTO[]> {
-    //console.log('🔄 [produtoService] Buscando franquias do produto:', produtoId);
     const response = await produtoAPI.getFranquiasDoProduto(produtoId);
-    //console.log(`✅ [produtoService] ${response.length} franquias encontradas para produto ${produtoId}`);
     return response;
   },
 
   async getProdutosRelacionados(produtoId: number): Promise<ProdutoResumoDTO[]> {
-    //console.log('🔄 [produtoService] Buscando produtos relacionados:', produtoId);
     const response = await produtoAPI.getProdutosRelacionados(produtoId);
-    //console.log(`✅ [produtoService] ${response.length} produtos relacionados encontrados`);
     return response;
   },
 
   async adicionarFranquia(produtoId: number, franquiaId: number): Promise<void> {
-    //console.log(`🔄 [produtoService] Adicionando franquia ${franquiaId} ao produto ${produtoId}`);
     const { default: api } = await import('./api');
     await api.post(`/produtos/${produtoId}/franquias/${franquiaId}`);
-    //console.log(`✅ [produtoService] Franquia ${franquiaId} adicionada ao produto ${produtoId}`);
   },
 
   async removerFranquia(produtoId: number, franquiaId: number): Promise<void> {
-    //console.log(`🔄 [produtoService] Removendo franquia ${franquiaId} do produto ${produtoId}`);
     const { default: api } = await import('./api');
     await api.delete(`/produtos/${produtoId}/franquias/${franquiaId}`);
-    //console.log(`✅ [produtoService] Franquia ${franquiaId} removida do produto ${produtoId}`);
   },
 
   async getEstatisticas(): Promise<any> {
-    //console.log('🔄 [produtoService] Buscando estatísticas');
     const response = await produtoAPI.getEstatisticas();
-    //console.log('✅ [produtoService] Estatísticas recebidas:', response);
     return response;
   },
 
   async getProdutosParaFaturamento(): Promise<ProdutoResumoDTO[]> {
-    //console.log('🔄 [produtoService] Buscando produtos para faturamento');
     const response = await produtoAPI.getProdutosParaFaturamento();
-    //console.log(`✅ [produtoService] ${response.length} produtos para faturamento encontrados`);
     return response;
   },
 
   async healthCheck(): Promise<any> {
     try {
-      //console.log('🔄 [produtoService] Health check');
       const response = await produtoAPI.healthCheck();
-      //console.log('✅ [produtoService] Health check OK:', response);
       return response;
     } catch (error) {
-      //console.error('❌ [produtoService] Health check falhou:', error);
       return { status: 'DOWN', error: error.message };
     }
   },
 
-  // Método de teste - NOVO
+  // ========== MÉTODOS DE TESTE ==========
+
   async testeAPI(): Promise<any> {
     try {
-      //console.log('🧪 [produtoService] Testando conexão com API...');
-      
-      // Teste 1: Endpoint direto (sem service)
       const { default: api } = await import('./api');
       const respostaDireta = await api.get('/produtos', { 
         params: { page: 0, size: 5, sort: 'nome' }
       });
-      //console.log('🧪 [produtoService] Resposta direta:', respostaDireta.data);
-      
-      // Teste 2: Usando o produtoAPI
       const respostaAPI = await produtoAPI.listarProdutos({ page: 0, size: 5 });
-      //console.log('🧪 [produtoService] Resposta via produtoAPI:', respostaAPI);
       
       return {
         direta: respostaDireta.data,
@@ -332,7 +375,6 @@ export const produtoService = {
         status: 'OK'
       };
     } catch (error: any) {
-      //console.error('❌ [produtoService] Teste falhou:', error);
       return {
         status: 'ERROR',
         message: error.message,
@@ -341,24 +383,19 @@ export const produtoService = {
     }
   },
 
-  // Método de teste de conexão
   async testConnection(): Promise<string> {
     try {
-      //console.log('🔌 [produtoService] Testando conexão...');
       const health = await this.healthCheck();
-      
-      // Tentar listar alguns produtos também
       const produtos = await this.listar({ page: 0, size: 1 });
-      
       return `✅ Conexão OK - Status: ${health.status}, Total Produtos: ${produtos.totalElements}`;
     } catch (error: any) {
-      //console.error('❌ [produtoService] Falha na conexão:', error);
       return `❌ Falha na conexão: ${error.message}`;
     }
   }
 };
 
-// Opções para selects (mantenha como estava)
+// ========== OPÇÕES PARA SELECTS ==========
+
 export const produtoOpcoes = {
   status: [
     { value: 'ATIVO', label: 'Ativo' },
