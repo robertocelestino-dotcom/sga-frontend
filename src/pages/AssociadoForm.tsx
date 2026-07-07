@@ -2692,7 +2692,7 @@ const AssociadoForm: React.FC = () => {
         {/* Faturamento Mínimo */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Faturamento Mínimo (R$)
+            Valor Plano R$ (R$)
           </label>
           <input
             type="number"
