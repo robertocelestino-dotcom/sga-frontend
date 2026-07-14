@@ -99,17 +99,36 @@ class NotificacaoService {
   }
 
   // 🔥 NOVO: Buscar agrupado por período
-  async buscarAgrupadasPorPeriodo(dataInicio: string, dataFim: string, codigoAssociado?: string): Promise<any[]> {
+  /**
+ * 🔥 BUSCA NOTIFICAÇÕES AGRUPADAS POR PERÍODO - TABELA LOCAL (RÁPIDO)
+ * @param dataInicio - Formato: dd/MM/yyyy (ex: 26/05/2026)
+ * @param dataFim - Formato: dd/MM/yyyy (ex: 25/06/2026)
+ * @param codigoAssociado - Código SPC do associado (opcional)
+ * @param signal - AbortSignal para cancelar a requisição
+ */
+  async buscarAgrupadasPorPeriodo(
+    dataInicio: string, 
+    dataFim: string, 
+    codigoAssociado?: string,
+    signal?: AbortSignal
+  ): Promise<NotificacaoSumarizada[]> {
     const params: any = { dataInicio, dataFim };
     if (codigoAssociado) params.codigoAssociado = codigoAssociado;
     
     try {
-        const response = await api.get('/notificacoes/agrupadas-por-periodo', { params });
-        console.log('📊 Dados agrupados por período recebidos:', response.data);
-        return response.data || [];
+      const response = await api.get('/notificacoes/agrupadas-por-periodo', { 
+        params,
+        signal // 🔥 ADICIONAR SIGNAL PARA CANCELAR
+      });
+      return response.data || [];
     } catch (error: any) {
-        console.error('❌ Erro ao buscar notificações agrupadas por período:', error);
+      // 🔥 NÃO TRATAR ERRO DE CANCELAMENTO COMO ERRO
+      if (error.name === 'CanceledError' || error.code === 'ERR_CANCELED') {
+        console.log('⏹️ Requisição cancelada');
         return [];
+      }
+      console.error('❌ Erro ao buscar notificações agrupadas por período:', error);
+      return [];
     }
   }
 
@@ -122,6 +141,22 @@ class NotificacaoService {
     return response.data;
   }
 
+  /**
+   * 🔥 DESFAZER SINCRONIZAÇÃO
+   * Remove os dados sincronizados da tabela local
+   */
+  async desfazerSincronizacao(dataInicio: string, dataFim: string, codigoAssociado?: string): Promise<any> {
+    const params: any = { dataInicio, dataFim };
+    if (codigoAssociado) params.codigoAssociado = codigoAssociado;
+    
+    try {
+      const response = await api.post('/notificacoes/desfazer-sincronizacao', null, { params });
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Erro ao desfazer sincronização:', error);
+      throw error;
+    }
+  }
 
 }
 
