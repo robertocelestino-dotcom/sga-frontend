@@ -1,6 +1,6 @@
 // src/pages/ProcessarFaturamento.tsx
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import api from '../services/api';
 import { useMessage } from '../providers/MessageProvider';
 import BreadCrumb from '../components/BreadCrumb';
@@ -17,6 +17,18 @@ interface ProcessamentoConfig {
   integrarRM: boolean;
 }
 
+interface ProcessamentoStatus {
+  taskId: string;
+  status: string;
+  progresso: number;
+  mensagem: string;
+  dataInicio: string;
+  dataFim: string;
+  resultado: any;
+  totalAssociados: number;
+  usuario: string;
+}
+
 interface ResumoFaturamento {
   totalAssociados: number;
   totalFaturas: number;
@@ -25,11 +37,18 @@ interface ResumoFaturamento {
     associadoId: number;
     associadoNome: string;
     valor: number;
+    itens?: Array<{
+      codigoProduto: string;
+      descricao: string;
+      quantidade: number;
+      valorUnitario: number;
+      valorTotal: number;
+    }>;
   }>;
 }
 
-// Limite para mostrar detalhes individuais
 const LIMITE_DETALHES = 100;
+const MAX_TENTATIVAS_POLLING = 120;
 
 const ProcessarFaturamento: React.FC = () => {
   const { showToast } = useMessage();
@@ -43,28 +62,78 @@ const ProcessarFaturamento: React.FC = () => {
   const [resumo, setResumo] = useState<ResumoFaturamento | null>(null);
   const [configSelecionada, setConfigSelecionada] = useState<ProcessamentoConfig | null>(null);
   const [associadosSelecionados, setAssociadosSelecionados] = useState<number[]>([]);
+  const [modoExecucao, setModoExecucao] = useState<'simular' | 'processar'>('simular');
   
-  // Referência para timeout de mensagem longa
-  const timeoutLongaRef = useRef<NodeJS.Timeout | null>(null);
+  // 🔥 ESTADOS PARA PROCESSAMENTO ASSÍNCRONO
+  const [taskId, setTaskId] = useState<string | null>(null);
+  const [percentual, setPercentual] = useState(0);
+  const [statusProcessamento, setStatusProcessamento] = useState<string>('');
+  const [tentativasPolling, setTentativasPolling] = useState(0);
+  const [tempoRestante, setTempoRestante] = useState<string>('');
+  const [cancelando, setCancelando] = useState(false);
+  const [processandoAssincrono, setProcessandoAssincrono] = useState(false);
   
-  // Buscar resumo da simulação antes de confirmar
-  const handleSelecionarAssociados = useCallback(async (associadosIds: number[], config: ProcessamentoConfig) => {
-    console.log('📌 handleSelecionarAssociados - Iniciando');
+  // 🔥 REF PARA POLLING
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, []);
+
+  // 🔥 CANCELAR PROCESSAMENTO
+  const cancelarProcessamento = async () => {
+    if (!taskId) return;
+    
+    if (!confirm('⚠️ Tem certeza que deseja cancelar o processamento?')) {
+      return;
+    }
+    
+    setCancelando(true);
+    
+    try {
+      const response = await api.post(`/faturamento/processamento-cancelar/${taskId}`);
+      
+      if (response.data.success) {
+        showToast('⏹️ Processamento cancelado com sucesso!', 'info');
+        setStatusProcessamento('CANCELADO');
+        setMensagemLonga('Processamento cancelado pelo usuário');
+        
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
+        
+        setProcessando(false);
+        setProcessandoAssincrono(false);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao cancelar processamento:', error);
+      showToast('⚠️ Erro ao cancelar processamento', 'error');
+    } finally {
+      setCancelando(false);
+    }
+  };
+
+  // 🔥 SIMULAR (NÃO SALVA)
+  const handleSimular = useCallback(async (associadosIds: number[], config: ProcessamentoConfig) => {
+    console.log('📌 SIMULAÇÃO - Iniciando');
     console.log('  - Associados:', associadosIds.length);
     console.log('  - Config:', config);
     
     setAssociadosSelecionados(associadosIds);
     setConfigSelecionada(config);
+    setModoExecucao('simular');
     
     setProcessando(true);
-    setMensagemLonga(null);
-    
-    // Configurar timeout para mostrar mensagem de processamento longo
-    timeoutLongaRef.current = setTimeout(() => {
-      if (processando) {
-        setMensagemLonga('⏳ O processamento está demorando mais que o esperado. Aguarde...');
-      }
-    }, 10000);
+    setMensagemLonga('🔄 Simulando faturamento...');
     
     try {
       const payload = {
@@ -77,11 +146,10 @@ const ProcessarFaturamento: React.FC = () => {
         simular: true
       };
       
-      console.log('📤 Payload simulação:', { ...payload, associadosIds: `${associadosIds.length} IDs` });
+      console.log('📤 Payload simulação:', { ...payload, associadosIds: `${payload.associadosIds.length} IDs` });
       
-      // 🔥 AUMENTAR TIMEOUT PARA 3 MINUTOS
       const response = await api.post('/faturamento/simular', payload, {
-        timeout: 180000 // 3 minutos
+        timeout: 300000
       });
       
       console.log('📥 Resposta simulação:', {
@@ -91,24 +159,21 @@ const ProcessarFaturamento: React.FC = () => {
         quantidadeDetalhes: response.data.detalhes?.length || 0
       });
       
-      // 🔥 LIMITAR DETALHES QUANDO MUITOS ASSOCIADOS
-      const muitosAssociados = associadosIds.length > LIMITE_DETALHES;
+      // 🔥 CRIAR RESUMO COM ITENS
       let detalhes = [];
-      
-      if (!muitosAssociados && response.data.detalhes) {
+      if (response.data.detalhes && response.data.detalhes.length > 0) {
         detalhes = response.data.detalhes.map((det: any) => ({
           associadoId: det.associadoId,
           associadoNome: det.associadoNome,
-          valor: det.valorNota || 0
+          valor: det.valorNota || 0,
+          itens: det.itensFatura?.map((item: any) => ({
+            codigoProduto: item.codigoProduto || item.codigoProduto,
+            descricao: item.descricao || item.descricao,
+            quantidade: item.quantidade || 1,
+            valorUnitario: item.valorUnitario || 0,
+            valorTotal: item.valorTotal || 0
+          })) || []
         }));
-      } else if (response.data.detalhes && response.data.detalhes.length > 0) {
-        // Mostrar apenas os primeiros 100 detalhes
-        detalhes = response.data.detalhes.slice(0, LIMITE_DETALHES).map((det: any) => ({
-          associadoId: det.associadoId,
-          associadoNome: det.associadoNome,
-          valor: det.valorNota || 0
-        }));
-        console.log(`📊 Detalhes limitados: exibindo ${detalhes.length} de ${response.data.detalhes.length} associados`);
       }
       
       setResumo({
@@ -119,195 +184,231 @@ const ProcessarFaturamento: React.FC = () => {
       });
       
       setModalSelecaoAberta(false);
-      setModalConfirmacaoAberta(true);
-      console.log('✅ Modal de confirmação aberto');
-      
-    } catch (error: any) {
-      console.error('❌ Erro ao obter resumo:', error);
-      
-      // 🔥 TRATAR TIMEOUT ESPECIFICAMENTE
-      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-        showToast('⏰ O processamento está demorando muito. Tente com menos associados ou contate o suporte.', 'error');
-      } else if (error.response?.data?.message) {
-        showToast(error.response.data.message, 'error');
-      } else {
-        showToast('Erro ao obter resumo do faturamento. Tente novamente.', 'error');
-      }
-    } finally {
-      if (timeoutLongaRef.current) {
-        clearTimeout(timeoutLongaRef.current);
-        timeoutLongaRef.current = null;
-      }
-      setProcessando(false);
-      setMensagemLonga(null);
-    }
-  }, [processando, showToast]);
-  
-  // Confirmar e processar faturamento
-  const handleConfirmarProcessamento = useCallback(async (dataEmissao: string, dataVencimento: string, observacao: string) => {
-    console.log('📌 handleConfirmarProcessamento - Iniciando');
-    console.log('  - dataEmissao:', dataEmissao);
-    console.log('  - dataVencimento:', dataVencimento);
-    console.log('  - observacao:', observacao);
-    console.log('  - associadosSelecionados:', associadosSelecionados.length);
-    
-    setModalConfirmacaoAberta(false);
-    setProcessando(true);
-    setMensagemLonga(null);
-    
-    // Configurar timeout para mensagem de processamento longo
-    timeoutLongaRef.current = setTimeout(() => {
-      if (processando) {
-        setMensagemLonga('⏳ Gerando faturas... Isso pode levar alguns minutos.');
-      }
-    }, 15000);
-    
-    try {
-      const payload = {
-        associadosIds: associadosSelecionados,
-        mesReferencia: configSelecionada?.mesReferencia,
-        anoReferencia: configSelecionada?.anoReferencia,
-        gerarNotas: true,
-        integrarRM: configSelecionada?.integrarRM || false,
-        reguaId: configSelecionada?.reguaId,
-        dataEmissao,
-        dataVencimento,
-        observacao,
-        simular: false
-      };
-      
-      console.log('📤 Payload do processamento:', { 
-        ...payload, 
-        associadosIds: `${payload.associadosIds.length} IDs` 
-      });
-      
-      // 🔥 AUMENTAR TIMEOUT PARA 5 MINUTOS
-      const response = await api.post('/faturamento/processar', payload, {
-        timeout: 300000 // 5 minutos
-      });
-      
-      console.log('📥 Resposta do processamento:', response.data);
-      
       setResultado(response.data);
-      setAssociadosSelecionados([]);
-      
-      const processados = response.data.associadosProcessados || 0;
-      const faturas = response.data.totalNotasGeradas || 0;
-      const jaFaturados = response.data.associadosJaFaturados || 0;
-      const erros = response.data.associadosComErro || 0;
-      
-      // Mostrar toast com resultado
-      if (faturas > 0) {
-        if (jaFaturados > 0) {
-          showToast(`✅ Processamento concluído! ${processados} associado(s) processados, ${faturas} fatura(s) geradas. ⚠️ ${jaFaturados} associado(s) já estavam faturados.${erros > 0 ? ` ❌ ${erros} erro(s).` : ''}`, 'warning');
-        } else {
-          showToast(`✅ Processamento concluído! ${processados} associado(s) processados, ${faturas} fatura(s) geradas.${erros > 0 ? ` ⚠️ ${erros} erro(s).` : ''}`, 'success');
-        }
-      } else if (processados === 0 && faturas === 0) {
-        showToast(`⚠️ Nenhuma fatura foi gerada. Verifique se os associados têm notas no período.`, 'warning');
-      } else {
-        showToast(`✅ Processamento finalizado! ${processados} associados processados.`, 'info');
-      }
-      
       setModalResultadoAberta(true);
       
-    } catch (error: any) {
-      console.error('❌ Erro no processamento:', error);
-      
-      // 🔥 TRATAR TIMEOUT ESPECIFICAMENTE
-      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-        showToast('⏰ O processamento está demorando muito. Tente com menos associados ou contate o suporte.', 'error');
+      const faturas = response.data.totalNotasGeradas || 0;
+      if (faturas === 0) {
+        showToast('⚠️ Simulação: Nenhuma fatura será gerada.', 'warning');
       } else {
-        const errorMsg = error.response?.data?.message || 
-                         error.response?.data?.error || 
-                         error.message || 
-                         'Erro ao processar faturamento';
-        showToast(errorMsg, 'error');
+        showToast(`📊 Simulação concluída! ${faturas} fatura(s) seriam geradas.`, 'info');
       }
       
-      // Se houve erro, voltar para seleção
-      setModalSelecaoAberta(true);
-    } finally {
-      if (timeoutLongaRef.current) {
-        clearTimeout(timeoutLongaRef.current);
-        timeoutLongaRef.current = null;
-      }
       setProcessando(false);
-      setMensagemLonga(null);
-    }
-  }, [associadosSelecionados, configSelecionada, processando, showToast]);
-  
-  // Função para voltar à seleção de associados
-  const handleVoltarSelecao = useCallback(() => {
-    setModalResultadoAberta(false);
-    setModalSelecaoAberta(true);
-    setConfigSelecionada(null);
-    setAssociadosSelecionados([]);
-  }, []);
-  
-  // Simular manualmente (apenas visualização)
-  const handleSimularManual = useCallback(async (associadosIds: number[], config: ProcessamentoConfig) => {
-    console.log('📌 handleSimularManual - Iniciando');
-    console.log('  - Associados:', associadosIds.length);
-    
-    setModalSelecaoAberta(false);
-    setProcessando(true);
-    setMensagemLonga(null);
-    
-    timeoutLongaRef.current = setTimeout(() => {
-      if (processando) {
-        setMensagemLonga('⏳ Simulando... Aguarde.');
+      
+    } catch (error: any) {
+      console.error('❌ Erro na simulação:', error);
+      
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        showToast('⏰ A simulação está demorando muito. Tente com menos associados.', 'warning');
+      } else {
+        showToast('❌ Erro ao simular faturamento', 'error');
       }
-    }, 10000);
+      
+      setProcessando(false);
+    }
+  }, [showToast]);
+
+  // 🔥 PROCESSAR FATURAMENTO (SALVA)
+  const handleProcessar = useCallback(async (associadosIds: number[], config: ProcessamentoConfig) => {
+    console.log('📌 PROCESSAR FATURAMENTO - Iniciando');
+    console.log('  - Associados:', associadosIds.length);
+    console.log('  - Config:', config);
+    
+    setAssociadosSelecionados(associadosIds);
+    setConfigSelecionada(config);
+    setModoExecucao('processar');
+    
+    setProcessando(true);
+    setMensagemLonga('🔄 Iniciando processamento...');
     
     try {
       const payload = {
         associadosIds,
         mesReferencia: config.mesReferencia,
         anoReferencia: config.anoReferencia,
-        gerarNotas: false,
-        integrarRM: false,
+        gerarNotas: true,
+        integrarRM: config.integrarRM || false,
         reguaId: config.reguaId,
-        simular: true
+        simular: false
       };
       
-      console.log('📤 Payload simulação manual:', { ...payload, associadosIds: `${payload.associadosIds.length} IDs` });
+      console.log('📤 Payload processamento:', { ...payload, associadosIds: `${payload.associadosIds.length} IDs` });
       
-      const response = await api.post('/faturamento/simular', payload, {
-        timeout: 180000
-      });
+      // 🔥 CHAMAR PROCESSAMENTO ASSÍNCRONO
+      const response = await api.post('/faturamento/processar-assincrono', payload);
       
-      console.log('📥 Resposta simulação manual:', response.data);
-      
-      setResultado(response.data);
-      setModalResultadoAberta(true);
-      
-      const faturas = response.data.totalNotasGeradas || 0;
-      if (faturas === 0) {
-        showToast('⚠️ Simulação concluída: Nenhuma fatura será gerada para os associados selecionados.', 'warning');
-      } else {
-        showToast(`📊 Simulação concluída! ${faturas} fatura(s) seriam geradas no valor total de R$ ${(response.data.valorTotalDebito || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`, 'info');
+      if (!response.data.success) {
+        showToast('❌ Erro ao iniciar processamento', 'error');
+        setProcessando(false);
+        return;
       }
+      
+      const taskId = response.data.taskId;
+      const totalAssociados = response.data.totalAssociados || 0;
+      
+      setTaskId(taskId);
+      setMensagemLonga(`Processamento iniciado! ${totalAssociados} associados em fila...`);
+      setStatusProcessamento('PROCESSANDO');
+      setPercentual(5);
+      setProcessandoAssincrono(true);
+      
+      // 🔥 INICIAR POLLING
+      let tentativas = 0;
+      
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+      
+      pollingIntervalRef.current = setInterval(async () => {
+        tentativas++;
+        setTentativasPolling(tentativas);
+        
+        try {
+          const statusResponse = await api.get(`/faturamento/processamento-status/${taskId}`);
+          const status: ProcessamentoStatus = statusResponse.data;
+          
+          setPercentual(status.progresso);
+          setMensagemLonga(`Processando... ${status.progresso}% - ${status.mensagem}`);
+          setStatusProcessamento(status.status);
+          
+          if (status.progresso > 0 && status.dataInicio) {
+            const inicio = new Date(status.dataInicio);
+            const agora = new Date();
+            const decorrido = Math.floor((agora.getTime() - inicio.getTime()) / 1000);
+            const estimadoTotal = Math.floor(decorrido / (status.progresso / 100));
+            const estimadoRestante = Math.max(0, estimadoTotal - decorrido);
+            
+            if (estimadoRestante > 0) {
+              const mins = Math.floor(estimadoRestante / 60);
+              const segs = estimadoRestante % 60;
+              setTempoRestante(`${mins}m ${segs}s`);
+            }
+          }
+          
+          if (status.status === 'CONCLUIDO') {
+            setMensagemLonga('✅ Processamento concluído!');
+            setPercentual(100);
+            setStatusProcessamento('CONCLUIDO');
+            
+            if (pollingIntervalRef.current) {
+              clearInterval(pollingIntervalRef.current);
+              pollingIntervalRef.current = null;
+            }
+            
+            setResultado(status.resultado);
+            setModalResultadoAberta(true);
+            
+            const processados = status.resultado?.associadosProcessados || 0;
+            const faturas = status.resultado?.totalNotasGeradas || 0;
+            const jaFaturados = status.resultado?.associadosJaFaturados || 0;
+            const erros = status.resultado?.associadosComErro || 0;
+            
+            if (faturas > 0) {
+              if (jaFaturados > 0) {
+                showToast(`✅ Processamento concluído! ${processados} associados, ${faturas} faturas. ⚠️ ${jaFaturados} já faturados.`, 'warning');
+              } else {
+                showToast(`✅ Processamento concluído! ${processados} associados, ${faturas} faturas.`, 'success');
+              }
+            } else {
+              showToast(`⚠️ Nenhuma fatura foi gerada.`, 'warning');
+            }
+            
+            setProcessando(false);
+            setProcessandoAssincrono(false);
+            return;
+            
+          } else if (status.status === 'ERRO') {
+            setMensagemLonga(`❌ ${status.mensagem}`);
+            setStatusProcessamento('ERRO');
+            
+            if (pollingIntervalRef.current) {
+              clearInterval(pollingIntervalRef.current);
+              pollingIntervalRef.current = null;
+            }
+            
+            showToast(`❌ ${status.mensagem}`, 'error');
+            setProcessando(false);
+            setProcessandoAssincrono(false);
+            return;
+            
+          } else if (status.status === 'CANCELADO') {
+            setMensagemLonga('⏹️ Processamento cancelado');
+            setStatusProcessamento('CANCELADO');
+            
+            if (pollingIntervalRef.current) {
+              clearInterval(pollingIntervalRef.current);
+              pollingIntervalRef.current = null;
+            }
+            
+            setProcessando(false);
+            setProcessandoAssincrono(false);
+            return;
+          }
+          
+        } catch (error) {
+          console.error('❌ Erro ao verificar status:', error);
+          
+          if (tentativas >= MAX_TENTATIVAS_POLLING) {
+            if (pollingIntervalRef.current) {
+              clearInterval(pollingIntervalRef.current);
+              pollingIntervalRef.current = null;
+            }
+            
+            setMensagemLonga('⏰ Tempo limite excedido');
+            setStatusProcessamento('TIMEOUT');
+            showToast('⏰ O processamento está demorando muito. Verifique mais tarde.', 'warning');
+            setProcessando(false);
+            setProcessandoAssincrono(false);
+          }
+        }
+      }, 5000);
       
     } catch (error: any) {
-      console.error('❌ Erro na simulação:', error);
+      console.error('❌ Erro no processamento:', error);
+      setMensagemLonga('❌ Erro no processamento');
+      setStatusProcessamento('ERRO');
       
       if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-        showToast('⏰ A simulação está demorando muito. Tente com menos associados.', 'error');
+        showToast('⏰ O processamento está demorando muito.', 'warning');
       } else {
-        const errorMsg = error.response?.data?.message || error.response?.data?.error || 'Erro ao simular faturamento';
-        showToast(errorMsg, 'error');
+        showToast('❌ Erro ao processar faturamento', 'error');
       }
-    } finally {
-      if (timeoutLongaRef.current) {
-        clearTimeout(timeoutLongaRef.current);
-        timeoutLongaRef.current = null;
-      }
+      
       setProcessando(false);
-      setMensagemLonga(null);
+      setProcessandoAssincrono(false);
     }
-  }, [processando, showToast]);
-  
+  }, [showToast]);
+
+  // 🔥 CONFIRMAR PROCESSAMENTO (APÓS SIMULAÇÃO)
+  const handleConfirmarProcessamento = useCallback(async (dataEmissao: string, dataVencimento: string, observacao: string) => {
+    // 🔥 USAR OS ASSOCIADOS SELECIONADOS NA SIMULAÇÃO
+    if (associadosSelecionados.length === 0 || !configSelecionada) {
+      showToast('⚠️ Nenhum associado selecionado.', 'warning');
+      return;
+    }
+    
+    // 🔥 CHAMAR PROCESSAMENTO REAL
+    await handleProcessar(associadosSelecionados, configSelecionada);
+  }, [associadosSelecionados, configSelecionada, handleProcessar]);
+
+  // 🔥 VOLTAR PARA SELEÇÃO
+  const handleVoltarSelecao = useCallback(() => {
+    setModalResultadoAberta(false);
+    setModalSelecaoAberta(true);
+    setConfigSelecionada(null);
+    setAssociadosSelecionados([]);
+    setTaskId(null);
+    setPercentual(0);
+    setStatusProcessamento('');
+    setTempoRestante('');
+  }, []);
+
+  // 🔥 SIMULAR MANUALMENTE (BOTÃO DO MODAL)
+  const handleSimularManual = useCallback(async (associadosIds: number[], config: ProcessamentoConfig) => {
+    await handleSimular(associadosIds, config);
+  }, [handleSimular]);
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <BreadCrumb atual="Processar Faturamento" />
@@ -325,7 +426,8 @@ const ProcessarFaturamento: React.FC = () => {
         <div className="flex justify-center">
           <button
             onClick={() => setModalSelecaoAberta(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-xl shadow-lg transition-colors flex items-center gap-3 text-lg"
+            disabled={processando}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-xl shadow-lg transition-colors flex items-center gap-3 text-lg disabled:bg-gray-400"
           >
             <span className="text-2xl">🚀</span>
             Iniciar Processamento de Faturamento
@@ -354,8 +456,8 @@ const ProcessarFaturamento: React.FC = () => {
       <ModalSelecaoAssociados
         isOpen={modalSelecaoAberta}
         onClose={() => setModalSelecaoAberta(false)}
-        onConfirm={handleSelecionarAssociados}
-        onSimulate={handleSimularManual}
+        onConfirm={handleProcessar}        // 🔥 PROCESSAR
+        onSimulate={handleSimularManual}   // 🔥 SIMULAR
       />
       
       <ModalConfirmacaoProcessamento
@@ -373,18 +475,52 @@ const ProcessarFaturamento: React.FC = () => {
         resultado={resultado}
       />
       
-      {/* Loading Global */}
+      {/* 🔥 LOADING GLOBAL */}
       {processando && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-8 text-center max-w-md">
+          <div className="bg-white rounded-xl p-8 text-center max-w-lg w-full">
             <Loading size="large" />
-            <p className="mt-4 text-gray-600 font-semibold">Processando faturamento...</p>
-            <p className="text-sm text-gray-400 mt-2">Isso pode levar alguns segundos</p>
-            {mensagemLonga && (
-              <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
-                <p className="text-sm text-yellow-700">{mensagemLonga}</p>
-                <p className="text-xs text-yellow-500 mt-1">Não feche esta janela</p>
+            <p className="mt-4 text-gray-600 font-semibold">
+              {modoExecucao === 'simular' ? '🔍 Simulando faturamento...' : 
+               processandoAssincrono ? '🔄 Processando faturamento em background...' : 
+               '⏳ Aguarde...'}
+            </p>
+            
+            {processandoAssincrono && modoExecucao === 'processar' && (
+              <div className="mt-4">
+                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                  <div 
+                    className={`h-2.5 rounded-full transition-all duration-500 ${
+                      statusProcessamento === 'ERRO' ? 'bg-red-600' :
+                      statusProcessamento === 'CANCELADO' ? 'bg-gray-600' :
+                      statusProcessamento === 'CONCLUIDO' ? 'bg-green-600' :
+                      'bg-blue-600'
+                    }`}
+                    style={{ width: `${percentual}%` }}
+                  ></div>
+                </div>
+                <div className="mt-2 flex justify-between text-xs text-gray-500">
+                  <span>0%</span>
+                  <span>{percentual}%</span>
+                  <span>100%</span>
+                </div>
               </div>
+            )}
+            
+            <p className="text-sm text-gray-500 mt-2">{mensagemLonga || 'Processando...'}</p>
+            
+            {processandoAssincrono && modoExecucao === 'processar' && tempoRestante && statusProcessamento === 'PROCESSANDO' && (
+              <p className="text-xs text-blue-500 mt-1">⏱️ Tempo estimado restante: ~{tempoRestante}</p>
+            )}
+            
+            {processandoAssincrono && modoExecucao === 'processar' && taskId && (statusProcessamento === 'PROCESSANDO' || statusProcessamento === 'INICIANDO') && (
+              <button
+                onClick={cancelarProcessamento}
+                disabled={cancelando}
+                className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 text-sm transition-colors"
+              >
+                {cancelando ? 'Cancelando...' : '⏹️ Cancelar Processamento'}
+              </button>
             )}
           </div>
         </div>

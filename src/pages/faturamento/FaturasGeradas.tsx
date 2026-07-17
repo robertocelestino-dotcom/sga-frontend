@@ -44,7 +44,7 @@ const FaturasGeradas: React.FC = () => {
   
   // 🔥 MODAL DE CONFIRMAÇÃO PARA EXCLUSÃO INDIVIDUAL
   const [modalConfirmacaoAberta, setModalConfirmacaoAberta] = useState(false);
-  const [faturaParaExcluir, setFaturaParaExcluir] = useState<{ id: number } | null>(null);
+  const [faturaParaExcluir, setFaturaParaExcluir] = useState<{ id: number; status: string; numeroFatura: string } | null>(null);
   
   // 🔥 MODAL DE CONFIRMAÇÃO PARA EXCLUSÃO EM MASSA
   const [modalConfirmacaoMassaAberta, setModalConfirmacaoMassaAberta] = useState(false);
@@ -61,11 +61,11 @@ const FaturasGeradas: React.FC = () => {
   const [filtroRegua, setFiltroRegua] = useState<number | undefined>(undefined);
   const [reguas, setReguas] = useState<any[]>([]);
   
-  // Paginação
+  // Paginação - 10 por página
   const [pagina, setPagina] = useState(0);
   const [totalPaginas, setTotalPaginas] = useState(0);
   const [totalItens, setTotalItens] = useState(0);
-  const pageSize = 15;
+  const pageSize = 10;
   
   // 🔥 CARREGAR RÉGUAS
   useEffect(() => {
@@ -144,48 +144,41 @@ const FaturasGeradas: React.FC = () => {
     setSelecionarTodos(novosSelecionados.size === totalFaturas && totalFaturas > 0);
   };
   
-  // Selecionar TODAS as faturas
-  const toggleSelecionarTodos = () => {
-    if (selecionarTodos) {
-      setFaturasSelecionadas(new Set());
-      setDadosFaturasSelecionadas([]);
-      setSelecionarTodos(false);
-    } else {
-      carregarTodasFaturasIds();
-    }
-  };
-  
-  // Carregar todos os IDs e dados das faturas
+  // 🔥 CARREGAR TODAS AS FATURAS COM PAGINAÇÃO RECURSIVA
   const carregarTodasFaturasIds = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await faturamentoService.listarFaturas(0, 1000, {
+      const params = {
         numeroFatura: filtroNumero || undefined,
         associadoNome: filtroAssociado || undefined,
         status: filtroStatus || undefined,
         mes: filtroMes,
         ano: filtroAno,
         reguaId: filtroRegua
-      });
+      };
       
-      const todasFaturas = response.content.map((f: any) => ({
-        id: f.id,
-        numeroFatura: f.numeroFatura,
-        valorTotal: f.valorTotal || 0,
-        associadoNome: f.associadoNome,
-        dataEmissao: f.dataEmissao,
-        dataVencimento: f.dataVencimento,
-        status: f.status,
-        cnpjCpf: f.cnpjCpf,
-        associadoId: f.associadoId,
-        reguaNome: f.reguaNome,
-        reguaId: f.reguaId,
-        mesReferencia: f.mesReferencia,
-        anoReferencia: f.anoReferencia,
-        criadoEm: f.criadoEm,
-        processadoRm: f.processadoRm,
-        observacao: f.observacao
-      }));
+      const primeiraPagina = await faturamentoService.listarFaturas(0, pageSize, params);
+      const totalElements = primeiraPagina.totalElements || 0;
+      
+      if (totalElements === 0) {
+        showToast('Nenhuma fatura encontrada', 'info');
+        setLoading(false);
+        return;
+      }
+      
+      const totalPaginasParaCarregar = Math.ceil(totalElements / pageSize);
+      const todasFaturas: Fatura[] = [];
+      
+      for (let page = 0; page < totalPaginasParaCarregar; page++) {
+        const response = await faturamentoService.listarFaturas(page, pageSize, params);
+        todasFaturas.push(...response.content);
+        
+        if (page % 5 === 0) {
+          console.log(`📊 Carregando faturas: ${page + 1}/${totalPaginasParaCarregar}`);
+        }
+      }
+      
+      console.log(`✅ Total de faturas carregadas: ${todasFaturas.length}`);
       
       const todosIds = todasFaturas.map(f => f.id);
       
@@ -204,17 +197,37 @@ const FaturasGeradas: React.FC = () => {
     }
   }, [filtroNumero, filtroAssociado, filtroStatus, filtroMes, filtroAno, filtroRegua, showToast]);
   
+  // Selecionar TODAS as faturas
+  const toggleSelecionarTodos = () => {
+    if (selecionarTodos) {
+      setFaturasSelecionadas(new Set());
+      setDadosFaturasSelecionadas([]);
+      setSelecionarTodos(false);
+    } else {
+      carregarTodasFaturasIds();
+    }
+  };
+  
   // ========== EXPORTAÇÃO RM ==========
   
-  // Exportar RM
   const handleExportarRm = async (ultimoNumeroRps: number, observacao: string) => {
     setExportandoRm(true);
     try {
       const faturaIds = Array.from(faturasSelecionadas);
       
+      let reguaId = filtroRegua;
+      
+      if (!reguaId && faturaIds.length > 0) {
+        const primeiraFatura = faturas.find(f => f.id === faturaIds[0]);
+        if (primeiraFatura && (primeiraFatura as any).reguaId) {
+          reguaId = (primeiraFatura as any).reguaId;
+          console.log('🔍 Régua obtida da primeira fatura:', reguaId);
+        }
+      }
+      
       console.log('📤 Iniciando exportação RM com metadados para:', faturaIds.length);
       console.log('📤 Último número RPS:', ultimoNumeroRps);
-      console.log('📤 Régua ID:', filtroRegua);
+      console.log('📤 Régua ID:', reguaId);
       
       const mesReferencia = `${filtroAno}-${String(filtroMes).padStart(2, '0')}`;
       
@@ -223,7 +236,7 @@ const FaturasGeradas: React.FC = () => {
       const { blob, metadados } = await faturamentoService.exportarRmMultiplasFaturasComMetadados(
         faturaIds,
         ultimoNumeroRps,
-        filtroRegua,
+        reguaId,
         mesReferencia
       );
       
@@ -304,9 +317,35 @@ const FaturasGeradas: React.FC = () => {
     navigate(`/faturamento/faturas/${id}`);
   };
   
+  // 🔥 FUNÇÃO: Verificar se pode excluir
+  const podeExcluir = (status: string): boolean => {
+    return status === 'PENDENTE' || status === 'SIMULADO';
+  };
+  
+  // 🔥 FUNÇÃO: Obter mensagem de motivo para não excluir
+  const getMotivoNaoExcluir = (status: string): string => {
+    switch (status) {
+      case 'PAGA':
+        return 'Fatura já foi paga';
+      case 'CANCELADA':
+        return 'Fatura já foi cancelada';
+      default:
+        return `Fatura com status: ${status}`;
+    }
+  };
+  
   // 🔥 FUNÇÃO: Abrir modal de confirmação para excluir individual
-  const handleConfirmarExclusao = (id: number) => {
-    setFaturaParaExcluir({ id });
+  const handleConfirmarExclusao = (id: number, status: string, numeroFatura: string) => {
+    if (!podeExcluir(status)) {
+      showToast(
+        `❌ Não é possível excluir a fatura ${numeroFatura} (ID: ${id}) pois está com status: ${status}. ` +
+        `Apenas faturas PENDENTE ou SIMULADO podem ser excluídas.`,
+        'error'
+      );
+      return;
+    }
+    
+    setFaturaParaExcluir({ id, status, numeroFatura });
     setModalConfirmacaoAberta(true);
   };
   
@@ -316,13 +355,29 @@ const FaturasGeradas: React.FC = () => {
     
     try {
       await faturamentoService.excluirFatura(faturaParaExcluir.id);
-      showToast(`Fatura ID ${faturaParaExcluir.id} excluída com sucesso!`, 'success');
+      showToast(`✅ Fatura ${faturaParaExcluir.numeroFatura} (ID: ${faturaParaExcluir.id}) excluída com sucesso!`, 'success');
       setModalConfirmacaoAberta(false);
       setFaturaParaExcluir(null);
       carregarFaturas();
     } catch (error: any) {
       console.error('Erro ao excluir fatura:', error);
-      showToast(error.response?.data?.message || 'Erro ao excluir fatura', 'error');
+      
+      const errorMsg = error.response?.data?.message || error.message || 'Erro ao excluir fatura';
+      
+      if (errorMsg.includes('status: PAGA') || errorMsg.includes('PAGA')) {
+        showToast(
+          `❌ Não é possível excluir a fatura ${faturaParaExcluir.numeroFatura} pois está com status PAGA. ` +
+          `Apenas faturas PENDENTE ou SIMULADO podem ser excluídas.`,
+          'error'
+        );
+      } else if (errorMsg.includes('status: CANCELADA') || errorMsg.includes('CANCELADA')) {
+        showToast(
+          `❌ Não é possível excluir a fatura ${faturaParaExcluir.numeroFatura} pois já está CANCELADA.`,
+          'error'
+        );
+      } else {
+        showToast(`❌ Erro ao excluir fatura ${faturaParaExcluir.numeroFatura}: ${errorMsg}`, 'error');
+      }
     }
   };
   
@@ -340,6 +395,34 @@ const FaturasGeradas: React.FC = () => {
       showToast('Nenhuma fatura selecionada para excluir', 'warning');
       return;
     }
+    
+    // 🔥 VERIFICAR SE TODAS AS FATURAS SELECIONADAS SÃO EXCLUÍVEIS
+    const faturasNaoExcluiveis: { id: number; numeroFatura: string; status: string }[] = [];
+    
+    for (const id of faturasSelecionadas) {
+      const fatura = faturas.find(f => f.id === id);
+      if (fatura && !podeExcluir(fatura.status)) {
+        faturasNaoExcluiveis.push({
+          id: fatura.id,
+          numeroFatura: fatura.numeroFatura,
+          status: fatura.status
+        });
+      }
+    }
+    
+    if (faturasNaoExcluiveis.length > 0) {
+      const listaFaturas = faturasNaoExcluiveis
+        .map(f => `${f.numeroFatura} (${f.status})`)
+        .join(', ');
+      
+      showToast(
+        `❌ ${faturasNaoExcluiveis.length} fatura(s) não podem ser excluídas: ${listaFaturas}. ` +
+        `Apenas faturas PENDENTE ou SIMULADO podem ser excluídas.`,
+        'error'
+      );
+      return;
+    }
+    
     setModalConfirmacaoMassaAberta(true);
   };
   
@@ -352,6 +435,7 @@ const FaturasGeradas: React.FC = () => {
     let sucessos = 0;
     let erros = 0;
     const idsComErro: number[] = [];
+    const motivosErro: string[] = [];
     
     try {
       showToast(`🗑️ Excluindo ${ids.length} faturas...`, 'info');
@@ -364,6 +448,9 @@ const FaturasGeradas: React.FC = () => {
         } catch (error: any) {
           erros++;
           idsComErro.push(id);
+          
+          const errorMsg = error.response?.data?.message || error.message || 'Erro desconhecido';
+          motivosErro.push(`Fatura ${id}: ${errorMsg}`);
           console.error(`❌ Erro ao excluir fatura ${id}:`, error);
         }
       }
@@ -372,9 +459,14 @@ const FaturasGeradas: React.FC = () => {
       if (sucessos > 0 && erros === 0) {
         showToast(`✅ ${sucessos} fatura(s) excluída(s) com sucesso!`, 'success');
       } else if (sucessos > 0 && erros > 0) {
-        showToast(`⚠️ ${sucessos} fatura(s) excluída(s), ${erros} erro(s). IDs com erro: ${idsComErro.join(', ')}`, 'warning');
+        showToast(
+          `⚠️ ${sucessos} fatura(s) excluída(s), ${erros} erro(s). Detalhes: ${motivosErro.join('; ')}`,
+          'warning'
+        );
       } else {
-        showToast(`❌ Nenhuma fatura foi excluída. ${erros} erro(s).`, 'error');
+        // 🔥 TODOS OS ERROS - MOSTRAR DETALHES
+        const mensagemErro = motivosErro.join('; ');
+        showToast(`❌ Nenhuma fatura foi excluída. ${erros} erro(s): ${mensagemErro}`, 'error');
       }
       
       // Limpar seleção
@@ -470,7 +562,6 @@ const FaturasGeradas: React.FC = () => {
     }
   };
   
-  // 🔥 FUNÇÃO PARA COR DA RÉGUA
   const getReguaColor = (cor?: string): string => {
     if (!cor) return '#9ca3af';
     return cor;
@@ -535,7 +626,6 @@ const FaturasGeradas: React.FC = () => {
                 Exportar RM
               </button>
               
-              {/* 🔥 BOTÃO EXCLUIR SELECIONADOS */}
               <button
                 onClick={handleConfirmarExclusaoMassa}
                 disabled={excluindoEmMassa}
@@ -581,7 +671,6 @@ const FaturasGeradas: React.FC = () => {
               <option value="SIMULADO">🔍 Simulado</option>
             </select>
             
-            {/* 🔥 FILTRO POR RÉGUA */}
             <select
               value={filtroRegua || ''}
               onChange={(e) => setFiltroRegua(e.target.value ? parseInt(e.target.value) : undefined)}
@@ -614,12 +703,14 @@ const FaturasGeradas: React.FC = () => {
               min={2020}
               max={2030}
             />
-            <button onClick={aplicarFiltros} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              🔍 Buscar
-            </button>
-            <button onClick={limparFiltros} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
-              🗑️ Limpar
-            </button>
+            <div className="flex gap-2 col-span-7 md:col-span-1">
+              <button onClick={aplicarFiltros} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                🔍 Buscar
+              </button>
+              <button onClick={limparFiltros} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                🗑️ Limpar
+              </button>
+            </div>
           </div>
         </div>
         
@@ -733,13 +824,23 @@ const FaturasGeradas: React.FC = () => {
                           >
                             📄
                           </button>
-                          {(fatura.status === 'PENDENTE' || fatura.status === 'SIMULADO') && (
+                          
+                          {/* 🔥 BOTÃO EXCLUIR - COM VALIDAÇÃO DE STATUS */}
+                          {podeExcluir(fatura.status) ? (
                             <button
-                              onClick={() => handleConfirmarExclusao(fatura.id)}
+                              onClick={() => handleConfirmarExclusao(fatura.id, fatura.status, fatura.numeroFatura)}
                               className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
                               title="Excluir fatura"
                             >
                               🗑️
+                            </button>
+                          ) : (
+                            <button
+                              className="p-1.5 text-gray-400 cursor-not-allowed"
+                              title={`Não é possível excluir fatura com status: ${fatura.status}`}
+                              disabled
+                            >
+                              🚫
                             </button>
                           )}
                         </div>
@@ -750,24 +851,51 @@ const FaturasGeradas: React.FC = () => {
               </table>
             </div>
             
-            {/* Paginação */}
+            {/* Paginação - 10 por página */}
             {totalPaginas > 1 && (
-              <div className="flex justify-center items-center gap-2 mt-6">
-                <button
-                  onClick={() => setPagina(p => Math.max(0, p - 1))}
-                  disabled={pagina === 0}
-                  className="px-4 py-2 border rounded-lg disabled:opacity-50 hover:bg-gray-50"
-                >
-                  ◀ Anterior
-                </button>
-                <span className="px-4 py-2 text-gray-600">Página {pagina + 1} de {totalPaginas}</span>
-                <button
-                  onClick={() => setPagina(p => Math.min(totalPaginas - 1, p + 1))}
-                  disabled={pagina === totalPaginas - 1}
-                  className="px-4 py-2 border rounded-lg disabled:opacity-50 hover:bg-gray-50"
-                >
-                  Próxima ▶
-                </button>
+              <div className="flex flex-wrap items-center justify-between gap-4 mt-4 pt-4 border-t">
+                <div className="text-sm text-gray-500">
+                  Mostrando {pagina * pageSize + 1} - {Math.min((pagina + 1) * pageSize, totalItens)} de {totalItens} registros
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => setPagina(0)}
+                    disabled={pagina === 0}
+                    className="px-3 py-1.5 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm"
+                    title="Primeira página"
+                  >
+                    ⏮️
+                  </button>
+                  
+                  <button
+                    onClick={() => setPagina(p => Math.max(0, p - 1))}
+                    disabled={pagina === 0}
+                    className="px-3 py-1.5 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm"
+                  >
+                    ◀ Anterior
+                  </button>
+                  
+                  <span className="px-3 py-1.5 text-sm text-gray-600 font-medium min-w-[100px] text-center">
+                    Página {pagina + 1} de {totalPaginas}
+                  </span>
+                  
+                  <button
+                    onClick={() => setPagina(p => Math.min(totalPaginas - 1, p + 1))}
+                    disabled={pagina === totalPaginas - 1}
+                    className="px-3 py-1.5 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm"
+                  >
+                    Próxima ▶
+                  </button>
+                  
+                  <button
+                    onClick={() => setPagina(totalPaginas - 1)}
+                    disabled={pagina === totalPaginas - 1}
+                    className="px-3 py-1.5 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm"
+                    title="Última página"
+                  >
+                    ⏭️
+                  </button>
+                </div>
               </div>
             )}
           </>
@@ -778,7 +906,7 @@ const FaturasGeradas: React.FC = () => {
       <ConfirmModal
         isOpen={modalConfirmacaoAberta}
         title="Confirmar Exclusão"
-        message={`Tem certeza que deseja excluir a fatura ID ${faturaParaExcluir?.id}? Esta ação não pode ser desfeita.`}
+        message={`Tem certeza que deseja excluir a fatura ${faturaParaExcluir?.numeroFatura} (ID: ${faturaParaExcluir?.id})? Esta ação não pode ser desfeita.`}
         confirmText="Excluir"
         cancelText="Cancelar"
         type="danger"

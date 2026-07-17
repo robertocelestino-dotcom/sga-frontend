@@ -98,7 +98,6 @@ class NotificacaoService {
     return response.data;
   }
 
-  // 🔥 NOVO: Buscar agrupado por período
   /**
  * 🔥 BUSCA NOTIFICAÇÕES AGRUPADAS POR PERÍODO - TABELA LOCAL (RÁPIDO)
  * @param dataInicio - Formato: dd/MM/yyyy (ex: 26/05/2026)
@@ -157,6 +156,45 @@ class NotificacaoService {
       throw error;
     }
   }
+
+  /**
+ * 🔥 VERIFICAR STATUS DE UMA TAREFA
+ */
+async verificarStatusTarefa(taskId: string): Promise<any> {
+  try {
+    const response = await api.get(`/faturamento/processamento-status/${taskId}`);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Erro ao verificar status da tarefa:', error);
+    throw error;
+  }
+}
+
+/**
+ * 🔥 CANCELAR TAREFA
+ */
+async cancelarTarefa(taskId: string): Promise<any> {
+  try {
+    const response = await api.post(`/faturamento/processamento-cancelar/${taskId}`);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Erro ao cancelar tarefa:', error);
+    throw error;
+  }
+}
+
+/**
+ * 🔥 LISTAR TAREFAS EM PROCESSAMENTO
+ */
+async listarTarefas(): Promise<any> {
+  try {
+    const response = await api.get('/faturamento/processamento-tarefas');
+    return response.data;
+  } catch (error) {
+    console.error('❌ Erro ao listar tarefas:', error);
+    return {};
+  }
+}
 
 }
 
