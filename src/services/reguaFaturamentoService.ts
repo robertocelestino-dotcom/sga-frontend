@@ -1,3 +1,5 @@
+// src/services/reguaFaturamentoService.ts
+
 import api from './api';
 
 export interface ReguaFaturamento {
@@ -46,7 +48,7 @@ export const reguaFaturamentoService = {
       params: {
         page: params.page,
         size: params.size,
-        sort: params.sort || 'id',  // 🔥 Usar 'id' em vez de 'sequencia'
+        sort: params.sort || 'id',
         direction: params.direction || 'asc'
       }
     });
@@ -83,9 +85,71 @@ export const reguaFaturamentoService = {
   },
 
   // ==================== ASSOCIADOS NA RÉGUA ====================
-  async listarAssociadosPorRegua(reguaId: number) {
-    const response = await api.get(`/regua-faturamento/${reguaId}/associados`);
+  
+  /**
+   * 🔥 MÉTODO CORRETO - Lista associados COM NOTA DE DÉBITO (consolidado)
+   */
+  async listarAssociadosPorRegua(reguaId: number, params?: {
+    page?: number;
+    size?: number;
+    nome?: string;
+    cnpjCpf?: string;
+    status?: string;
+  }) {
+    // 🔥 USAR O ENDPOINT CONSOLIDADO (com nota de débito)
+    const response = await api.get(`/regua-faturamento/${reguaId}/associados-consolidado/paginado`, {
+      params: {
+        page: params?.page || 0,
+        size: params?.size || 20,
+        sort: 'nomeRazao',
+        direction: 'asc',
+        ...(params?.nome && { nome: params.nome }),
+        ...(params?.cnpjCpf && { cnpjCpf: params.cnpjCpf }),
+        ...(params?.status && params.status !== 'TODOS' && { status: params.status })
+      }
+    });
     return response.data;
+  },
+
+  /**
+   * 🔥 MÉTODO CORRETO - Busca TODOS os IDs dos associados COM NOTA DE DÉBITO
+   * Este é o método que o Modal deve usar para "Selecionar Todos"
+   * 
+   * AGORA RETORNA APENAS OS IDs COM NOTA (2443)
+   */
+  async listarTodosIdsConsolidados(reguaId: number): Promise<number[]> {
+    console.log(`📥 Buscando TODOS os IDs CONSOLIDADOS (com nota) da régua ${reguaId}`);
+    
+    // 🔥 CHAMAR O ENDPOINT CORRETO - /associados-consolidado/todos-ids
+    const response = await api.get(`/regua-faturamento/${reguaId}/associados-consolidado/todos-ids`);
+    
+    console.log(`✅ Retornados ${response.data?.length || 0} IDs consolidados`);
+    return response.data || [];
+  },
+
+  /**
+   * ⚠️ DEPRECIADO - Não usar! Retorna TODOS os associados (incluindo sem nota)
+   * Use listarTodosIdsConsolidados() em vez deste
+   */
+  async listarTodosIds(reguaId: number): Promise<number[]> {
+    console.warn('⚠️ listarTodosIds está DEPRECIADO! Use listarTodosIdsConsolidados');
+    console.warn('   Este método retorna TODOS os associados, incluindo sem nota de débito');
+    
+    const response = await api.get(`/regua-faturamento/${reguaId}/associados/todos-ids`);
+    return response.data || [];
+  },
+
+  /**
+   * 🔥 NOVO MÉTODO - Busca APENAS a contagem (sem dados)
+   */
+  async contarAssociadosPorRegua(reguaId: number) {
+    const response = await api.get(`/regua-faturamento/${reguaId}/associados-consolidado/paginado`, {
+      params: {
+        page: 0,
+        size: 1
+      }
+    });
+    return response.data.totalElements || 0;
   },
 
   async buscarReguaAtivaDoAssociado(associadoId: number) {

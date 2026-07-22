@@ -558,36 +558,57 @@ export const associadoService = {
 const validarDadosAssociado = (associado: AssociadoDTO): AssociadoDTO => {
   const dadosValidados = { ...associado };
   
-  // Se status é Inativo
+  console.log('🔍 Validando dados do associado:', {
+    status: dadosValidados.status,
+    motivoInativacao: dadosValidados.motivoInativacao,
+    motivoInativacaoType: typeof dadosValidados.motivoInativacao
+  });
+  
+  // 🔥 SE STATUS É INATIVO - GARANTIR MOTIVO
   if (dadosValidados.status === 'I') {
+    // Garantir que motivoInativacao seja uma string (não null/undefined)
+    if (!dadosValidados.motivoInativacao || dadosValidados.motivoInativacao.trim() === '') {
+      console.warn('⚠️ Motivo de inativação vazio, usando valor padrão');
+      dadosValidados.motivoInativacao = 'Inativação solicitada';
+    }
+    
     // Garantir data de inativação
     if (!dadosValidados.dataInativacao) {
       dadosValidados.dataInativacao = new Date().toISOString().split('T')[0];
     }
+    
     // Limpar campos de suspensão
     dadosValidados.dataInicioSuspensao = undefined;
     dadosValidados.dataFimSuspensao = undefined;
     dadosValidados.motivoSuspensao = undefined;
   }
   
-  // Se status é Suspenso
+  // SE STATUS É SUSPENSO
   if (dadosValidados.status === 'S') {
+    // Garantir motivo de suspensão
+    if (!dadosValidados.motivoSuspensao || dadosValidados.motivoSuspensao.trim() === '') {
+      console.warn('⚠️ Motivo de suspensão vazio, usando valor padrão');
+      dadosValidados.motivoSuspensao = 'Suspensão solicitada';
+    }
+    
     // Garantir data de início
     if (!dadosValidados.dataInicioSuspensao) {
       dadosValidados.dataInicioSuspensao = new Date().toISOString().split('T')[0];
     }
+    
     // Garantir data de fim (padrão: 30 dias)
     if (!dadosValidados.dataFimSuspensao) {
       const inicio = new Date(dadosValidados.dataInicioSuspensao);
       inicio.setDate(inicio.getDate() + 30);
       dadosValidados.dataFimSuspensao = inicio.toISOString().split('T')[0];
     }
+    
     // Limpar campos de inativação
     dadosValidados.dataInativacao = undefined;
     dadosValidados.motivoInativacao = undefined;
   }
   
-  // Se status é Ativo
+  // SE STATUS É ATIVO
   if (dadosValidados.status === 'A') {
     // Limpar todos os campos de status
     dadosValidados.dataInativacao = undefined;
@@ -596,6 +617,8 @@ const validarDadosAssociado = (associado: AssociadoDTO): AssociadoDTO => {
     dadosValidados.motivoInativacao = undefined;
     dadosValidados.motivoSuspensao = undefined;
   }
+  
+  console.log('✅ Dados validados:', dadosValidados);
   
   return dadosValidados;
 };
