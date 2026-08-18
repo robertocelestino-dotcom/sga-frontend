@@ -9,15 +9,53 @@ import faturamentoService, { Fatura } from '../../services/faturamentoService';
 import ModalExportacaoRm from '../../components/faturamento/ModalExportacaoRm';
 import ModalResultadoExportacaoRm from '../../components/faturamento/ModalResultadoExportacaoRm';
 import ConfirmModal from '../../components/ui/ConfirmModal';
+import ModalVisualizarXml from '../../components/faturamento/ModalVisualizarXml';
 import api from '../../services/api';
+import { rmApiService } from '../../services/rmApiService';
+import { RmApiPreVisualizacaoItem } from '../../types/rmApi.types';
+import { FaPlug, FaFileExport, FaCheckCircle, FaTimesCircle, FaEye } from 'react-icons/fa';
 
-// 🔥 FUNÇÃO PARA GERAR NOME DE ARQUIVO PADRONIZADO
+// ============================================================
+// FUNÇÕES AUXILIARES
+// ============================================================
+
 const gerarNomeArquivoRm = (): string => {
   const agora = new Date();
   const data = agora.toISOString().slice(0, 10);
   const hora = agora.toTimeString().slice(0, 8).replace(/:/g, '-');
   return `exportacao_rm_faturas_${data}_${hora}.txt`;
 };
+
+interface IntegracaoApiResultado {
+  sucesso: boolean;
+  mensagem: string;
+  totalProcessados: number;
+  totalSucessos: number;
+  totalErros: number;
+  itens: Array<{
+    notaId: number;
+    faturaId: number;
+    sucesso: boolean;
+    idMov?: number;
+    mensagem: string;
+  }>;
+}
+
+const temNotaDebito = (fatura: Fatura): boolean => {
+  if (!fatura) return false;
+  const notaId = (fatura as any).notaDebitoId;
+  return notaId !== null && notaId !== undefined && notaId > 0;
+};
+
+const getNotaDebitoId = (fatura: Fatura): number | null => {
+  if (!fatura) return null;
+  const notaId = (fatura as any).notaDebitoId;
+  return (notaId !== null && notaId !== undefined && notaId > 0) ? notaId : null;
+};
+
+// ============================================================
+// COMPONENTE PRINCIPAL
+// ============================================================
 
 const FaturasGeradas: React.FC = () => {
   const navigate = useNavigate();
@@ -29,24 +67,35 @@ const FaturasGeradas: React.FC = () => {
   // Seleção
   const [faturasSelecionadas, setFaturasSelecionadas] = useState<Set<number>>(new Set());
   const [selecionarTodos, setSelecionarTodos] = useState(false);
-  const [todasFaturasIds, setTodasFaturasIds] = useState<number[]>([]);
   const [totalFaturas, setTotalFaturas] = useState(0);
   
   // Dados completos das faturas selecionadas
   const [dadosFaturasSelecionadas, setDadosFaturasSelecionadas] = useState<Fatura[]>([]);
   
-  // Exportação RM
+  // Exportação RM (Arquivo)
   const [modalExportacaoRmAberta, setModalExportacaoRmAberta] = useState(false);
   const [modalResultadoExportacaoAberta, setModalResultadoExportacaoAberta] = useState(false);
   const [resultadoExportacao, setResultadoExportacao] = useState<any>(null);
   const [exportandoRm, setExportandoRm] = useState(false);
   const [blobArquivoRm, setBlobArquivoRm] = useState<Blob | null>(null);
   
-  // 🔥 MODAL DE CONFIRMAÇÃO PARA EXCLUSÃO INDIVIDUAL
+  // Integração API
+  const [integrandoApi, setIntegrandoApi] = useState(false);
+  const [modalResultadoApiAberta, setModalResultadoApiAberta] = useState(false);
+  const [resultadoApi, setResultadoApi] = useState<IntegracaoApiResultado | null>(null);
+  
+  // 🔥 PRÉ-VISUALIZAÇÃO XML
+  const [modalVisualizarXmlAberto, setModalVisualizarXmlAberto] = useState(false);
+  const [carregandoPreVisualizacao, setCarregandoPreVisualizacao] = useState(false);
+  const [preVisualizacao, setPreVisualizacao] = useState<{
+    total: number;
+    detalhes: RmApiPreVisualizacaoItem[];
+  }>({ total: 0, detalhes: [] });
+  
+  // Modais de confirmação
+  const [modalConfirmacaoApiAberta, setModalConfirmacaoApiAberta] = useState(false);
   const [modalConfirmacaoAberta, setModalConfirmacaoAberta] = useState(false);
   const [faturaParaExcluir, setFaturaParaExcluir] = useState<{ id: number; status: string; numeroFatura: string } | null>(null);
-  
-  // 🔥 MODAL DE CONFIRMAÇÃO PARA EXCLUSÃO EM MASSA
   const [modalConfirmacaoMassaAberta, setModalConfirmacaoMassaAberta] = useState(false);
   const [excluindoEmMassa, setExcluindoEmMassa] = useState(false);
   
@@ -56,18 +105,19 @@ const FaturasGeradas: React.FC = () => {
   const [filtroStatus, setFiltroStatus] = useState('');
   const [filtroMes, setFiltroMes] = useState(new Date().getMonth() + 1);
   const [filtroAno, setFiltroAno] = useState(new Date().getFullYear());
-  
-  // 🔥 NOVO: Filtro por régua
   const [filtroRegua, setFiltroRegua] = useState<number | undefined>(undefined);
   const [reguas, setReguas] = useState<any[]>([]);
   
-  // Paginação - 10 por página
+  // Paginação
   const [pagina, setPagina] = useState(0);
   const [totalPaginas, setTotalPaginas] = useState(0);
   const [totalItens, setTotalItens] = useState(0);
   const pageSize = 10;
-  
-  // 🔥 CARREGAR RÉGUAS
+
+  // ============================================================
+  // CARREGAR DADOS
+  // ============================================================
+
   useEffect(() => {
     const carregarReguas = async () => {
       try {
@@ -79,7 +129,7 @@ const FaturasGeradas: React.FC = () => {
     };
     carregarReguas();
   }, []);
-  
+
   const carregarFaturas = useCallback(async () => {
     setLoading(true);
     try {
@@ -97,39 +147,35 @@ const FaturasGeradas: React.FC = () => {
       setTotalItens(response.totalElements);
       setTotalFaturas(response.totalElements);
       
-      setTodasFaturasIds(response.content.map((f: any) => f.id));
-      
     } catch (error: any) {
       console.error('Erro ao carregar faturas:', error);
       showToast(error.response?.data?.message || 'Erro ao carregar faturas', 'error');
     } finally {
       setLoading(false);
     }
-  }, [pagina, filtroNumero, filtroAssociado, filtroStatus, filtroMes, filtroAno, filtroRegua, showToast]);
-  
+  }, [pagina, pageSize, filtroNumero, filtroAssociado, filtroStatus, filtroMes, filtroAno, filtroRegua, showToast]);
+
   useEffect(() => {
     carregarFaturas();
     setFaturasSelecionadas(new Set());
     setDadosFaturasSelecionadas([]);
     setSelecionarTodos(false);
   }, [pagina, filtroNumero, filtroAssociado, filtroStatus, filtroMes, filtroAno, filtroRegua, carregarFaturas]);
-  
-  // Calcular valor total corretamente
+
+  // ============================================================
+  // UTILITÁRIOS
+  // ============================================================
+
   const valorTotalSelecionadas = useMemo(() => {
     if (dadosFaturasSelecionadas.length > 0) {
-      const total = dadosFaturasSelecionadas.reduce((acc, f) => acc + (f.valorTotal || 0), 0);
-      return total;
+      return dadosFaturasSelecionadas.reduce((acc, f) => acc + (f.valorTotal || 0), 0);
     }
-    
-    const total = Array.from(faturasSelecionadas).reduce((acc, id) => {
+    return Array.from(faturasSelecionadas).reduce((acc, id) => {
       const fatura = faturas.find(f => f.id === id);
       return acc + (fatura?.valorTotal || 0);
     }, 0);
-    
-    return total;
   }, [faturasSelecionadas, faturas, dadosFaturasSelecionadas]);
-  
-  // Selecionar/Deselecionar fatura
+
   const toggleSelecionarFatura = (id: number) => {
     const novosSelecionados = new Set(faturasSelecionadas);
     if (novosSelecionados.has(id)) {
@@ -143,8 +189,7 @@ const FaturasGeradas: React.FC = () => {
     }
     setSelecionarTodos(novosSelecionados.size === totalFaturas && totalFaturas > 0);
   };
-  
-  // 🔥 CARREGAR TODAS AS FATURAS COM PAGINAÇÃO RECURSIVA
+
   const carregarTodasFaturasIds = useCallback(async () => {
     setLoading(true);
     try {
@@ -172,13 +217,7 @@ const FaturasGeradas: React.FC = () => {
       for (let page = 0; page < totalPaginasParaCarregar; page++) {
         const response = await faturamentoService.listarFaturas(page, pageSize, params);
         todasFaturas.push(...response.content);
-        
-        if (page % 5 === 0) {
-          console.log(`📊 Carregando faturas: ${page + 1}/${totalPaginasParaCarregar}`);
-        }
       }
-      
-      console.log(`✅ Total de faturas carregadas: ${todasFaturas.length}`);
       
       const todosIds = todasFaturas.map(f => f.id);
       
@@ -195,9 +234,8 @@ const FaturasGeradas: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [filtroNumero, filtroAssociado, filtroStatus, filtroMes, filtroAno, filtroRegua, showToast]);
-  
-  // Selecionar TODAS as faturas
+  }, [filtroNumero, filtroAssociado, filtroStatus, filtroMes, filtroAno, filtroRegua, pageSize, showToast]);
+
   const toggleSelecionarTodos = () => {
     if (selecionarTodos) {
       setFaturasSelecionadas(new Set());
@@ -207,9 +245,129 @@ const FaturasGeradas: React.FC = () => {
       carregarTodasFaturasIds();
     }
   };
-  
-  // ========== EXPORTAÇÃO RM ==========
-  
+
+  // ============================================================
+  // 🔥 PRÉ-VISUALIZAR XML
+  // ============================================================
+
+  const handlePreVisualizarXml = async () => {
+    if (faturasSelecionadas.size === 0) {
+      showToast('Selecione pelo menos uma fatura para pré-visualizar', 'warning');
+      return;
+    }
+
+    setCarregandoPreVisualizacao(true);
+    try {
+      const faturasSelecionadasList = faturas.filter(f => faturasSelecionadas.has(f.id));
+      const notaIds = faturasSelecionadasList
+        .map(f => getNotaDebitoId(f))
+        .filter((id): id is number => id !== null);
+
+      if (notaIds.length === 0) {
+        showToast('Nenhuma fatura selecionada possui nota de débito', 'warning');
+        return;
+      }
+
+      const response = await rmApiService.preVisualizarXml({
+        notaIds: notaIds
+      });
+
+      if (response.sucesso) {
+        setPreVisualizacao({
+          total: response.total,
+          detalhes: response.detalhes
+        });
+        setModalVisualizarXmlAberto(true);
+      } else {
+        showToast(response.mensagem || 'Erro ao gerar pré-visualização', 'error');
+      }
+    } catch (error) {
+      console.error('Erro ao gerar pré-visualização:', error);
+      showToast('Erro ao gerar pré-visualização', 'error');
+    } finally {
+      setCarregandoPreVisualizacao(false);
+    }
+  };
+
+  // ============================================================
+  // INTEGRAÇÃO API
+  // ============================================================
+
+  const handleIntegrarApi = () => {
+    if (faturasSelecionadas.size === 0) {
+      showToast('Selecione pelo menos uma fatura para integrar', 'warning');
+      return;
+    }
+
+    const faturasSelecionadasList = faturas.filter(f => faturasSelecionadas.has(f.id));
+    const faturasComNota = faturasSelecionadasList.filter(f => temNotaDebito(f));
+    const faturasSemNota = faturasSelecionadasList.filter(f => !temNotaDebito(f));
+
+    if (faturasComNota.length === 0) {
+      showToast('Nenhuma fatura selecionada possui nota de débito', 'error');
+      return;
+    }
+
+    if (faturasSemNota.length > 0) {
+      const idsSemNota = faturasSemNota.map(f => f.id).join(', ');
+      showToast(
+        `⚠️ ${faturasSemNota.length} fatura(s) ignoradas (sem nota): ${idsSemNota}`,
+        'warning'
+      );
+    }
+
+    setDadosFaturasSelecionadas(faturasComNota);
+    setModalConfirmacaoApiAberta(true);
+  };
+
+  const executarIntegracaoApi = async () => {
+    setModalConfirmacaoApiAberta(false);
+    setIntegrandoApi(true);
+
+    try {
+      const faturasParaIntegrar = dadosFaturasSelecionadas.length > 0 
+        ? dadosFaturasSelecionadas 
+        : faturas.filter(f => faturasSelecionadas.has(f.id) && temNotaDebito(f));
+
+      const notaIds = faturasParaIntegrar
+        .map(f => getNotaDebitoId(f))
+        .filter((id): id is number => id !== null);
+
+      if (notaIds.length === 0) {
+        showToast('Nenhuma nota de débito encontrada para integração', 'error');
+        setIntegrandoApi(false);
+        return;
+      }
+
+      const response = await rmApiService.integrar({ notaIds });
+
+      setResultadoApi(response);
+      setModalResultadoApiAberta(true);
+
+      setFaturasSelecionadas(new Set());
+      setDadosFaturasSelecionadas([]);
+      setSelecionarTodos(false);
+
+      await carregarFaturas();
+
+      if (response.sucesso) {
+        showToast(`✅ Integração concluída: ${response.totalSucessos} sucessos, ${response.totalErros} erros`, 'success');
+      } else {
+        showToast(`⚠️ Integração com erros: ${response.mensagem}`, 'warning');
+      }
+
+    } catch (error) {
+      console.error('Erro ao integrar faturas:', error);
+      showToast('Erro ao integrar faturas via API', 'error');
+    } finally {
+      setIntegrandoApi(false);
+    }
+  };
+
+  // ============================================================
+  // EXPORTAÇÃO RM (ARQUIVO)
+  // ============================================================
+
   const handleExportarRm = async (ultimoNumeroRps: number, observacao: string) => {
     setExportandoRm(true);
     try {
@@ -221,17 +379,10 @@ const FaturasGeradas: React.FC = () => {
         const primeiraFatura = faturas.find(f => f.id === faturaIds[0]);
         if (primeiraFatura && (primeiraFatura as any).reguaId) {
           reguaId = (primeiraFatura as any).reguaId;
-          console.log('🔍 Régua obtida da primeira fatura:', reguaId);
         }
       }
       
-      console.log('📤 Iniciando exportação RM com metadados para:', faturaIds.length);
-      console.log('📤 Último número RPS:', ultimoNumeroRps);
-      console.log('📤 Régua ID:', reguaId);
-      
       const mesReferencia = `${filtroAno}-${String(filtroMes).padStart(2, '0')}`;
-      
-      console.log('📤 mesReferencia enviado:', mesReferencia);
   
       const { blob, metadados } = await faturamentoService.exportarRmMultiplasFaturasComMetadados(
         faturaIds,
@@ -240,33 +391,13 @@ const FaturasGeradas: React.FC = () => {
         mesReferencia
       );
       
-      console.log('📥 Blob recebido, tamanho:', blob.size);
-      console.log('📥 Metadados recebidos:', metadados);
-      
-      if (!blob || blob.size === 0) {
-        throw new Error('Arquivo gerado vazio');
-      }
-      
       const nomeArquivo = gerarNomeArquivoRm();
       
       setBlobArquivoRm(blob);
       
       setResultadoExportacao({
-        loteId: metadados.loteId || Date.now(),
-        totalFaturas: metadados.totalFaturas || faturaIds.length,
-        faturasProcessadas: metadados.faturasProcessadas || faturaIds.length,
-        faturasComErro: metadados.faturasComErro || 0,
-        faturasIgnoradas: metadados.faturasIgnoradas || 0,
-        faturasIgnoradasIds: metadados.faturasIgnoradasIds || [],
-        valorTotalIgnorado: metadados.valorTotalIgnorado || 0,
-        ultimoNumeroRps: metadados.ultimoNumeroRps || (ultimoNumeroRps + faturaIds.length),
-        primeiroNumeroRps: metadados.primeiroNumeroRps || (ultimoNumeroRps + 1),
-        dataProcessamento: metadados.dataProcessamento || new Date().toISOString(),
-        mesReferencia: String(filtroMes).padStart(2, '0'),
-        anoReferencia: String(filtroAno),
-        valorTotal: metadados.valorTotal || 0,
-        detalhes: metadados.detalhes || [],
-        nomeArquivo: nomeArquivo
+        ...metadados,
+        nomeArquivo
       });
   
       setModalExportacaoRmAberta(false);
@@ -286,7 +417,6 @@ const FaturasGeradas: React.FC = () => {
     }
   };
 
-  // Baixar arquivo RM
   const handleBaixarArquivoRm = useCallback(() => {
     if (!blobArquivoRm) {
       showToast('Arquivo não disponível para download', 'error');
@@ -310,123 +440,50 @@ const FaturasGeradas: React.FC = () => {
       showToast('Erro ao baixar arquivo RM', 'error');
     }
   }, [blobArquivoRm, showToast]);
-  
-  // ========== EXCLUSÃO INDIVIDUAL ==========
-  
-  const handleVerDetalhes = (id: number) => {
-    navigate(`/faturamento/faturas/${id}`);
-  };
-  
-  // 🔥 FUNÇÃO: Verificar se pode excluir
+
+  // ============================================================
+  // EXCLUSÕES
+  // ============================================================
+
   const podeExcluir = (status: string): boolean => {
     return status === 'PENDENTE' || status === 'SIMULADO';
   };
-  
-  // 🔥 FUNÇÃO: Obter mensagem de motivo para não excluir
-  const getMotivoNaoExcluir = (status: string): string => {
-    switch (status) {
-      case 'PAGA':
-        return 'Fatura já foi paga';
-      case 'CANCELADA':
-        return 'Fatura já foi cancelada';
-      default:
-        return `Fatura com status: ${status}`;
-    }
-  };
-  
-  // 🔥 FUNÇÃO: Abrir modal de confirmação para excluir individual
+
   const handleConfirmarExclusao = (id: number, status: string, numeroFatura: string) => {
     if (!podeExcluir(status)) {
-      showToast(
-        `❌ Não é possível excluir a fatura ${numeroFatura} (ID: ${id}) pois está com status: ${status}. ` +
-        `Apenas faturas PENDENTE ou SIMULADO podem ser excluídas.`,
-        'error'
-      );
+      showToast(`❌ Não é possível excluir a fatura ${numeroFatura} (status: ${status})`, 'error');
       return;
     }
-    
     setFaturaParaExcluir({ id, status, numeroFatura });
     setModalConfirmacaoAberta(true);
   };
-  
-  // 🔥 FUNÇÃO: Executar exclusão individual após confirmação
+
   const executarExclusao = async () => {
     if (!faturaParaExcluir) return;
-    
     try {
       await faturamentoService.excluirFatura(faturaParaExcluir.id);
-      showToast(`✅ Fatura ${faturaParaExcluir.numeroFatura} (ID: ${faturaParaExcluir.id}) excluída com sucesso!`, 'success');
+      showToast(`✅ Fatura ${faturaParaExcluir.numeroFatura} excluída com sucesso!`, 'success');
       setModalConfirmacaoAberta(false);
       setFaturaParaExcluir(null);
       carregarFaturas();
     } catch (error: any) {
-      console.error('Erro ao excluir fatura:', error);
-      
-      const errorMsg = error.response?.data?.message || error.message || 'Erro ao excluir fatura';
-      
-      if (errorMsg.includes('status: PAGA') || errorMsg.includes('PAGA')) {
-        showToast(
-          `❌ Não é possível excluir a fatura ${faturaParaExcluir.numeroFatura} pois está com status PAGA. ` +
-          `Apenas faturas PENDENTE ou SIMULADO podem ser excluídas.`,
-          'error'
-        );
-      } else if (errorMsg.includes('status: CANCELADA') || errorMsg.includes('CANCELADA')) {
-        showToast(
-          `❌ Não é possível excluir a fatura ${faturaParaExcluir.numeroFatura} pois já está CANCELADA.`,
-          'error'
-        );
-      } else {
-        showToast(`❌ Erro ao excluir fatura ${faturaParaExcluir.numeroFatura}: ${errorMsg}`, 'error');
-      }
+      showToast(error.response?.data?.message || 'Erro ao excluir fatura', 'error');
     }
   };
-  
-  // 🔥 FUNÇÃO: Cancelar exclusão individual
+
   const cancelarExclusao = () => {
     setModalConfirmacaoAberta(false);
     setFaturaParaExcluir(null);
   };
-  
-  // ========== EXCLUSÃO EM MASSA ==========
-  
-  // 🔥 FUNÇÃO: Abrir modal de confirmação para excluir em massa
+
   const handleConfirmarExclusaoMassa = () => {
     if (faturasSelecionadas.size === 0) {
       showToast('Nenhuma fatura selecionada para excluir', 'warning');
       return;
     }
-    
-    // 🔥 VERIFICAR SE TODAS AS FATURAS SELECIONADAS SÃO EXCLUÍVEIS
-    const faturasNaoExcluiveis: { id: number; numeroFatura: string; status: string }[] = [];
-    
-    for (const id of faturasSelecionadas) {
-      const fatura = faturas.find(f => f.id === id);
-      if (fatura && !podeExcluir(fatura.status)) {
-        faturasNaoExcluiveis.push({
-          id: fatura.id,
-          numeroFatura: fatura.numeroFatura,
-          status: fatura.status
-        });
-      }
-    }
-    
-    if (faturasNaoExcluiveis.length > 0) {
-      const listaFaturas = faturasNaoExcluiveis
-        .map(f => `${f.numeroFatura} (${f.status})`)
-        .join(', ');
-      
-      showToast(
-        `❌ ${faturasNaoExcluiveis.length} fatura(s) não podem ser excluídas: ${listaFaturas}. ` +
-        `Apenas faturas PENDENTE ou SIMULADO podem ser excluídas.`,
-        'error'
-      );
-      return;
-    }
-    
     setModalConfirmacaoMassaAberta(true);
   };
-  
-  // 🔥 FUNÇÃO: Executar exclusão em massa após confirmação
+
   const executarExclusaoMassa = async () => {
     if (faturasSelecionadas.size === 0) return;
     
@@ -434,68 +491,52 @@ const FaturasGeradas: React.FC = () => {
     const ids = Array.from(faturasSelecionadas);
     let sucessos = 0;
     let erros = 0;
-    const idsComErro: number[] = [];
     const motivosErro: string[] = [];
     
     try {
-      showToast(`🗑️ Excluindo ${ids.length} faturas...`, 'info');
-      
-      // Excluir uma por uma com tratamento de erro individual
       for (const id of ids) {
         try {
           await faturamentoService.excluirFatura(id);
           sucessos++;
         } catch (error: any) {
           erros++;
-          idsComErro.push(id);
-          
-          const errorMsg = error.response?.data?.message || error.message || 'Erro desconhecido';
-          motivosErro.push(`Fatura ${id}: ${errorMsg}`);
-          console.error(`❌ Erro ao excluir fatura ${id}:`, error);
+          motivosErro.push(`Fatura ${id}: ${error.response?.data?.message || error.message}`);
         }
       }
       
-      // Mostrar resultado
       if (sucessos > 0 && erros === 0) {
         showToast(`✅ ${sucessos} fatura(s) excluída(s) com sucesso!`, 'success');
       } else if (sucessos > 0 && erros > 0) {
-        showToast(
-          `⚠️ ${sucessos} fatura(s) excluída(s), ${erros} erro(s). Detalhes: ${motivosErro.join('; ')}`,
-          'warning'
-        );
+        showToast(`⚠️ ${sucessos} sucessos, ${erros} erros`, 'warning');
       } else {
-        // 🔥 TODOS OS ERROS - MOSTRAR DETALHES
-        const mensagemErro = motivosErro.join('; ');
-        showToast(`❌ Nenhuma fatura foi excluída. ${erros} erro(s): ${mensagemErro}`, 'error');
+        showToast(`❌ Nenhuma fatura excluída. ${erros} erro(s)`, 'error');
       }
       
-      // Limpar seleção
       setFaturasSelecionadas(new Set());
       setDadosFaturasSelecionadas([]);
       setSelecionarTodos(false);
       setModalConfirmacaoMassaAberta(false);
-      
-      // Recarregar lista
       await carregarFaturas();
-      
-    } catch (error: any) {
-      console.error('Erro ao excluir faturas em massa:', error);
-      showToast(error.response?.data?.message || 'Erro ao excluir faturas em massa', 'error');
     } finally {
       setExcluindoEmMassa(false);
     }
   };
-  
-  // 🔥 FUNÇÃO: Cancelar exclusão em massa
+
   const cancelarExclusaoMassa = () => {
     setModalConfirmacaoMassaAberta(false);
   };
-  
-  // ========== EXPORTAÇÃO PDF ==========
-  
+
+  // ============================================================
+  // OUTRAS AÇÕES
+  // ============================================================
+
+  const handleVerDetalhes = (id: number) => {
+    navigate(`/faturamento/faturas/${id}`);
+  };
+
   const handleExportarPdf = async (id: number, numeroFatura: string) => {
     try {
-      showToast('Gerando PDF, aguarde...', 'info');
+      showToast('Gerando PDF...', 'info');
       const blob = await faturamentoService.exportarPdf(id);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -507,13 +548,14 @@ const FaturasGeradas: React.FC = () => {
       window.URL.revokeObjectURL(url);
       showToast('PDF exportado com sucesso!', 'success');
     } catch (error: any) {
-      console.error('Erro ao exportar PDF:', error);
       showToast(error.response?.data?.message || 'Erro ao exportar PDF', 'error');
     }
   };
-  
-  // ========== UTILITÁRIOS ==========
-  
+
+  // ============================================================
+  // UTILITÁRIOS DE RENDER
+  // ============================================================
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'PENDENTE': return 'bg-yellow-100 text-yellow-800';
@@ -523,7 +565,7 @@ const FaturasGeradas: React.FC = () => {
       default: return 'bg-gray-100 text-gray-800';
     }
   };
-  
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'PENDENTE': return '⏳';
@@ -533,7 +575,7 @@ const FaturasGeradas: React.FC = () => {
       default: return '📄';
     }
   };
-  
+
   const formatCurrency = (value: number) => {
     if (value === null || value === undefined) return 'R$ 0,00';
     return new Intl.NumberFormat('pt-BR', {
@@ -543,30 +585,23 @@ const FaturasGeradas: React.FC = () => {
       maximumFractionDigits: 2
     }).format(value);
   };
-  
+
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '-';
-    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      const [ano, mes, dia] = dateStr.split('-');
-      return `${dia}/${mes}/${ano}`;
-    }
     try {
       const date = new Date(dateStr);
       if (isNaN(date.getTime())) return dateStr;
-      const dia = date.getUTCDate().toString().padStart(2, '0');
-      const mes = (date.getUTCMonth() + 1).toString().padStart(2, '0');
-      const ano = date.getUTCFullYear();
-      return `${dia}/${mes}/${ano}`;
+      return date.toLocaleDateString('pt-BR');
     } catch {
       return dateStr;
     }
   };
-  
+
   const getReguaColor = (cor?: string): string => {
     if (!cor) return '#9ca3af';
     return cor;
   };
-  
+
   const aplicarFiltros = () => {
     setPagina(0);
     setFaturasSelecionadas(new Set());
@@ -574,7 +609,7 @@ const FaturasGeradas: React.FC = () => {
     setSelecionarTodos(false);
     carregarFaturas();
   };
-  
+
   const limparFiltros = () => {
     setFiltroNumero('');
     setFiltroAssociado('');
@@ -588,7 +623,15 @@ const FaturasGeradas: React.FC = () => {
     setSelecionarTodos(false);
     carregarFaturas();
   };
-  
+
+  const totalFaturasComNota = useMemo(() => {
+    return faturas.filter(f => temNotaDebito(f)).length;
+  }, [faturas]);
+
+  // ============================================================
+  // RENDER
+  // ============================================================
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <BreadCrumb atual="Faturas Geradas" />
@@ -598,10 +641,15 @@ const FaturasGeradas: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-800 mb-2">📄 Faturas Geradas</h1>
           <p className="text-gray-600">
             Consulte as faturas geradas a partir do processamento de faturamento
+            {totalFaturasComNota > 0 && (
+              <span className="ml-2 text-green-600">
+                ({totalFaturasComNota} com nota de débito)
+              </span>
+            )}
           </p>
         </div>
         
-        {/* 🔥 Botões de Ação em Massa */}
+        {/* Botões de Ação em Massa */}
         {faturasSelecionadas.size > 0 && (
           <div className="flex flex-wrap justify-between items-center mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
             <div>
@@ -613,6 +661,35 @@ const FaturasGeradas: React.FC = () => {
               </span>
             </div>
             <div className="flex flex-wrap gap-2">
+              {/* 🔥 BOTÃO: PRÉ-VISUALIZAR XML */}
+              <button
+                onClick={handlePreVisualizarXml}
+                disabled={carregandoPreVisualizacao}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 flex items-center gap-2 text-sm"
+              >
+                {carregandoPreVisualizacao ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                ) : (
+                  <FaEye className="text-sm" />
+                )}
+                Pré-visualizar XML
+              </button>
+
+              {/* BOTÃO: INTEGRAR VIA API */}
+              <button
+                onClick={handleIntegrarApi}
+                disabled={integrandoApi}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400 flex items-center gap-2 text-sm"
+              >
+                {integrandoApi ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                ) : (
+                  <FaPlug className="text-sm" />
+                )}
+                Integrar API
+              </button>
+              
+              {/* BOTÃO: EXPORTAR ARQUIVO */}
               <button
                 onClick={() => setModalExportacaoRmAberta(true)}
                 disabled={exportandoRm}
@@ -621,11 +698,12 @@ const FaturasGeradas: React.FC = () => {
                 {exportandoRm ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                 ) : (
-                  '📤'
+                  <FaFileExport className="text-sm" />
                 )}
-                Exportar RM
+                Exportar Arquivo
               </button>
               
+              {/* BOTÃO: EXCLUIR */}
               <button
                 onClick={handleConfirmarExclusaoMassa}
                 disabled={excluindoEmMassa}
@@ -636,13 +714,13 @@ const FaturasGeradas: React.FC = () => {
                 ) : (
                   '🗑️'
                 )}
-                Excluir Selecionados
+                Excluir
               </button>
             </div>
           </div>
         )}
         
-        {/* 🔥 FILTROS COM RÉGUA */}
+        {/* Filtros */}
         <div className="bg-gray-50 p-4 rounded-lg mb-6">
           <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
             <input
@@ -718,6 +796,9 @@ const FaturasGeradas: React.FC = () => {
         {!loading && faturas.length > 0 && (
           <div className="mb-4 text-sm text-gray-500">
             Mostrando {faturas.length} de {totalItens} fatura(s) | {faturasSelecionadas.size} de {totalFaturas} selecionada(s)
+            {totalFaturasComNota > 0 && (
+              <span className="ml-2 text-green-600">| ✅ {totalFaturasComNota} com nota de débito</span>
+            )}
           </div>
         )}
         
@@ -730,7 +811,7 @@ const FaturasGeradas: React.FC = () => {
           <div className="text-center py-12 bg-gray-50 rounded-lg">
             <div className="text-5xl mb-4">📭</div>
             <p className="text-gray-500">Nenhuma fatura encontrada</p>
-            <p className="text-sm text-gray-400 mt-2">Tente ajustar os filtros ou aguarde o processamento de faturamento</p>
+            <p className="text-sm text-gray-400 mt-2">Tente ajustar os filtros</p>
           </div>
         ) : (
           <>
@@ -739,16 +820,13 @@ const FaturasGeradas: React.FC = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-left">
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={selecionarTodos && totalFaturas > 0}
-                          onChange={toggleSelecionarTodos}
-                          className="rounded"
-                          disabled={loading}
-                          title="Selecionar todos"
-                        />
-                      </div>
+                      <input
+                        type="checkbox"
+                        checked={selecionarTodos && totalFaturas > 0}
+                        onChange={toggleSelecionarTodos}
+                        className="rounded"
+                        disabled={loading}
+                      />
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Id Fatura</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Associado</th>
@@ -758,100 +836,117 @@ const FaturasGeradas: React.FC = () => {
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Vencimento</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Valor</th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Nota</th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase" style={{ minWidth: '140px' }}>Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
-                  {faturas.map((fatura) => (
-                    <tr key={fatura.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3">
-                        <input
-                          type="checkbox"
-                          checked={faturasSelecionadas.has(fatura.id)}
-                          onChange={() => toggleSelecionarFatura(fatura.id)}
-                          className="rounded"
-                        />
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="text-sm font-medium text-gray-900">{fatura.id}</div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="text-sm font-medium text-gray-900">{fatura.associadoNome}</div>
-                        <div className="text-xs text-gray-500">Código: {fatura.associadoId}</div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{fatura.cnpjCpf || '-'}</td>
-                      <td className="px-4 py-3">
-                        {(fatura as any).reguaNome ? (
-                          <span 
-                            className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full"
-                            style={{ 
-                              backgroundColor: getReguaColor((fatura as any).reguaCor) + '20',
-                              color: getReguaColor((fatura as any).reguaCor)
-                            }}
-                          >
+                  {faturas.map((fatura) => {
+                    const possuiNota = temNotaDebito(fatura);
+                    const notaId = getNotaDebitoId(fatura);
+                    return (
+                      <tr key={fatura.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3">
+                          <input
+                            type="checkbox"
+                            checked={faturasSelecionadas.has(fatura.id)}
+                            onChange={() => toggleSelecionarFatura(fatura.id)}
+                            className="rounded"
+                            disabled={!possuiNota}
+                            title={possuiNota ? '' : 'Fatura sem nota de débito'}
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="text-sm font-medium text-gray-900">{fatura.id}</div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="text-sm font-medium text-gray-900">{fatura.associadoNome}</div>
+                          <div className="text-xs text-gray-500">Código: {fatura.associadoId}</div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{fatura.cnpjCpf || '-'}</td>
+                        <td className="px-4 py-3">
+                          {(fatura as any).reguaNome ? (
                             <span 
-                              className="w-2 h-2 rounded-full"
-                              style={{ backgroundColor: getReguaColor((fatura as any).reguaCor) }}
-                            ></span>
-                            {(fatura as any).reguaNome}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-gray-400">-</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600 text-center">{formatDate(fatura.dataEmissao)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600 text-center">{formatDate(fatura.dataVencimento)}</td>
-                      <td className="px-4 py-3 text-sm font-bold text-right">{formatCurrency(fatura.valorTotal)}</td>
-                      <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full ${getStatusColor(fatura.status)}`}>
-                          <span>{getStatusIcon(fatura.status)}</span>
-                          <span>{fatura.status}</span>
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <div className="flex items-center justify-center gap-1 whitespace-nowrap">
-                          <button
-                            onClick={() => handleVerDetalhes(fatura.id)}
-                            className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
-                            title="Ver detalhes"
-                          >
-                            👁️
-                          </button>
-                          <button
-                            onClick={() => handleExportarPdf(fatura.id, fatura.numeroFatura)}
-                            className="p-1.5 text-green-600 hover:text-green-800 hover:bg-green-50 rounded transition-colors"
-                            title="Exportar PDF"
-                          >
-                            📄
-                          </button>
-                          
-                          {/* 🔥 BOTÃO EXCLUIR - COM VALIDAÇÃO DE STATUS */}
-                          {podeExcluir(fatura.status) ? (
-                            <button
-                              onClick={() => handleConfirmarExclusao(fatura.id, fatura.status, fatura.numeroFatura)}
-                              className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
-                              title="Excluir fatura"
+                              className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full"
+                              style={{ 
+                                backgroundColor: getReguaColor((fatura as any).reguaCor) + '20',
+                                color: getReguaColor((fatura as any).reguaCor)
+                              }}
                             >
-                              🗑️
-                            </button>
+                              <span 
+                                className="w-2 h-2 rounded-full"
+                                style={{ backgroundColor: getReguaColor((fatura as any).reguaCor) }}
+                              ></span>
+                              {(fatura as any).reguaNome}
+                            </span>
                           ) : (
-                            <button
-                              className="p-1.5 text-gray-400 cursor-not-allowed"
-                              title={`Não é possível excluir fatura com status: ${fatura.status}`}
-                              disabled
-                            >
-                              🚫
-                            </button>
+                            <span className="text-xs text-gray-400">-</span>
                           )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600 text-center">{formatDate(fatura.dataEmissao)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600 text-center">{formatDate(fatura.dataVencimento)}</td>
+                        <td className="px-4 py-3 text-sm font-bold text-right">{formatCurrency(fatura.valorTotal)}</td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full ${getStatusColor(fatura.status)}`}>
+                            <span>{getStatusIcon(fatura.status)}</span>
+                            <span>{fatura.status}</span>
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {possuiNota ? (
+                            <span className="text-green-600" title={`Nota ID: ${notaId}`}>
+                              <FaCheckCircle className="inline-block" />
+                            </span>
+                          ) : (
+                            <span className="text-red-500" title="Sem nota de débito">
+                              <FaTimesCircle className="inline-block" />
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex items-center justify-center gap-1 whitespace-nowrap">
+                            <button
+                              onClick={() => handleVerDetalhes(fatura.id)}
+                              className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                              title="Ver detalhes"
+                            >
+                              👁️
+                            </button>
+                            <button
+                              onClick={() => handleExportarPdf(fatura.id, fatura.numeroFatura)}
+                              className="p-1.5 text-green-600 hover:text-green-800 hover:bg-green-50 rounded transition-colors"
+                              title="Exportar PDF"
+                            >
+                              📄
+                            </button>
+                            
+                            {podeExcluir(fatura.status) ? (
+                              <button
+                                onClick={() => handleConfirmarExclusao(fatura.id, fatura.status, fatura.numeroFatura)}
+                                className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
+                                title="Excluir fatura"
+                              >
+                                🗑️
+                              </button>
+                            ) : (
+                              <button
+                                className="p-1.5 text-gray-400 cursor-not-allowed"
+                                title={`Não é possível excluir fatura com status: ${fatura.status}`}
+                                disabled
+                              >
+                                🚫
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
             
-            {/* Paginação - 10 por página */}
+            {/* Paginação */}
             {totalPaginas > 1 && (
               <div className="flex flex-wrap items-center justify-between gap-4 mt-4 pt-4 border-t">
                 <div className="text-sm text-gray-500">
@@ -862,11 +957,9 @@ const FaturasGeradas: React.FC = () => {
                     onClick={() => setPagina(0)}
                     disabled={pagina === 0}
                     className="px-3 py-1.5 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm"
-                    title="Primeira página"
                   >
                     ⏮️
                   </button>
-                  
                   <button
                     onClick={() => setPagina(p => Math.max(0, p - 1))}
                     disabled={pagina === 0}
@@ -874,11 +967,9 @@ const FaturasGeradas: React.FC = () => {
                   >
                     ◀ Anterior
                   </button>
-                  
                   <span className="px-3 py-1.5 text-sm text-gray-600 font-medium min-w-[100px] text-center">
                     Página {pagina + 1} de {totalPaginas}
                   </span>
-                  
                   <button
                     onClick={() => setPagina(p => Math.min(totalPaginas - 1, p + 1))}
                     disabled={pagina === totalPaginas - 1}
@@ -886,12 +977,10 @@ const FaturasGeradas: React.FC = () => {
                   >
                     Próxima ▶
                   </button>
-                  
                   <button
                     onClick={() => setPagina(totalPaginas - 1)}
                     disabled={pagina === totalPaginas - 1}
                     className="px-3 py-1.5 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors text-sm"
-                    title="Última página"
                   >
                     ⏭️
                   </button>
@@ -902,11 +991,40 @@ const FaturasGeradas: React.FC = () => {
         )}
       </div>
       
-      {/* 🔥 MODAL DE CONFIRMAÇÃO PARA EXCLUSÃO INDIVIDUAL */}
+      {/* ============================================================
+        MODAIS
+      ============================================================ */}
+      
+      {/* 🔥 MODAL PRÉ-VISUALIZAÇÃO XML */}
+      <ModalVisualizarXml
+        isOpen={modalVisualizarXmlAberto}
+        onClose={() => setModalVisualizarXmlAberto(false)}
+        onConfirm={() => {
+          setModalVisualizarXmlAberto(false);
+          handleIntegrarApi();
+        }}
+        detalhes={preVisualizacao.detalhes}
+        total={preVisualizacao.total}
+        processando={integrandoApi}
+      />
+      
+      {/* MODAL CONFIRMAÇÃO INTEGRAÇÃO API */}
+      <ConfirmModal
+        isOpen={modalConfirmacaoApiAberta}
+        title="🔌 Integrar via API"
+        message={`Deseja integrar ${dadosFaturasSelecionadas.length} fatura(s) via API (TBC)?\n\nEsta ação enviará os dados diretamente para o TOTVS RM via WebService.`}
+        confirmText="Sim, Integrar"
+        cancelText="Cancelar"
+        type="info"
+        onConfirm={executarIntegracaoApi}
+        onCancel={() => setModalConfirmacaoApiAberta(false)}
+      />
+      
+      {/* MODAL CONFIRMAÇÃO EXCLUSÃO INDIVIDUAL */}
       <ConfirmModal
         isOpen={modalConfirmacaoAberta}
         title="Confirmar Exclusão"
-        message={`Tem certeza que deseja excluir a fatura ${faturaParaExcluir?.numeroFatura} (ID: ${faturaParaExcluir?.id})? Esta ação não pode ser desfeita.`}
+        message={`Tem certeza que deseja excluir a fatura ${faturaParaExcluir?.numeroFatura} (ID: ${faturaParaExcluir?.id})?`}
         confirmText="Excluir"
         cancelText="Cancelar"
         type="danger"
@@ -914,11 +1032,11 @@ const FaturasGeradas: React.FC = () => {
         onCancel={cancelarExclusao}
       />
       
-      {/* 🔥 MODAL DE CONFIRMAÇÃO PARA EXCLUSÃO EM MASSA */}
+      {/* MODAL CONFIRMAÇÃO EXCLUSÃO EM MASSA */}
       <ConfirmModal
         isOpen={modalConfirmacaoMassaAberta}
         title="Confirmar Exclusão em Massa"
-        message={`Tem certeza que deseja excluir ${faturasSelecionadas.size} fatura(s)? Esta ação não pode ser desfeita.`}
+        message={`Tem certeza que deseja excluir ${faturasSelecionadas.size} fatura(s)?`}
         confirmText={`Excluir ${faturasSelecionadas.size} fatura(s)`}
         cancelText="Cancelar"
         type="danger"
@@ -926,7 +1044,7 @@ const FaturasGeradas: React.FC = () => {
         onCancel={cancelarExclusaoMassa}
       />
       
-      {/* Modais de Exportação RM */}
+      {/* MODAIS EXPORTAÇÃO RM */}
       <ModalExportacaoRm
         isOpen={modalExportacaoRmAberta}
         onClose={() => setModalExportacaoRmAberta(false)}
@@ -942,6 +1060,87 @@ const FaturasGeradas: React.FC = () => {
         resultado={resultadoExportacao}
         onBaixarArquivo={handleBaixarArquivoRm}
       />
+
+      {/* MODAL RESULTADO INTEGRAÇÃO API */}
+      {modalResultadoApiAberta && resultadoApi && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[80vh] overflow-hidden">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800">📊 Resultado da Integração API</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {resultadoApi.sucesso ? '✅ Integração concluída' : '⚠️ Integração com erros'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setModalResultadoApiAberta(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 overflow-y-auto max-h-[60vh]">
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="bg-gray-50 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-gray-800">{resultadoApi.totalProcessados}</div>
+                  <div className="text-sm text-gray-500">Processados</div>
+                </div>
+                <div className="bg-green-50 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-green-600">{resultadoApi.totalSucessos}</div>
+                  <div className="text-sm text-green-500">Sucessos</div>
+                </div>
+                <div className="bg-red-50 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-red-600">{resultadoApi.totalErros}</div>
+                  <div className="text-sm text-red-500">Erros</div>
+                </div>
+              </div>
+
+              {resultadoApi.itens && resultadoApi.itens.length > 0 && (
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Fatura</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Status</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">ID Mov</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Mensagem</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {resultadoApi.itens.map((item, idx) => (
+                        <tr key={idx} className={item.sucesso ? 'hover:bg-green-50' : 'hover:bg-red-50'}>
+                          <td className="px-3 py-2 text-sm text-gray-900">{item.faturaId || '-'}</td>
+                          <td className="px-3 py-2">
+                            {item.sucesso ? (
+                              <span className="text-green-600">✅ Sucesso</span>
+                            ) : (
+                              <span className="text-red-600">❌ Erro</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-sm text-gray-600">{item.idMov || '-'}</td>
+                          <td className="px-3 py-2 text-sm text-gray-600 max-w-xs truncate">{item.mensagem}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-gray-200 flex justify-end">
+              <button
+                onClick={() => setModalResultadoApiAberta(false)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

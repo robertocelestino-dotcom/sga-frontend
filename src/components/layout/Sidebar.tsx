@@ -22,7 +22,8 @@ import {
   FaTrashAlt,
   FaExchangeAlt,
   FaCloudUploadAlt,
-  FaEnvelope // 🔥 Ícone para Notificações
+  FaEnvelope,
+  FaPlug, // 🔥 Ícone para Integração RM API
 } from 'react-icons/fa';
 
 const Sidebar = () => {
@@ -31,7 +32,8 @@ const Sidebar = () => {
     cadastro: false,
     importacao: false,
     faturamento: false,
-    gestao: false
+    gestao: false,
+    integracoes: false // 🔥 NOVO: Menu de Integrações
   });
 
   const toggleMenu = (menu: string) => {
@@ -127,10 +129,28 @@ const Sidebar = () => {
           description: 'Consulta de faturas emitidas'
         },
         {
-          name: 'Integração RM',
+          name: 'Cancelamentos',
+          path: '/faturamento/cancelamentos',
+          icon: <FaTrashAlt size={16} />,
+          description: 'Gerenciar cancelamentos'
+        }
+      ]
+    },
+    {
+      name: 'Integrações',
+      icon: <FaExchangeAlt size={18} />,
+      submenu: [
+        {
+          name: 'Integração RM (Arquivo)',
           path: '/faturamento/integracoes/rm',
-          icon: <FaExchangeAlt size={16} />,
-          description: 'Configurações e exportação para RM'
+          icon: <FaFileImport size={16} />,
+          description: 'Configuração e exportação de arquivos RM'
+        },
+        {
+          name: 'Integração RM (API)',
+          path: '/faturamento/integracoes/rm-api',
+          icon: <FaPlug size={16} />,
+          description: 'Integração via WebService/TBC'
         }
       ]
     },
@@ -189,7 +209,6 @@ const Sidebar = () => {
       icon: <FaClipboardList size={18} />,
       exact: true
     },
-    // 🔥 NOVO ITEM: Notificações
     {
       name: 'Notificações',
       path: '/notificacoes',

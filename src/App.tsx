@@ -58,6 +58,9 @@ import ImportacaoCancelamentos from './pages/ImportacaoCancelamentos'
 
 import Notificacoes from './pages/Notificacoes';
 
+// 🔥 IMPORTAR A NOVA PÁGINA DE INTEGRAÇÃO RM API
+import IntegracaoRmApi from './pages/faturamento/IntegracaoRmApi';
+
 // Adicione esta animação ao seu index.css
 import './styles/animations.css'
 
@@ -171,7 +174,10 @@ function App() {
                 <Route path="faturas" element={<FaturasGeradas />} />
                 <Route path="faturas/:id" element={<FaturaDetalhes />} />
                 <Route path="cancelamentos" element={<CancelamentosPage />} />
+                
+                {/* 🔥 INTEGRAÇÕES RM */}
                 <Route path="integracoes/rm" element={<IntegracaoRmPage />} />
+                <Route path="integracoes/rm-api" element={<IntegracaoRmApi />} />
               </Route>
 
               {/* Faturamento (legado) */}

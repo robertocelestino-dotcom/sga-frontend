@@ -49,6 +49,7 @@ interface ResumoFaturamento {
 
 const LIMITE_DETALHES = 100;
 const MAX_TENTATIVAS_POLLING = 120;
+const BATCH_SIZE = 100; // 🔥 TAMANHO DO LOTE PARA SIMULAÇÃO
 
 const ProcessarFaturamento: React.FC = () => {
   const { showToast } = useMessage();
@@ -72,10 +73,22 @@ const ProcessarFaturamento: React.FC = () => {
   const [tempoRestante, setTempoRestante] = useState<string>('');
   const [cancelando, setCancelando] = useState(false);
   const [processandoAssincrono, setProcessandoAssincrono] = useState(false);
+  const [progressoLote, setProgressoLote] = useState({ atual: 0, total: 0 });
   
   // 🔥 REF PARA POLLING
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
+
+  // 🔥 DADOS PARA CONFIRMAÇÃO
+  const [dadosConfirmacao, setDadosConfirmacao] = useState<{
+    dataEmissao: string;
+    dataVencimento: string;
+    observacao: string;
+  }>({
+    dataEmissao: new Date().toISOString().split('T')[0],
+    dataVencimento: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    observacao: ''
+  });
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -122,7 +135,7 @@ const ProcessarFaturamento: React.FC = () => {
     }
   };
 
-  // 🔥 SIMULAR (NÃO SALVA)
+  // 🔥 SIMULAR (NÃO SALVA) - COM SUPORTE A LOTES
   const handleSimular = useCallback(async (associadosIds: number[], config: ProcessamentoConfig) => {
     console.log('📌 SIMULAÇÃO - Iniciando');
     console.log('  - Associados:', associadosIds.length);
@@ -136,6 +149,106 @@ const ProcessarFaturamento: React.FC = () => {
     setMensagemLonga('🔄 Simulando faturamento...');
     
     try {
+      const total = associadosIds.length;
+      
+      // 🔥 SE MAIS DE 500, PROCESSAR EM LOTES
+      if (total > 500) {
+        showToast(`📊 Processando ${total} associados em lotes de ${BATCH_SIZE}...`, 'info');
+        
+        let allResults: any = {
+          associadosProcessados: 0,
+          totalNotasGeradas: 0,
+          valorTotalDebito: 0,
+          detalhes: []
+        };
+        
+        const batchSize = BATCH_SIZE;
+        let processed = 0;
+        
+        for (let i = 0; i < total; i += batchSize) {
+          const batch = associadosIds.slice(i, i + batchSize);
+          const loteAtual = Math.floor(i / batchSize) + 1;
+          const totalLotes = Math.ceil(total / batchSize);
+          
+          setProgressoLote({ atual: loteAtual, total: totalLotes });
+          setMensagemLonga(`🔄 Simulando lote ${loteAtual}/${totalLotes} (${batch.length} associados)...`);
+          
+          const payload = {
+            associadosIds: batch,
+            mesReferencia: config.mesReferencia,
+            anoReferencia: config.anoReferencia,
+            gerarNotas: false,
+            integrarRM: false,
+            reguaId: config.reguaId,
+            simular: true
+          };
+          
+          try {
+            const response = await api.post('/faturamento/simular', payload, {
+              timeout: 600000 // 10 minutos por lote
+            });
+            
+            const data = response.data;
+            
+            allResults.associadosProcessados += data.associadosProcessados || 0;
+            allResults.totalNotasGeradas += data.totalNotasGeradas || 0;
+            allResults.valorTotalDebito += data.valorTotalDebito || 0;
+            
+            if (data.detalhes && data.detalhes.length > 0) {
+              allResults.detalhes = [...allResults.detalhes, ...data.detalhes];
+            }
+            
+            processed += batch.length;
+            setMensagemLonga(`✅ Lote ${loteAtual}/${totalLotes} concluído (${processed}/${total} associados)`);
+            
+          } catch (batchError: any) {
+            console.error(`❌ Erro no lote ${loteAtual}:`, batchError);
+            showToast(`⚠️ Erro no lote ${loteAtual}: ${batchError.message}`, 'warning');
+            // Continua com o próximo lote
+          }
+        }
+        
+        // 🔥 CRIAR RESUMO COM ITENS
+        let detalhes = [];
+        if (allResults.detalhes && allResults.detalhes.length > 0) {
+          detalhes = allResults.detalhes.map((det: any) => ({
+            associadoId: det.associadoId,
+            associadoNome: det.associadoNome,
+            valor: det.valorNota || 0,
+            itens: det.itensFatura?.map((item: any) => ({
+              codigoProduto: item.codigoProduto || item.codigoProduto,
+              descricao: item.descricao || item.descricao,
+              quantidade: item.quantidade || 1,
+              valorUnitario: item.valorUnitario || 0,
+              valorTotal: item.valorTotal || 0
+            })) || []
+          }));
+        }
+        
+        setResumo({
+          totalAssociados: allResults.associadosProcessados || total,
+          totalFaturas: allResults.totalNotasGeradas || 0,
+          valorTotal: allResults.valorTotalDebito || 0,
+          detalhesPorAssociado: detalhes
+        });
+        
+        setModalSelecaoAberta(false);
+        setResultado(allResults);
+        setModalResultadoAberta(true);
+        
+        const faturas = allResults.totalNotasGeradas || 0;
+        if (faturas === 0) {
+          showToast('⚠️ Simulação: Nenhuma fatura será gerada.', 'warning');
+        } else {
+          showToast(`📊 Simulação concluída! ${faturas} fatura(s) seriam geradas.`, 'info');
+        }
+        
+        setProcessando(false);
+        setProgressoLote({ atual: 0, total: 0 });
+        return;
+      }
+      
+      // 🔥 PROCESSAMENTO NORMAL PARA MENOS DE 500
       const payload = {
         associadosIds,
         mesReferencia: config.mesReferencia,
@@ -149,7 +262,7 @@ const ProcessarFaturamento: React.FC = () => {
       console.log('📤 Payload simulação:', { ...payload, associadosIds: `${payload.associadosIds.length} IDs` });
       
       const response = await api.post('/faturamento/simular', payload, {
-        timeout: 300000
+        timeout: 1200000 // 20 minutos
       });
       
       console.log('📥 Resposta simulação:', {
@@ -199,17 +312,18 @@ const ProcessarFaturamento: React.FC = () => {
     } catch (error: any) {
       console.error('❌ Erro na simulação:', error);
       
-      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-        showToast('⏰ A simulação está demorando muito. Tente com menos associados.', 'warning');
+      if (error.isTimeout || error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        showToast('⏰ A simulação está demorando muito. Tente com menos associados ou processe em lotes.', 'warning');
       } else {
-        showToast('❌ Erro ao simular faturamento', 'error');
+        showToast(`❌ Erro ao simular: ${error.response?.data?.message || error.message}`, 'error');
       }
       
       setProcessando(false);
+      setProgressoLote({ atual: 0, total: 0 });
     }
   }, [showToast]);
 
-  // 🔥 PROCESSAR FATURAMENTO (SALVA)
+  // 🔥 PROCESSAR FATURAMENTO (SALVA) - ABRE MODAL DE CONFIRMAÇÃO
   const handleProcessar = useCallback(async (associadosIds: number[], config: ProcessamentoConfig) => {
     console.log('📌 PROCESSAR FATURAMENTO - Iniciando');
     console.log('  - Associados:', associadosIds.length);
@@ -218,6 +332,47 @@ const ProcessarFaturamento: React.FC = () => {
     setAssociadosSelecionados(associadosIds);
     setConfigSelecionada(config);
     setModoExecucao('processar');
+    
+    // 🔥 ABRIR MODAL DE CONFIRMAÇÃO ANTES DE PROCESSAR
+    setModalSelecaoAberta(false);
+    setModalConfirmacaoAberta(true);
+  }, []);
+
+  // 🔥 CONFIRMAR PROCESSAMENTO (APÓS MODAL DE CONFIRMAÇÃO)
+  const handleConfirmarProcessamento = useCallback(async (
+    dataEmissao: string, 
+    dataVencimento: string, 
+    observacao: string
+  ) => {
+    // Fechar modal de confirmação
+    setModalConfirmacaoAberta(false);
+    
+    // 🔥 USAR OS ASSOCIADOS SELECIONADOS
+    if (associadosSelecionados.length === 0 || !configSelecionada) {
+      showToast('⚠️ Nenhum associado selecionado.', 'warning');
+      return;
+    }
+    
+    // Atualizar dados de confirmação
+    setDadosConfirmacao({ dataEmissao, dataVencimento, observacao });
+    
+    // 🔥 CHAMAR PROCESSAMENTO REAL
+    await executarProcessamento(associadosSelecionados, configSelecionada, dataEmissao, dataVencimento, observacao);
+  }, [associadosSelecionados, configSelecionada, showToast]);
+
+  // 🔥 EXECUTAR PROCESSAMENTO REAL
+  const executarProcessamento = useCallback(async (
+    associadosIds: number[], 
+    config: ProcessamentoConfig,
+    dataEmissao: string,
+    dataVencimento: string,
+    observacao: string
+  ) => {
+    console.log('📌 EXECUTANDO PROCESSAMENTO REAL - Iniciando');
+    console.log('  - Associados:', associadosIds.length);
+    console.log('  - Config:', config);
+    console.log('  - Data Emissão:', dataEmissao);
+    console.log('  - Data Vencimento:', dataVencimento);
     
     setProcessando(true);
     setMensagemLonga('🔄 Iniciando processamento...');
@@ -230,13 +385,18 @@ const ProcessarFaturamento: React.FC = () => {
         gerarNotas: true,
         integrarRM: config.integrarRM || false,
         reguaId: config.reguaId,
-        simular: false
+        simular: false,
+        dataEmissao,
+        dataVencimento,
+        observacao
       };
       
       console.log('📤 Payload processamento:', { ...payload, associadosIds: `${payload.associadosIds.length} IDs` });
       
       // 🔥 CHAMAR PROCESSAMENTO ASSÍNCRONO
-      const response = await api.post('/faturamento/processar-assincrono', payload);
+      const response = await api.post('/faturamento/processar-assincrono', payload, {
+        timeout: 300000 // 5 minutos para iniciar
+      });
       
       if (!response.data.success) {
         showToast('❌ Erro ao iniciar processamento', 'error');
@@ -265,7 +425,9 @@ const ProcessarFaturamento: React.FC = () => {
         setTentativasPolling(tentativas);
         
         try {
-          const statusResponse = await api.get(`/faturamento/processamento-status/${taskId}`);
+          const statusResponse = await api.get(`/faturamento/processamento-status/${taskId}`, {
+            timeout: 30000 // 30 segundos para status
+          });
           const status: ProcessamentoStatus = statusResponse.data;
           
           setPercentual(status.progresso);
@@ -369,28 +531,16 @@ const ProcessarFaturamento: React.FC = () => {
       setMensagemLonga('❌ Erro no processamento');
       setStatusProcessamento('ERRO');
       
-      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-        showToast('⏰ O processamento está demorando muito.', 'warning');
+      if (error.isTimeout || error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        showToast('⏰ O processamento está demorando muito. Tente com menos associados.', 'warning');
       } else {
-        showToast('❌ Erro ao processar faturamento', 'error');
+        showToast(`❌ Erro ao processar: ${error.response?.data?.message || error.message}`, 'error');
       }
       
       setProcessando(false);
       setProcessandoAssincrono(false);
     }
   }, [showToast]);
-
-  // 🔥 CONFIRMAR PROCESSAMENTO (APÓS SIMULAÇÃO)
-  const handleConfirmarProcessamento = useCallback(async (dataEmissao: string, dataVencimento: string, observacao: string) => {
-    // 🔥 USAR OS ASSOCIADOS SELECIONADOS NA SIMULAÇÃO
-    if (associadosSelecionados.length === 0 || !configSelecionada) {
-      showToast('⚠️ Nenhum associado selecionado.', 'warning');
-      return;
-    }
-    
-    // 🔥 CHAMAR PROCESSAMENTO REAL
-    await handleProcessar(associadosSelecionados, configSelecionada);
-  }, [associadosSelecionados, configSelecionada, handleProcessar]);
 
   // 🔥 VOLTAR PARA SELEÇÃO
   const handleVoltarSelecao = useCallback(() => {
@@ -456,7 +606,7 @@ const ProcessarFaturamento: React.FC = () => {
       <ModalSelecaoAssociados
         isOpen={modalSelecaoAberta}
         onClose={() => setModalSelecaoAberta(false)}
-        onConfirm={handleProcessar}        // 🔥 PROCESSAR
+        onConfirm={handleProcessar}        // 🔥 PROCESSAR - Abre modal de confirmação
         onSimulate={handleSimularManual}   // 🔥 SIMULAR
       />
       
@@ -464,7 +614,7 @@ const ProcessarFaturamento: React.FC = () => {
         isOpen={modalConfirmacaoAberta}
         onClose={() => setModalConfirmacaoAberta(false)}
         onConfirm={handleConfirmarProcessamento}
-        resumo={resumo || { totalAssociados: 0, totalFaturas: 0, valorTotal: 0 }}
+        resumo={resumo || { totalAssociados: associadosSelecionados.length || 0, totalFaturas: 0, valorTotal: 0 }}
         processando={processando}
       />
       
@@ -486,6 +636,22 @@ const ProcessarFaturamento: React.FC = () => {
                '⏳ Aguarde...'}
             </p>
             
+            {/* 🔥 PROGRESSO POR LOTE (SIMULAÇÃO) */}
+            {modoExecucao === 'simular' && progressoLote.total > 0 && (
+              <div className="mt-4">
+                <p className="text-sm text-gray-500">
+                  Lote {progressoLote.atual} de {progressoLote.total}
+                </p>
+                <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+                  <div 
+                    className="h-2.5 rounded-full bg-green-600 transition-all duration-500"
+                    style={{ width: `${(progressoLote.atual / progressoLote.total) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+            )}
+            
+            {/* 🔥 PROGRESSO DO PROCESSAMENTO ASSÍNCRONO */}
             {processandoAssincrono && modoExecucao === 'processar' && (
               <div className="mt-4">
                 <div className="w-full bg-gray-200 rounded-full h-2.5">

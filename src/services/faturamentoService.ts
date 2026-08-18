@@ -47,6 +47,8 @@ export interface FaturaResumoDTO {
   reguaId?: number;
   reguaNome?: string;
   reguaCor?: string;
+  notaDebitoId?: number; // 🔥 ADICIONADO
+  processadoRm: boolean; // 🔥 ADICIONADO
 }
 
 export interface FaturaDetalheDTO {
@@ -66,6 +68,7 @@ export interface FaturaDetalheDTO {
   cnpjCpf: string;
   codigoSpc: string;
   numeroRps?: number;
+  notaDebitoId?: number; // 🔥 ADICIONADO
   itens: FaturaItemDTO[];
 }
 
@@ -117,6 +120,29 @@ export interface ExportacaoItemFatura {
   valorTotal: number;
 }
 
+// 🔥 INTERFACE PARA INTEGRAÇÃO RM API
+export interface IntegracaoRmApiRequest {
+  notaIds: number[];
+  configuracaoId?: number;
+}
+
+export interface IntegracaoRmApiItem {
+  notaId: number;
+  faturaId?: number;
+  sucesso: boolean;
+  idMov?: number;
+  mensagem: string;
+}
+
+export interface IntegracaoRmApiResponse {
+  sucesso: boolean;
+  mensagem: string;
+  totalProcessados: number;
+  totalSucessos: number;
+  totalErros: number;
+  itens: IntegracaoRmApiItem[];
+}
+
 class FaturamentoService {
   
   async listarFaturas(page: number, size: number, filters?: {
@@ -132,7 +158,6 @@ class FaturamentoService {
       sort: 'dataEmissao,desc'
     };
     
-    // 🔥 GARANTIR QUE OS FILTROS SÃO ENVIADOS CORRETAMENTE
     if (filters?.numeroFatura && filters.numeroFatura.trim() !== '') {
       params.numeroFatura = filters.numeroFatura.trim();
     }
@@ -267,14 +292,13 @@ class FaturamentoService {
     });
   }
 
-  // 🔥 ADICIONAR ESTES MÉTODOS
+  // 🔥 MÉTODOS PARA ITENS DA FATURA
   async adicionarItemFatura(faturaId: number, item: {
     codigoProduto: string;
     descricao: string;
     quantidade: number;
     valorUnitario: number;
   }): Promise<any> {
-    // VALIDAR PARÂMETROS
     if (!faturaId) {
       throw new Error('ID da fatura é obrigatório');
     }
@@ -312,7 +336,7 @@ class FaturamentoService {
     descricao: string;
     quantidade: number;
     valorUnitario: number;
-    tipoLancamento?: string; // 🔥 ADICIONAR ESTE CAMPO
+    tipoLancamento?: string;
   }): Promise<any> {
     if (!faturaId || faturaId === 0) {
       throw new Error('ID da fatura inválido: ' + faturaId);
@@ -328,16 +352,12 @@ class FaturamentoService {
       descricao: item.descricao,
       quantidade: item.quantidade,
       valorUnitario: item.valorUnitario,
-      tipoLancamento: item.tipoLancamento || 'D' // 🔥 DEFINIR PADRÃO
+      tipoLancamento: item.tipoLancamento || 'D'
     });
     
     return response.data;
   }
 
-  /**
-   * 🔥 EXCLUIR FATURA
-   * Apenas faturas com status PENDENTE ou SIMULADO podem ser excluídas
-   */
   async excluirFatura(id: number): Promise<void> {
     try {
       console.log(`🗑️ Excluindo fatura ID: ${id}`);
@@ -349,6 +369,53 @@ class FaturamentoService {
     }
   }
 
+  // ============================================================
+  // 🔥 INTEGRAÇÃO RM VIA API (NOVO)
+  // ============================================================
+
+  /**
+   * 🔥 INTEGRA FATURAS VIA API (TBC)
+   */
+  async integrarFaturasViaApi(notaIds: number[], configuracaoId?: number): Promise<IntegracaoRmApiResponse> {
+    console.log('📤 Integrando via API - Notas:', notaIds.length);
+    
+    const response = await api.post('/rm-api/integrar', {
+      notaIds,
+      configuracaoId
+    });
+    
+    return response.data;
+  }
+
+  /**
+   * 🔥 INTEGRA FATURAS VIA API (USANDO CONFIGURAÇÃO ATIVA)
+   */
+  async integrarFaturasViaApiAutomatico(notaIds: number[]): Promise<IntegracaoRmApiResponse> {
+    console.log('🤖 Integrando via API (automático) - Notas:', notaIds.length);
+    
+    const response = await api.post('/rm-api/integrar/automatico', {
+      notaIds
+    });
+    
+    return response.data;
+  }
+
+  /**
+   * 🔥 TESTA CONEXÃO COM WEBSERVICE
+   */
+  async testarConexaoApi(config: {
+    wsUrl: string;
+    wsUsername: string;
+    wsPassword: string;
+    wsColigada: string;
+    wsSistema: string;
+    wsUsuario: string;
+  }): Promise<boolean> {
+    console.log('🧪 Testando conexão com WebService');
+    
+    const response = await api.post('/rm-api/testar-conexao', config);
+    return response.data;
+  }
 }
 
 export default new FaturamentoService();

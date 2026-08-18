@@ -1,3 +1,5 @@
+// src/pages/faturamento/ReguaFaturamentoForm.tsx
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { reguaFaturamentoService, ReguaFaturamento, TipoArquivoRegua } from '../../services/reguaFaturamentoService';
@@ -7,6 +9,7 @@ import Loading from '../../components/Loading';
 import Modal from '../../components/ui/Modal';
 import ConfirmModal from '../../components/ui/ConfirmModal';
 import { useMessage } from '../../providers/MessageProvider';
+import api from '../../services/api'; // 🔥 ADICIONAR ESTA LINHA
 
 const periodos = [
   { value: 'PRIMEIRO', label: 'Primeiro Período (Dias 1-2)' },
@@ -43,7 +46,10 @@ interface AssociadoReguaDTO {
   dataInicio?: string;
 }
 
-// 🔥 MODAL PARA GERENCIAR TIPOS DE ARQUIVO - CORRIGIDO
+// ============================================================
+// MODAL PARA GERENCIAR TIPOS DE ARQUIVO
+// ============================================================
+
 const ModalTiposArquivo: React.FC<{
   aberto: boolean;
   onFechar: () => void;
@@ -187,8 +193,10 @@ const ModalTiposArquivo: React.FC<{
   );
 };
 
+// ============================================================
+// LISTA DE ASSOCIADOS DA RÉGUA
+// ============================================================
 
-// Componente de lista de associados da régua - VERSÃO CORRIGIDA (sem CNPJ/CPF, 7 por página)
 const ListaAssociadosRegua: React.FC<{
   reguaId: number;
   associados: AssociadoReguaDTO[];
@@ -200,14 +208,12 @@ const ListaAssociadosRegua: React.FC<{
   const [showConfirmRemoverTodosModal, setShowConfirmRemoverTodosModal] = useState(false);
   const [associadoParaRemover, setAssociadoParaRemover] = useState<number | null>(null);
   
-  // Estados para paginação, filtro e seleção
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [itensPorPagina] = useState(7);
   const [filtroPesquisa, setFiltroPesquisa] = useState('');
   const [associadosSelecionados, setAssociadosSelecionados] = useState<Set<number>>(new Set());
   const [selecionarTodos, setSelecionarTodos] = useState(false);
 
-  // Extrair código SPC de forma segura
   const getCodigoSpc = (assoc: AssociadoReguaDTO): string => {
     if (assoc.codigoSpc) return assoc.codigoSpc;
     if ((assoc as any).associadoCodigoSpc) return (assoc as any).associadoCodigoSpc;
@@ -215,7 +221,6 @@ const ListaAssociadosRegua: React.FC<{
     return '-';
   };
 
-  // Extrair nome de forma segura
   const getNomeRazao = (assoc: AssociadoReguaDTO): string => {
     if (assoc.nomeRazao) return assoc.nomeRazao;
     if ((assoc as any).associadoNome) return (assoc as any).associadoNome;
@@ -223,23 +228,19 @@ const ListaAssociadosRegua: React.FC<{
     return '-';
   };
 
-  // Filtrar associados pela pesquisa (apenas código SPC e nome)
   const associadosFiltrados = associados.filter(assoc => {
     if (!filtroPesquisa) return true;
     const pesquisaLower = filtroPesquisa.toLowerCase();
     const codigoSpc = getCodigoSpc(assoc).toLowerCase();
     const nome = getNomeRazao(assoc).toLowerCase();
-    
     return codigoSpc.includes(pesquisaLower) || nome.includes(pesquisaLower);
   });
 
-  // Paginação
   const totalPaginas = Math.ceil(associadosFiltrados.length / itensPorPagina);
   const inicio = (paginaAtual - 1) * itensPorPagina;
   const fim = inicio + itensPorPagina;
   const associadosPaginados = associadosFiltrados.slice(inicio, fim);
 
-  // Selecionar/Deselecionar todos
   const handleSelecionarTodos = () => {
     if (selecionarTodos) {
       setAssociadosSelecionados(new Set());
@@ -251,7 +252,6 @@ const ListaAssociadosRegua: React.FC<{
     setSelecionarTodos(!selecionarTodos);
   };
 
-  // Selecionar/Deselecionar um associado
   const toggleSelecionarAssociado = (associadoId: number) => {
     const novosSelecionados = new Set(associadosSelecionados);
     if (novosSelecionados.has(associadoId)) {
@@ -263,13 +263,11 @@ const ListaAssociadosRegua: React.FC<{
     setSelecionarTodos(novosSelecionados.size === associadosPaginados.length && associadosPaginados.length > 0);
   };
 
-  // 🔥 FUNÇÃO CORRIGIDA - Usa ConfirmModal em vez de window.confirm
   const handleRemoverSelecionados = () => {
     if (associadosSelecionados.size === 0) return;
     setShowConfirmRemoverTodosModal(true);
   };
 
-  // 🔥 NOVA FUNÇÃO - Confirmar remoção em massa
   const handleConfirmRemoverTodos = () => {
     const ids = Array.from(associadosSelecionados);
     ids.forEach(id => onRemover(id));
@@ -278,7 +276,6 @@ const ListaAssociadosRegua: React.FC<{
     setShowConfirmRemoverTodosModal(false);
   };
 
-  // Limpar filtro
   const limparFiltro = () => {
     setFiltroPesquisa('');
     setPaginaAtual(1);
@@ -321,7 +318,6 @@ const ListaAssociadosRegua: React.FC<{
 
   return (
     <div className="space-y-4">
-      {/* Barra de pesquisa e ações */}
       <div className="flex flex-col gap-3">
         <div className="flex gap-2">
           <div className="flex-1 relative">
@@ -367,7 +363,6 @@ const ListaAssociadosRegua: React.FC<{
         </div>
       ) : (
         <>
-          {/* Tabela - SEM COLUNA CNPJ/CPF */}
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -421,7 +416,6 @@ const ListaAssociadosRegua: React.FC<{
             </table>
           </div>
 
-          {/* Paginação */}
           {totalPaginas > 1 && (
             <div className="flex justify-between items-center pt-4 border-t border-gray-200">
               <div className="text-sm text-gray-500">
@@ -451,7 +445,6 @@ const ListaAssociadosRegua: React.FC<{
         </>
       )}
 
-      {/* Modal para remover associado individual */}
       <ConfirmModal
         isOpen={showConfirmModal}
         onClose={() => setShowConfirmModal(false)}
@@ -463,13 +456,12 @@ const ListaAssociadosRegua: React.FC<{
         type="danger"
       />
 
-      {/* 🔥 NOVO MODAL para remover múltiplos associados */}
       <ConfirmModal
         isOpen={showConfirmRemoverTodosModal}
         onClose={() => setShowConfirmRemoverTodosModal(false)}
         onConfirm={handleConfirmRemoverTodos}
         title="Confirmar Remoção em Massa"
-        message={`Tem certeza que deseja remover ${associadosSelecionados.size} associado(s) da régua? Eles serão migrados para a régua padrão (dia 26).`}
+        message={`Tem certeza que deseja remover ${associadosSelecionados.size} associado(s) da régua?`}
         confirmText="Sim, Remover Todos"
         cancelText="Cancelar"
         type="danger"
@@ -478,7 +470,10 @@ const ListaAssociadosRegua: React.FC<{
   );
 };
 
-// Modal para selecionar associados - VERSÃO SIMPLIFICADA
+// ============================================================
+// MODAL PARA SELECIONAR ASSOCIADOS
+// ============================================================
+
 const ModalSelecionarAssociados: React.FC<{
   aberto: boolean;
   onFechar: () => void;
@@ -762,6 +757,10 @@ const ModalSelecionarAssociados: React.FC<{
   );
 };
 
+// ============================================================
+// COMPONENTE PRINCIPAL
+// ============================================================
+
 const ReguaFaturamentoForm: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -811,31 +810,70 @@ const ReguaFaturamentoForm: React.FC = () => {
     }
   };
   
+  // 🔥 FUNÇÃO CORRIGIDA - carregarAssociadosVinculados
   const carregarAssociadosVinculados = async () => {
+    if (!id) {
+      setAssociadosVinculados([]);
+      setAssociadosIdsVinculados([]);
+      return;
+    }
+    
     try {
       setLoadingAssociados(true);
-      const associados = await reguaFaturamentoService.listarAssociadosPorRegua(parseInt(id!));
+      console.log(`🔍 Carregando TODOS os associados vinculados para a régua ID: ${id}`);
       
-      console.log('📥 Dados brutos da API:', JSON.stringify(associados, null, 2));
+      // 🔥 USAR O SERVICE QUE AGORA BUSCA TODOS
+      //const associados = await reguaFaturamentoService.listarAssociadosPorRegua(parseInt(id));
+      const associados = await api.get(`/regua-faturamento/${id}/associados`);
       
-      // 🔥 MAPEAMENTO CORRIGIDO - Buscando em todas as propriedades possíveis
-      const associadosFormatados: AssociadoReguaDTO[] = associados.map((a: any) => ({
-        associadoId: a.associadoId || a.id,
-        // 🔥 Tenta várias propriedades para o código SPC
-        codigoSpc: a.codigoSpc || a.associadoCodigoSpc || a.codigoSocio || a.associadoCodigoSocio || '-',
+      console.log('📥 Associados carregados:', associados);
+      console.log('📥 Quantidade:', associados.length);
+      
+      // 🔥 GARANTIR QUE É UM ARRAY
+      let associadosData = associados;
+      if (!Array.isArray(associadosData)) {
+        console.warn('⚠️ Resposta não é um array, tentando extrair');
+        if (associadosData && typeof associadosData === 'object') {
+          const possibleKeys = ['content', 'itens', 'data', 'list', 'associados', 'registros', 'resultado'];
+          let foundArray = null;
+          for (const key of possibleKeys) {
+            if (associadosData[key] && Array.isArray(associadosData[key])) {
+              foundArray = associadosData[key];
+              console.log(`✅ Encontrado array na propriedade "${key}" com ${foundArray.length} itens`);
+              break;
+            }
+          }
+          if (foundArray) {
+            associadosData = foundArray;
+          } else {
+            associadosData = [];
+          }
+        } else {
+          associadosData = [];
+        }
+      }
+      
+      // 🔥 MAPEAR OS DADOS
+      const associadosFormatados: AssociadoReguaDTO[] = associadosData.map((a: any) => ({
+        associadoId: a.associadoId || a.id || 0,
+        codigoSpc: a.codigoSpc || a.associadoCodigoSpc || a.codigoSocio || '-',
         nomeRazao: a.nomeRazao || a.associadoNome || a.nome || '-',
-        nomeFantasia: a.nomeFantasia,
-        cnpjCpf: a.cnpjCpf || a.associadoCnpjCpf || a.cnpj_cpf || '-',
-        status: a.status,
-        dataInicio: a.dataInicio
+        nomeFantasia: a.nomeFantasia || '',
+        cnpjCpf: a.cnpjCpf || a.associadoCnpjCpf || '',
+        status: a.status || 'A',
+        dataInicio: a.dataInicio || new Date().toISOString().split('T')[0]
       }));
       
-      console.log('📋 Associados formatados:', associadosFormatados);
+      console.log(`✅ ${associadosFormatados.length} associados vinculados carregados`);
       
       setAssociadosVinculados(associadosFormatados);
       setAssociadosIdsVinculados(associadosFormatados.map(a => a.associadoId));
+      
     } catch (error) {
-      console.error('Erro ao carregar associados vinculados:', error);
+      console.error('❌ Erro ao carregar associados vinculados:', error);
+      setAssociadosVinculados([]);
+      setAssociadosIdsVinculados([]);
+      showToast('Erro ao carregar associados da régua', 'error');
     } finally {
       setLoadingAssociados(false);
     }
