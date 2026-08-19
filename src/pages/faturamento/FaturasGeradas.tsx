@@ -84,7 +84,7 @@ const FaturasGeradas: React.FC = () => {
   const [modalResultadoApiAberta, setModalResultadoApiAberta] = useState(false);
   const [resultadoApi, setResultadoApi] = useState<IntegracaoApiResultado | null>(null);
   
-  // 🔥 PRÉ-VISUALIZAÇÃO XML
+  // Pré-visualização XML
   const [modalVisualizarXmlAberto, setModalVisualizarXmlAberto] = useState(false);
   const [carregandoPreVisualizacao, setCarregandoPreVisualizacao] = useState(false);
   const [preVisualizacao, setPreVisualizacao] = useState<{
@@ -247,7 +247,7 @@ const FaturasGeradas: React.FC = () => {
   };
 
   // ============================================================
-  // 🔥 PRÉ-VISUALIZAR XML
+  // PRÉ-VISUALIZAR XML
   // ============================================================
 
   const handlePreVisualizarXml = async () => {
@@ -661,7 +661,6 @@ const FaturasGeradas: React.FC = () => {
               </span>
             </div>
             <div className="flex flex-wrap gap-2">
-              {/* 🔥 BOTÃO: PRÉ-VISUALIZAR XML */}
               <button
                 onClick={handlePreVisualizarXml}
                 disabled={carregandoPreVisualizacao}
@@ -675,7 +674,6 @@ const FaturasGeradas: React.FC = () => {
                 Pré-visualizar XML
               </button>
 
-              {/* BOTÃO: INTEGRAR VIA API */}
               <button
                 onClick={handleIntegrarApi}
                 disabled={integrandoApi}
@@ -689,7 +687,6 @@ const FaturasGeradas: React.FC = () => {
                 Integrar API
               </button>
               
-              {/* BOTÃO: EXPORTAR ARQUIVO */}
               <button
                 onClick={() => setModalExportacaoRmAberta(true)}
                 disabled={exportandoRm}
@@ -703,7 +700,6 @@ const FaturasGeradas: React.FC = () => {
                 Exportar Arquivo
               </button>
               
-              {/* BOTÃO: EXCLUIR */}
               <button
                 onClick={handleConfirmarExclusaoMassa}
                 disabled={excluindoEmMassa}
@@ -920,6 +916,15 @@ const FaturasGeradas: React.FC = () => {
                               📄
                             </button>
                             
+                            {/* 🔥 BOTÃO "VER LOGS" - NOVO */}
+                            <button
+                              onClick={() => navigate(`/faturamento/faturas/${fatura.id}`)}
+                              className="p-1.5 text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded transition-colors"
+                              title="Ver Logs"
+                            >
+                              📝
+                            </button>
+                            
                             {podeExcluir(fatura.status) ? (
                               <button
                                 onClick={() => handleConfirmarExclusao(fatura.id, fatura.status, fatura.numeroFatura)}
@@ -995,7 +1000,6 @@ const FaturasGeradas: React.FC = () => {
         MODAIS
       ============================================================ */}
       
-      {/* 🔥 MODAL PRÉ-VISUALIZAÇÃO XML */}
       <ModalVisualizarXml
         isOpen={modalVisualizarXmlAberto}
         onClose={() => setModalVisualizarXmlAberto(false)}
@@ -1008,7 +1012,6 @@ const FaturasGeradas: React.FC = () => {
         processando={integrandoApi}
       />
       
-      {/* MODAL CONFIRMAÇÃO INTEGRAÇÃO API */}
       <ConfirmModal
         isOpen={modalConfirmacaoApiAberta}
         title="🔌 Integrar via API"
@@ -1020,7 +1023,6 @@ const FaturasGeradas: React.FC = () => {
         onCancel={() => setModalConfirmacaoApiAberta(false)}
       />
       
-      {/* MODAL CONFIRMAÇÃO EXCLUSÃO INDIVIDUAL */}
       <ConfirmModal
         isOpen={modalConfirmacaoAberta}
         title="Confirmar Exclusão"
@@ -1032,7 +1034,6 @@ const FaturasGeradas: React.FC = () => {
         onCancel={cancelarExclusao}
       />
       
-      {/* MODAL CONFIRMAÇÃO EXCLUSÃO EM MASSA */}
       <ConfirmModal
         isOpen={modalConfirmacaoMassaAberta}
         title="Confirmar Exclusão em Massa"
@@ -1044,7 +1045,6 @@ const FaturasGeradas: React.FC = () => {
         onCancel={cancelarExclusaoMassa}
       />
       
-      {/* MODAIS EXPORTAÇÃO RM */}
       <ModalExportacaoRm
         isOpen={modalExportacaoRmAberta}
         onClose={() => setModalExportacaoRmAberta(false)}

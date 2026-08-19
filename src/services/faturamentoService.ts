@@ -47,8 +47,8 @@ export interface FaturaResumoDTO {
   reguaId?: number;
   reguaNome?: string;
   reguaCor?: string;
-  notaDebitoId?: number; // 🔥 ADICIONADO
-  processadoRm: boolean; // 🔥 ADICIONADO
+  notaDebitoId?: number;
+  processadoRm: boolean;
 }
 
 export interface FaturaDetalheDTO {
@@ -68,7 +68,7 @@ export interface FaturaDetalheDTO {
   cnpjCpf: string;
   codigoSpc: string;
   numeroRps?: number;
-  notaDebitoId?: number; // 🔥 ADICIONADO
+  notaDebitoId?: number;
   itens: FaturaItemDTO[];
 }
 
@@ -80,7 +80,27 @@ export interface PageableFatura {
   number: number;
 }
 
-// 🔥 INTERFACE PARA RESULTADO DA EXPORTAÇÃO RM COM METADADOS
+// ============================================================
+// 🔥 INTERFACES PARA LOGS
+// ============================================================
+
+export interface LogFatura {
+  id: number;
+  nivel: string;      // INFO, WARN, ERROR, DEBUG
+  mensagem: string;
+  passo: string;      // INICIO, EXTRAIR_PERIODO, etc.
+  dataHora: string;
+}
+
+export interface ContagemLogs {
+  faturaId: number;
+  totalLogs: number;
+}
+
+// ============================================================
+// INTERFACES PARA EXPORTAÇÃO RM
+// ============================================================
+
 export interface ExportacaoRmResultado {
   loteId: number;
   totalFaturas: number;
@@ -120,7 +140,10 @@ export interface ExportacaoItemFatura {
   valorTotal: number;
 }
 
-// 🔥 INTERFACE PARA INTEGRAÇÃO RM API
+// ============================================================
+// INTERFACES PARA INTEGRAÇÃO RM API
+// ============================================================
+
 export interface IntegracaoRmApiRequest {
   notaIds: number[];
   configuracaoId?: number;
@@ -143,14 +166,23 @@ export interface IntegracaoRmApiResponse {
   itens: IntegracaoRmApiItem[];
 }
 
+// ============================================================
+// SERVICE
+// ============================================================
+
 class FaturamentoService {
   
+  // ============================================================
+  // CONSULTAS DE FATURAS
+  // ============================================================
+
   async listarFaturas(page: number, size: number, filters?: {
     numeroFatura?: string;
     associadoNome?: string;
     status?: string;
     mes?: number;
     ano?: number;
+    reguaId?: number;
   }): Promise<PageableFatura> {
     const params: any = {
       page,
@@ -173,6 +205,9 @@ class FaturamentoService {
     if (filters?.ano) {
       params.ano = filters.ano;
     }
+    if (filters?.reguaId) {
+      params.reguaId = filters.reguaId;
+    }
     
     console.log('📤 Enviando filtros para API:', params);
     
@@ -194,9 +229,69 @@ class FaturamentoService {
     const response = await api.get(`/faturamento/faturas/${id}/pdf`, { responseType: 'blob' });
     return response.data;
   }
-  
-  // ========== EXPORTAÇÃO RM ==========
-  
+
+  // ============================================================
+  // 🔥 LOGS DE FATURA (NOVOS MÉTODOS)
+  // ============================================================
+
+  /**
+   * Busca todos os logs de uma fatura
+   */
+  async buscarLogsFatura(faturaId: number): Promise<LogFatura[]> {
+    const response = await api.get(`/faturamento/faturas/${faturaId}/logs`);
+    return response.data;
+  }
+
+  /**
+   * Busca apenas logs de erro (WARN e ERROR) de uma fatura
+   */
+  async buscarLogsErrosFatura(faturaId: number): Promise<LogFatura[]> {
+    const response = await api.get(`/faturamento/faturas/${faturaId}/logs/erros`);
+    return response.data;
+  }
+
+  /**
+   * Busca logs de uma fatura filtrados por nível
+   */
+  async buscarLogsPorNivel(faturaId: number, nivel: string): Promise<LogFatura[]> {
+    const response = await api.get(`/faturamento/faturas/${faturaId}/logs/nivel/${nivel.toUpperCase()}`);
+    return response.data;
+  }
+
+  /**
+   * Busca logs de uma fatura filtrados por passo
+   */
+  async buscarLogsPorPasso(faturaId: number, passo: string): Promise<LogFatura[]> {
+    const response = await api.get(`/faturamento/faturas/${faturaId}/logs/passo/${passo.toUpperCase()}`);
+    return response.data;
+  }
+
+  /**
+   * Conta logs de uma fatura
+   */
+  async contarLogsFatura(faturaId: number): Promise<ContagemLogs> {
+    const response = await api.get(`/faturamento/faturas/${faturaId}/logs/count`);
+    return response.data;
+  }
+
+  /**
+   * Limpa todos os logs de uma fatura
+   */
+  async limparLogsFatura(faturaId: number): Promise<{
+    success: boolean;
+    faturaId: number;
+    logsRemovidos: number;
+    mensagem: string;
+    usuario: string;
+  }> {
+    const response = await api.delete(`/faturamento/faturas/${faturaId}/logs`);
+    return response.data;
+  }
+
+  // ============================================================
+  // EXPORTAÇÃO RM
+  // ============================================================
+
   async exportarRmFatura(id: number, ultimoNumeroRps: number, reguaId?: number, mesReferencia?: string): Promise<Blob> {
     console.log('📤 Chamando exportarRmFatura - ID:', id, 'RPS:', ultimoNumeroRps);
     
@@ -221,7 +316,6 @@ class FaturamentoService {
     return response.data;
   }
   
-  // 🔥 MÉTODO ATUALIZADO - RETORNA METADADOS + BLOB
   async exportarRmMultiplasFaturasComMetadados(
     faturaIds: number[], 
     ultimoNumeroRps: number, 
@@ -258,7 +352,6 @@ class FaturamentoService {
     return { blob, metadados };
   }
   
-  // 🔥 MÉTODO LEGADO - MANTIDO PARA COMPATIBILIDADE
   async exportarRmMultiplasFaturas(faturaIds: number[], ultimoNumeroRps: number, reguaId?: number, mesReferencia?: string): Promise<Blob> {
     console.log('📤 Chamando exportarRmMultiplasFaturas (legado) - Faturas:', faturaIds.length, 'RPS:', ultimoNumeroRps);
     
@@ -292,7 +385,10 @@ class FaturamentoService {
     });
   }
 
-  // 🔥 MÉTODOS PARA ITENS DA FATURA
+  // ============================================================
+  // ITENS DA FATURA
+  // ============================================================
+
   async adicionarItemFatura(faturaId: number, item: {
     codigoProduto: string;
     descricao: string;
@@ -370,12 +466,9 @@ class FaturamentoService {
   }
 
   // ============================================================
-  // 🔥 INTEGRAÇÃO RM VIA API (NOVO)
+  // INTEGRAÇÃO RM VIA API
   // ============================================================
 
-  /**
-   * 🔥 INTEGRA FATURAS VIA API (TBC)
-   */
   async integrarFaturasViaApi(notaIds: number[], configuracaoId?: number): Promise<IntegracaoRmApiResponse> {
     console.log('📤 Integrando via API - Notas:', notaIds.length);
     
@@ -387,9 +480,6 @@ class FaturamentoService {
     return response.data;
   }
 
-  /**
-   * 🔥 INTEGRA FATURAS VIA API (USANDO CONFIGURAÇÃO ATIVA)
-   */
   async integrarFaturasViaApiAutomatico(notaIds: number[]): Promise<IntegracaoRmApiResponse> {
     console.log('🤖 Integrando via API (automático) - Notas:', notaIds.length);
     
@@ -400,9 +490,6 @@ class FaturamentoService {
     return response.data;
   }
 
-  /**
-   * 🔥 TESTA CONEXÃO COM WEBSERVICE
-   */
   async testarConexaoApi(config: {
     wsUrl: string;
     wsUsername: string;

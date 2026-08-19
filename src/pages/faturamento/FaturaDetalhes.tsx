@@ -8,6 +8,8 @@ import Loading from '../../components/Loading';
 import faturamentoService from '../../services/faturamentoService';
 import { produtoService } from '../../services/produtoService';
 import ConfirmModal from '../../components/ui/ConfirmModal';
+// 🔥 IMPORT DO MODAL DE LOGS
+import ModalLogFatura from '../../components/faturamento/ModalLogFatura';
 
 interface FaturaItem {
   id: number;
@@ -16,6 +18,7 @@ interface FaturaItem {
   quantidade: number;
   valorUnitario: number;
   valorTotal: number;
+  tipoLancamento?: string;
 }
 
 interface Produto {
@@ -94,6 +97,9 @@ const FaturaDetalhes: React.FC = () => {
     cancelText: 'Cancelar',
     confirmVariant: 'danger'
   });
+
+  // 🔥 STATE PARA MODAL DE LOGS
+  const [modalLogsAberta, setModalLogsAberta] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -287,6 +293,7 @@ const FaturaDetalhes: React.FC = () => {
       case 'PENDENTE': return 'bg-yellow-100 text-yellow-800';
       case 'PAGA': return 'bg-green-100 text-green-800';
       case 'CANCELADA': return 'bg-red-100 text-red-800';
+      case 'SIMULADO': return 'bg-blue-100 text-blue-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -296,6 +303,7 @@ const FaturaDetalhes: React.FC = () => {
       case 'PENDENTE': return 'Pendente';
       case 'PAGA': return 'Paga';
       case 'CANCELADA': return 'Cancelada';
+      case 'SIMULADO': return 'Simulado';
       default: return status;
     }
   };
@@ -305,6 +313,7 @@ const FaturaDetalhes: React.FC = () => {
       case 'PENDENTE': return '⏳';
       case 'PAGA': return '✅';
       case 'CANCELADA': return '❌';
+      case 'SIMULADO': return '🔍';
       default: return '📄';
     }
   };
@@ -488,20 +497,18 @@ const FaturaDetalhes: React.FC = () => {
     }
   };
 
-  // 🔥 FUNÇÃO SALVAR E FECHAR - Salva, fecha e vai para listagem
+  // 🔥 FUNÇÃO SALVAR E FECHAR
   const handleSalvarEFechar = async () => {
     // Verificar se há itens em edição
     const hasEditando = Object.keys(itensEditando).length > 0;
     
     if (hasEditando) {
-      // Se há itens em edição, perguntar se deseja salvar antes de sair
       openConfirmModal(
         'Salvar Alterações',
         'Existem itens em edição. Deseja salvar as alterações antes de sair?',
         async () => {
           setSalvando(true);
           try {
-            // Salvar todos os itens em edição
             for (const itemId of Object.keys(itensEditando)) {
               const item = fatura?.itens?.find(i => i.id === Number(itemId));
               if (item) {
@@ -528,7 +535,6 @@ const FaturaDetalhes: React.FC = () => {
         'success'
       );
     } else {
-      // Se não há itens em edição, ir direto para faturas
       navigate('/faturamento/faturas');
     }
   };
@@ -886,13 +892,22 @@ const FaturaDetalhes: React.FC = () => {
           </div>
         )}
         
-        {/* 🔥 Botões: Salvar e Fechar MODIFICADO */}
-        <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
+        {/* 🔥 Botões: Salvar e Fechar + Ver Logs */}
+        <div className="flex flex-wrap justify-end gap-3 mt-6 pt-4 border-t">
           <button
             onClick={() => navigate('/faturamento/faturas')}
             className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
           >
             ❌ Fechar
+          </button>
+
+          {/* 🔥 BOTÃO VER LOGS - NOVO */}
+          <button
+            onClick={() => setModalLogsAberta(true)}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+          >
+            <span>📝</span>
+            Ver Logs
           </button>
           
           {podeEditar && (
@@ -934,6 +949,14 @@ const FaturaDetalhes: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* 🔥 MODAL DE LOGS - NOVO */}
+      <ModalLogFatura
+        isOpen={modalLogsAberta}
+        onClose={() => setModalLogsAberta(false)}
+        faturaId={fatura.id}
+        faturaNumero={fatura.numeroFatura}
+      />
 
       {/* Confirm Modal */}
       <ConfirmModal
