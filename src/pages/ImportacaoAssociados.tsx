@@ -204,11 +204,11 @@ const ImportacaoAssociados: React.FC = () => {
       
       console.log('📊 Resultado da importação (RAW):', resultadoImportacao);
       
-      // 🔥 MAPEAR OS DADOS CORRETAMENTE
+      // 🔥 GARANTIR QUE OS DADOS ESTEJAM CORRETOS
       const resultadoMapeado: ResultadoImportacao = {
-        totalLinhas: resultadoImportacao.totalLinhas || resultadoImportacao.totalProcessados || 0,
-        linhasProcessadas: resultadoImportacao.linhasProcessadas || resultadoImportacao.totalProcessados || 0,
-        linhasComErro: resultadoImportacao.linhasComErro || resultadoImportacao.totalErros || 0,
+        totalLinhas: resultadoImportacao.totalLinhas || 0,
+        linhasProcessadas: resultadoImportacao.linhasProcessadas || 0,
+        linhasComErro: resultadoImportacao.linhasComErro || 0,
         associadosImportados: (resultadoImportacao.criados || 0) + (resultadoImportacao.atualizados || 0),
         criados: resultadoImportacao.criados || 0,
         atualizados: resultadoImportacao.atualizados || 0,
@@ -231,7 +231,7 @@ const ImportacaoAssociados: React.FC = () => {
       if (resultadoMapeado.linhasComErro === 0) {
         if (resultadoMapeado.criados > 0 || resultadoMapeado.atualizados > 0) {
           showToast(
-            `${resultadoMapeado.criados} associados criados e ${resultadoMapeado.atualizados} atualizados com sucesso! (${taxaSucesso}% de sucesso)`,
+            `✅ ${resultadoMapeado.criados} criados, ${resultadoMapeado.atualizados} atualizados com sucesso! (${taxaSucesso}% de sucesso)`,
             'success'
           );
         } else {
@@ -243,7 +243,7 @@ const ImportacaoAssociados: React.FC = () => {
       } else {
         if (resultadoMapeado.criados > 0 || resultadoMapeado.atualizados > 0) {
           showToast(
-            `${resultadoMapeado.criados} criados, ${resultadoMapeado.atualizados} atualizados, ${resultadoMapeado.linhasComErro} com erro (${taxaSucesso}% de sucesso)`,
+            `⚠️ ${resultadoMapeado.criados} criados, ${resultadoMapeado.atualizados} atualizados, ${resultadoMapeado.linhasComErro} com erro (${taxaSucesso}% de sucesso)`,
             'warning'
           );
         } else {
@@ -453,7 +453,7 @@ const ImportacaoAssociados: React.FC = () => {
           </div>
         </div>
         
-        {/* Resultado da Importação */}
+        {/* 🔥 RESULTADO DA IMPORTAÇÃO - CORRIGIDO */}
         {resultado && (
           <div className="mt-8 border-t border-gray-200 pt-6">
             <div className="flex flex-wrap justify-between items-center mb-4 gap-3">
@@ -470,39 +470,66 @@ const ImportacaoAssociados: React.FC = () => {
               )}
             </div>
             
-            {/* 🔥 CARDS DE RESUMO */}
+            {/* 🔥 CARDS DE RESUMO - COM DESTAQUE PARA CADA MÉTRICA */}
             <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
-              <div className="bg-blue-50 p-4 rounded-lg text-center">
-                <div className="text-2xl font-bold text-blue-600">{resultado.totalLinhas}</div>
+              {/* Total de Linhas */}
+              <div className="bg-gray-50 p-4 rounded-lg text-center border border-gray-200">
+                <div className="text-2xl font-bold text-gray-700">{resultado.totalLinhas || 0}</div>
                 <div className="text-sm text-gray-600">Total de Linhas</div>
               </div>
-              <div className="bg-green-50 p-4 rounded-lg text-center">
-                <div className="text-2xl font-bold text-green-600">{resultado.linhasProcessadas}</div>
+              
+              {/* Linhas Processadas */}
+              <div className="bg-blue-50 p-4 rounded-lg text-center border border-blue-200">
+                <div className="text-2xl font-bold text-blue-600">{resultado.linhasProcessadas || 0}</div>
                 <div className="text-sm text-gray-600">Linhas Processadas</div>
               </div>
-              <div className="bg-red-50 p-4 rounded-lg text-center">
-                <div className="text-2xl font-bold text-red-600">{resultado.linhasComErro}</div>
-                <div className="text-sm text-gray-600">Linhas com Erro</div>
+              
+              {/* Criados */}
+              <div className="bg-green-50 p-4 rounded-lg text-center border border-green-200">
+                <div className="text-2xl font-bold text-green-600">{resultado.criados || 0}</div>
+                <div className="text-sm text-gray-600">✅ Criados</div>
               </div>
-              <div className="bg-purple-50 p-4 rounded-lg text-center">
-                <div className="text-2xl font-bold text-purple-600">
+              
+              {/* Atualizados */}
+              <div className="bg-yellow-50 p-4 rounded-lg text-center border border-yellow-200">
+                <div className="text-2xl font-bold text-yellow-600">{resultado.atualizados || 0}</div>
+                <div className="text-sm text-gray-600">✏️ Atualizados</div>
+              </div>
+              
+              {/* Erros */}
+              <div className="bg-red-50 p-4 rounded-lg text-center border border-red-200">
+                <div className="text-2xl font-bold text-red-600">{resultado.linhasComErro || 0}</div>
+                <div className="text-sm text-gray-600">❌ Erros</div>
+              </div>
+              
+              {/* Configurações Criadas */}
+              <div className="bg-purple-50 p-4 rounded-lg text-center border border-purple-200">
+                <div className="text-2xl font-bold text-purple-600">{resultado.configuracoesCriadas || 0}</div>
+                <div className="text-sm text-gray-600">⚙️ Configurações</div>
+              </div>
+            </div>
+            
+            {/* 🔥 RESUMO DE TOTAL */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+              <div className="bg-indigo-50 p-4 rounded-lg text-center border border-indigo-200 col-span-1">
+                <div className="text-2xl font-bold text-indigo-600">
                   {(resultado.criados || 0) + (resultado.atualizados || 0)}
                 </div>
                 <div className="text-sm text-gray-600">Total Processados</div>
               </div>
-              <div className="bg-yellow-50 p-4 rounded-lg text-center">
-                <div className="text-2xl font-bold text-yellow-600">
-                  {resultado.criados || 0} / {resultado.atualizados || 0}
-                </div>
-                <div className="text-sm text-gray-600">Criados / Atualizados</div>
-              </div>
               
-              {/* 🔥 TAXA DE SUCESSO */}
-              <div className={`p-4 rounded-lg text-center ${getTaxaBg(calcularTaxaSucesso(resultado))}`}>
+              <div className={`p-4 rounded-lg text-center border col-span-1 ${getTaxaBg(calcularTaxaSucesso(resultado))}`}>
                 <div className={`text-2xl font-bold ${getTaxaCor(calcularTaxaSucesso(resultado))}`}>
                   {calcularTaxaSucesso(resultado)}%
                 </div>
-                <div className="text-sm text-gray-600">Taxa de Sucesso</div>
+                <div className="text-sm text-gray-600">🎯 Taxa de Sucesso</div>
+              </div>
+              
+              <div className="bg-teal-50 p-4 rounded-lg text-center border border-teal-200 col-span-1">
+                <div className="text-2xl font-bold text-teal-600">
+                  {(resultado.criados || 0) > 0 ? '✨ Nova' : '📋 Existente'}
+                </div>
+                <div className="text-sm text-gray-600">Status da Importação</div>
               </div>
             </div>
 
@@ -538,7 +565,7 @@ const ImportacaoAssociados: React.FC = () => {
             {resultado.totalLinhas > 0 && (
               <div className="mb-6">
                 <div className="flex justify-between text-sm text-gray-600 mb-1">
-                  <span>Eficiência da Importação</span>
+                  <span>📈 Eficiência da Importação</span>
                   <span className={getTaxaCor(calcularTaxaSucesso(resultado))}>
                     {calcularTaxaSucesso(resultado)}%
                   </span>
@@ -577,7 +604,7 @@ const ImportacaoAssociados: React.FC = () => {
               </div>
             )}
             
-            {resultado.linhasComErro > 0 && (resultado.criados || 0) > 0 && (
+            {resultado.linhasComErro > 0 && ((resultado.criados || 0) > 0 || (resultado.atualizados || 0) > 0) && (
               <div className="mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
                 <div className="flex items-center gap-2">
                   <span className="text-xl">⚠️</span>
@@ -600,7 +627,7 @@ const ImportacaoAssociados: React.FC = () => {
               </div>
             )}
             
-            {resultado.linhasComErro === 0 && (resultado.criados || 0) > 0 && (
+            {resultado.linhasComErro === 0 && ((resultado.criados || 0) > 0 || (resultado.atualizados || 0) > 0) && (
               <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
                 <div className="flex items-center gap-2">
                   <span className="text-xl">✅</span>
@@ -611,6 +638,9 @@ const ImportacaoAssociados: React.FC = () => {
                     <p className="text-xs text-green-700 mt-1">
                       {resultado.criados} associados criados e {resultado.atualizados} atualizados.
                       {resultado.configuracoesCriadas > 0 && ` ${resultado.configuracoesCriadas} configurações de faturamento criadas.`}
+                    </p>
+                    <p className="text-xs text-green-600 mt-1">
+                      🎯 Taxa de sucesso: {calcularTaxaSucesso(resultado)}%
                     </p>
                   </div>
                 </div>
