@@ -1,3 +1,5 @@
+// src/pages/AssociadoDetalhes.tsx
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { associadoService, associadoOpcoes } from '../services/associadoService';
@@ -9,6 +11,11 @@ import { AssociadoDefFaturamentoResumo } from '../types/associadoDefFaturamento.
 import BreadCrumb from '../components/BreadCrumb';
 import Loading from '../components/Loading';
 
+// ========== NOVOS IMPORTS PARA MIGRAÇÃO ==========
+import ModalMigracaoRegua from '../components/associado/ModalMigracaoRegua';
+import HistoricoMigracao from '../components/associado/HistoricoMigracao';
+import migracaoReguaService from '../services/migracaoReguaService';
+
 const AssociadoDetalhes: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -18,10 +25,59 @@ const AssociadoDetalhes: React.FC = () => {
   const [configuracoesFaturamento, setConfiguracoesFaturamento] = useState<AssociadoDefFaturamentoResumo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // ========== NOVOS ESTADOS PARA MIGRAÇÃO ==========
+  const [modalMigracaoAberta, setModalMigracaoAberta] = useState(false);
+  const [reguaAtual, setReguaAtual] = useState<{ id: number; nome: string } | null>(null);
+  const [mostrarHistorico, setMostrarHistorico] = useState(false);
+  const [recarregarAssociado, setRecarregarAssociado] = useState(false);
   
   useEffect(() => {
     carregarDados();
   }, [id]);
+
+  // ========== CARREGAR RÉGUA ATUAL ==========
+  useEffect(() => {
+    if (associado?.id) {
+      carregarReguaAtual();
+    }
+  }, [associado?.id, recarregarAssociado]);
+
+  const carregarReguaAtual = async () => {
+    try {
+        const data = await migracaoReguaService.buscarReguaAtivaDoAssociado(associado!.id);
+        
+        // 🔥 LOG PARA DEBUG
+        console.log('📥 Dados da régua recebidos:', data);
+        
+        // 🔥 VERIFICAR SE OS DADOS ESTÃO NO FORMATO CORRETO
+        if (data && data.regua) {
+            setReguaAtual({
+                id: data.regua.id,
+                nome: data.regua.nome
+            });
+            console.log(`✅ Régua carregada: ${data.regua.nome} (ID: ${data.regua.id})`);
+        } else if (data && data.id && data.reguaId) {
+            // 🔥 FORMATO ALTERNATIVO (se o backend retornar diferente)
+            setReguaAtual({
+                id: data.reguaId,
+                nome: data.reguaNome || 'Régua'
+            });
+            console.log(`✅ Régua carregada (alternativo): ${data.reguaNome}`);
+        } else {
+            setReguaAtual(null);
+            console.log('ℹ️ Nenhuma régua ativa encontrada');
+        }
+    } catch (error) {
+        console.error('❌ Erro ao carregar régua:', error);
+        setReguaAtual(null);
+    }
+};
+
+  const handleMigracaoSuccess = () => {
+    setRecarregarAssociado(!recarregarAssociado);
+    carregarReguaAtual();
+  };
   
   const carregarDados = async () => {
     if (!id) return;
@@ -239,12 +295,26 @@ const AssociadoDetalhes: React.FC = () => {
             </p>
           </div>
           
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <button
               onClick={handleVoltar}
               className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center gap-2 transition-colors"
             >
               ← Voltar
+            </button>
+            
+            {/* 🔥 BOTÃO MIGRAR RÉGUA - NOVO */}
+            <button
+              onClick={() => setModalMigracaoAberta(true)}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+            >
+              <span>🔄</span>
+              Migrar Régua
+              {reguaAtual && (
+                <span className="ml-1 text-xs bg-purple-500 px-2 py-0.5 rounded-full">
+                  {reguaAtual.nome}
+                </span>
+              )}
             </button>
             
             <button
@@ -257,15 +327,33 @@ const AssociadoDetalhes: React.FC = () => {
         </div>
         
         {/* 🔥 NOVO BOTÃO DE CONSUMO DE FRANQUIA */}
-        <div className="mb-6 flex justify-end">
-          <Link
-            to={`/associados/${id}/consumo-franquia`}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 transition-colors"
+        <div className="mb-6 flex flex-wrap justify-between items-center gap-4">
+          <div className="flex gap-3">
+            <Link
+              to={`/associados/${id}/consumo-franquia`}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2 transition-colors"
+            >
+              <span>📊</span>
+              Ver Consumo de Franquias
+            </Link>
+          </div>
+          
+          {/* 🔥 BOTÃO HISTÓRICO DE MIGRAÇÕES - NOVO */}
+          <button
+            onClick={() => setMostrarHistorico(!mostrarHistorico)}
+            className="px-4 py-2 border border-purple-300 text-purple-600 rounded-lg hover:bg-purple-50 transition-colors flex items-center gap-2"
           >
-            <span>📊</span>
-            Ver Consumo de Franquias
-          </Link>
+            {mostrarHistorico ? '▼' : '▶'} Histórico de Migrações
+          </button>
         </div>
+        
+        {/* 🔥 HISTÓRICO DE MIGRAÇÕES - NOVO */}
+        {mostrarHistorico && (
+          <div className="mb-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
+            <h3 className="text-sm font-medium text-purple-800 mb-3">📋 Histórico de Migrações de Régua</h3>
+            <HistoricoMigracao associadoId={associado.id} />
+          </div>
+        )}
         
         {/* Grid Principal */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -723,6 +811,17 @@ const AssociadoDetalhes: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* 🔥 MODAL DE MIGRAÇÃO - NOVO */}
+      <ModalMigracaoRegua
+        isOpen={modalMigracaoAberta}
+        onClose={() => setModalMigracaoAberta(false)}
+        associadoId={associado.id}
+        associadoNome={associado.nomeRazao}
+        reguaAtualId={reguaAtual?.id || 0}
+        reguaAtualNome={reguaAtual?.nome || 'Nenhuma'}
+        onSuccess={handleMigracaoSuccess}
+      />
     </div>
   );
 };

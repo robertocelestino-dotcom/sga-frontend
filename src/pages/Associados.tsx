@@ -1,4 +1,5 @@
-// src/pages/Associados.tsx - VERSÃO COM BOTÃO DE IMPORTAÇÃO
+// src/pages/Associados.tsx - VERSÃO COM BOTÃO DE IMPORTAÇÃO E MIGRAÇÃO
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -806,7 +807,6 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
-                    {/* ALTERAÇÃO: Data de Cadastro → Data de Filiação */}
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Data de Filiação
                     </th>
@@ -873,7 +873,6 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
                             </div>
                           )}
                           </td>
-                        {/* ALTERAÇÃO: Exibir Data de Filiação com formatação especial */}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className={`text-sm ${dataFiliacaoFormatada.classe}`}>
                             {dataFiliacaoFormatada.texto}
@@ -890,7 +889,7 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
                           )}
                           </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex gap-2">
+                          <div className="flex flex-wrap gap-1">
                             <button
                               onClick={() => handleVerDetalhes(associado.id)}
                               className="p-1 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded transition-colors"
@@ -904,6 +903,14 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
                               title="Editar"
                             >
                               ✏️
+                            </button>
+                            {/* 🔥 BOTÃO MIGRAR RÉGUA - NOVO */}
+                            <button
+                              onClick={() => navigate(`/associados/${associado.id}`)}
+                              className="p-1 text-purple-600 hover:text-purple-900 hover:bg-purple-50 rounded transition-colors"
+                              title="Migrar Régua"
+                            >
+                              🔄
                             </button>
                             <button
                               onClick={() => handleExcluirAssociado(associado.id, associado.nomeRazao)}

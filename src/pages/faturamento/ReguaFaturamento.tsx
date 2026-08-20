@@ -2,7 +2,10 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+
+//import { reguaFaturamentoService, ReguaFaturamento } from '../../services/reguaFaturamentoService';
 import { reguaFaturamentoService, ReguaFaturamento } from '../../services/reguaFaturamentoService';
+
 import { useMessage } from '../../providers/MessageProvider';
 import BreadCrumb from '../../components/BreadCrumb';
 import Loading from '../../components/Loading';
@@ -19,19 +22,52 @@ const ReguaFaturamentoPage: React.FC = () => {
   const [totalItens, setTotalItens] = useState(0);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [reguaParaExcluir, setReguaParaExcluir] = useState<ReguaFaturamento | null>(null);
+  const [erroCarregamento, setErroCarregamento] = useState<string | null>(null);
   
   const pageSize = 10;
   
   const carregarReguas = useCallback(async () => {
     setLoading(true);
+    setErroCarregamento(null);
     try {
-      const response = await reguaFaturamentoService.listar(pagina, pageSize, 'sequencia', 'asc');
-      setReguas(response.content);
-      setTotalPaginas(response.totalPages);
-      setTotalItens(response.totalElements);
-    } catch (error) {
-      console.error('Erro ao carregar réguas:', error);
+      console.log('📡 Carregando réguas - página:', pagina);
+      
+      // 🔥 TENTAR O ENDPOINT COM PAGINAÇÃO
+      let response;
+      try {
+        response = await reguaFaturamentoService.listar(pagina, pageSize, 'sequencia', 'asc');
+      } catch (error: any) {
+        console.warn('⚠️ Erro no listar com paginação, tentando fallback:', error.message);
+        // 🔥 FALLBACK: Tentar o endpoint sem paginação
+        const data = await reguaFaturamentoService.listarAtivas();
+        // Converter para o formato esperado
+        response = {
+          content: data,
+          totalPages: 1,
+          totalElements: data.length,
+          size: data.length,
+          number: 0
+        };
+      }
+      
+      if (response && response.content) {
+        setReguas(response.content);
+        setTotalPaginas(response.totalPages || 1);
+        setTotalItens(response.totalElements || response.content.length);
+      } else if (Array.isArray(response)) {
+        setReguas(response);
+        setTotalPaginas(1);
+        setTotalItens(response.length);
+      } else {
+        setReguas([]);
+        setTotalPaginas(0);
+        setTotalItens(0);
+      }
+    } catch (error: any) {
+      console.error('❌ Erro ao carregar réguas:', error);
+      setErroCarregamento(error.message || 'Erro ao carregar réguas');
       showToast('Erro ao carregar réguas de faturamento', 'error');
+      setReguas([]);
     } finally {
       setLoading(false);
     }
@@ -74,6 +110,10 @@ const ReguaFaturamentoPage: React.FC = () => {
     navigate('/faturamento/regua/novo');
   };
   
+  const handleRecarregar = () => {
+    carregarReguas();
+  };
+  
   const getStatusColor = (ativo: boolean) => {
     return ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
   };
@@ -108,13 +148,27 @@ const ReguaFaturamentoPage: React.FC = () => {
             <p className="text-gray-600 mt-1">
               Configure os períodos de faturamento e os tipos de arquivo
             </p>
+            {erroCarregamento && (
+              <p className="text-sm text-red-600 mt-1">
+                ⚠️ {erroCarregamento}
+              </p>
+            )}
           </div>
-          <button
-            onClick={handleNovaRegua}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-          >
-            <span>➕</span> Nova Régua
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleRecarregar}
+              disabled={loading}
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center gap-2"
+            >
+              {loading ? '⏳' : '🔄'} Atualizar
+            </button>
+            <button
+              onClick={handleNovaRegua}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+            >
+              <span>➕</span> Nova Régua
+            </button>
+          </div>
         </div>
         
         {loading ? (
@@ -191,7 +245,6 @@ const ReguaFaturamentoPage: React.FC = () => {
                       </td>
                       <td className="px-4 py-3 text-center">
                         <div className="flex justify-center gap-2">
-                          {/* 🔥 ALTERADO: "Gerenciar Associados" para "Detalhes" */}
                           <button
                             onClick={() => handleVerDetalhes(regua.id)}
                             className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"

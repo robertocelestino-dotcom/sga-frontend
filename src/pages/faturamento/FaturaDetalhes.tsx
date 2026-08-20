@@ -8,8 +8,11 @@ import Loading from '../../components/Loading';
 import faturamentoService from '../../services/faturamentoService';
 import { produtoService } from '../../services/produtoService';
 import ConfirmModal from '../../components/ui/ConfirmModal';
+
 // 🔥 IMPORT DO MODAL DE LOGS
 import ModalLogFatura from '../../components/faturamento/ModalLogFatura';
+
+import { formatDateWithoutTimezone } from '../../utils/formatUtils';
 
 interface FaturaItem {
   id: number;
@@ -270,6 +273,7 @@ const FaturaDetalhes: React.FC = () => {
     }).format(value);
   };
   
+  /*
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '-';
     if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
@@ -286,6 +290,10 @@ const FaturaDetalhes: React.FC = () => {
     } catch {
       return dateStr;
     }
+  };
+  */
+  const formatDate = (dateStr: string) => {
+    return formatDateWithoutTimezone(dateStr);
   };
   
   const getStatusColor = (status: string) => {

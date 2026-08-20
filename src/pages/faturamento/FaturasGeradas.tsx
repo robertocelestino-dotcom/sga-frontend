@@ -54,6 +54,62 @@ const getNotaDebitoId = (fatura: Fatura): number | null => {
 };
 
 // ============================================================
+// 🔥 FUNÇÕES AUXILIARES DE DATA (CORRIGIDAS)
+// ============================================================
+
+/**
+ * 🔥 Formata uma data sem considerar timezone
+ * Evita problemas com datas que vêm do backend
+ */
+const formatDate = (dateStr: string): string => {
+  if (!dateStr) return '-';
+  try {
+    // 🔥 Remove o timezone da string para evitar problemas
+    const cleanDateStr = dateStr.replace(/[+-]\d{2}:\d{2}$/, '');
+    const [year, month, day] = cleanDateStr.split('T')[0].split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    
+    if (isNaN(date.getTime())) return dateStr;
+    
+    return date.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  } catch {
+    return dateStr;
+  }
+};
+
+/**
+ * 🔥 Formata data e hora sem timezone
+ */
+const formatDateTime = (dateStr: string): string => {
+  if (!dateStr) return '-';
+  try {
+    const cleanDateStr = dateStr.replace(/[+-]\d{2}:\d{2}$/, '');
+    const parts = cleanDateStr.split('T');
+    const dateParts = parts[0].split('-').map(Number);
+    const timeParts = parts[1]?.split(':').map(Number) || [0, 0];
+    
+    const date = new Date(dateParts[0], dateParts[1] - 1, dateParts[2], timeParts[0], timeParts[1]);
+    
+    if (isNaN(date.getTime())) return dateStr;
+    
+    return date.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }) + ' ' + date.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch {
+    return dateStr;
+  }
+};
+
+// ============================================================
 // COMPONENTE PRINCIPAL
 // ============================================================
 
@@ -586,17 +642,6 @@ const FaturasGeradas: React.FC = () => {
     }).format(value);
   };
 
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return '-';
-    try {
-      const date = new Date(dateStr);
-      if (isNaN(date.getTime())) return dateStr;
-      return date.toLocaleDateString('pt-BR');
-    } catch {
-      return dateStr;
-    }
-  };
-
   const getReguaColor = (cor?: string): string => {
     if (!cor) return '#9ca3af';
     return cor;
@@ -916,7 +961,6 @@ const FaturasGeradas: React.FC = () => {
                               📄
                             </button>
                             
-                            {/* 🔥 BOTÃO "VER LOGS" - NOVO */}
                             <button
                               onClick={() => navigate(`/faturamento/faturas/${fatura.id}`)}
                               className="p-1.5 text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded transition-colors"
