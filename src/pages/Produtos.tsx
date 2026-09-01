@@ -1,4 +1,4 @@
-// src/pages/Produtos.tsx - VERSÃO CORRIGIDA COM FRANQUIA ASSOCIADA
+// src/pages/Produtos.tsx - VERSÃO COM PERMISSION GUARD
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -12,6 +12,8 @@ import api from '../services/api';
 import BreadCrumb from '../components/BreadCrumb';
 import Loading from '../components/Loading';
 import { useMessage } from '../providers/MessageProvider';
+import { PermissionGuard } from '../components/PermissionGuard'; // 🔥 ADICIONADO
+import { useAuthStore } from '../stores/authStore'; // 🔥 ADICIONADO
 
 // Hook de debounce personalizado
 const useDebounce = <T,>(value: T, delay: number): T => {
@@ -30,8 +32,7 @@ const useDebounce = <T,>(value: T, delay: number): T => {
   return debouncedValue;
 };
 
-// 🔥 MODAL PARA MOSTRAR FRANQUIA DO PRODUTO - CORRIGIDO
-// 🔥 MODAL PARA MOSTRAR FRANQUIA DO PRODUTO - CORRIGIDO
+// Modal para mostrar franquia do produto
 const ModalFranquia: React.FC<{
   aberto: boolean;
   onFechar: () => void;
@@ -40,12 +41,7 @@ const ModalFranquia: React.FC<{
 }> = ({ aberto, onFechar, produto, franquia }) => {
   if (!aberto) return null;
 
-  // Log detalhado do que o modal recebeu
   console.log('🎯 Modal recebeu produto:', produto);
-  console.log('   - nome:', produto?.nome);
-  console.log('   - codigoRm:', produto?.codigoRm);
-  console.log('   - codigo:', produto?.codigo);
-  console.log('   - id:', produto?.id);
 
   return (
     <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 p-4">
@@ -115,12 +111,13 @@ const ModalFranquia: React.FC<{
 const ProdutosPage: React.FC = () => {
   const navigate = useNavigate();
   const { showToast, showConfirm } = useMessage();
+  const { hasPermission } = useAuthStore(); // 🔥 ADICIONADO
   
   // Estados
   const [produtos, setProdutos] = useState<ProdutoResumoDTO[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // 🔥 Estado para o modal de franquia
+  // Estado para o modal de franquia
   const [modalFranquiaAberto, setModalFranquiaAberto] = useState(false);
   const [franquiaSelecionada, setFranquiaSelecionada] = useState<any>(null);
   const [produtoSelecionado, setProdutoSelecionado] = useState<any>(null);
@@ -230,84 +227,59 @@ const ProdutosPage: React.FC = () => {
     }
   }, [filtrosAtivos, showToast]);
 
-  // 🔥 Buscar franquia do produto - VERSÃO FINAL CORRIGIDA
-  // 🔥 Buscar franquia do produto - VERSÃO COM LOGS DETALHADOS
-const handleVerFranquia = async (produto: ProdutoResumoDTO) => {
-  try {
-    console.log('🔍 ===== INICIANDO BUSCA DE FRANQUIA =====');
-    console.log('📦 Produto original recebido:', produto);
-    console.log('📦 Campos do produto original:');
-    console.log('   - id:', produto.id);
-    console.log('   - codigo:', produto.codigo);
-    console.log('   - codigoRm:', produto.codigoRm);
-    console.log('   - nome:', produto.nome);
-    console.log('   - temFranquia:', produto.temFranquia);
-    
-    // 🔥 Garantir que o código RM seja priorizado
-    const produtoCompleto = {
-      ...produto,
-      // Forçar codigoRm a ter o valor correto
-      codigoRm: produto.codigoRm || produto.codigo,
-      // Manter referência ao código original
-      codigoOriginal: produto.codigo,
-    };
-    
-    console.log('📦 Produto completo criado:', produtoCompleto);
-    console.log('   - codigoRm após correção:', produtoCompleto.codigoRm);
-    
-    setProdutoSelecionado(produtoCompleto);
-    
-    // 🔥 Buscar associações na tabela plano_produto_franquia
-    console.log('🔍 Buscando associações para produto ID:', produto.id);
-    const associacoes = await planoProdutoFranquiaService.listarPorProduto(produto.id);
-    console.log('📊 Associações encontradas:', associacoes);
-    
-    let franquiaEncontrada = null;
-    
-    if (associacoes && associacoes.length > 0) {
-      console.log(`✅ Encontradas ${associacoes.length} associações`);
+  // Buscar franquia do produto
+  const handleVerFranquia = async (produto: ProdutoResumoDTO) => {
+    try {
+      console.log('🔍 ===== INICIANDO BUSCA DE FRANQUIA =====');
+      console.log('📦 Produto original recebido:', produto);
       
-      const primeiraAssoc = associacoes[0];
-      console.log('📋 Primeira associação:', primeiraAssoc);
+      const produtoCompleto = {
+        ...produto,
+        codigoRm: produto.codigoRm || produto.codigo,
+        codigoOriginal: produto.codigo,
+      };
       
-      // Tentar obter a franquia
-      if (primeiraAssoc.franquia) {
-        console.log('✅ Franquia já vem na associação');
-        franquiaEncontrada = primeiraAssoc.franquia;
-      } 
-      else if (primeiraAssoc.franquiaId) {
-        console.log('🔍 Buscando franquia por ID:', primeiraAssoc.franquiaId);
-        franquiaEncontrada = await produtoService.buscarPorId(primeiraAssoc.franquiaId);
+      setProdutoSelecionado(produtoCompleto);
+      
+      const associacoes = await planoProdutoFranquiaService.listarPorProduto(produto.id);
+      console.log('📊 Associações encontradas:', associacoes);
+      
+      let franquiaEncontrada = null;
+      
+      if (associacoes && associacoes.length > 0) {
+        const primeiraAssoc = associacoes[0];
+        
+        if (primeiraAssoc.franquia) {
+          franquiaEncontrada = primeiraAssoc.franquia;
+        } else if (primeiraAssoc.franquiaId) {
+          franquiaEncontrada = await produtoService.buscarPorId(primeiraAssoc.franquiaId);
+        } else if (primeiraAssoc.franquiaNome) {
+          franquiaEncontrada = {
+            id: primeiraAssoc.franquiaId,
+            nome: primeiraAssoc.franquiaNome,
+            codigoRm: primeiraAssoc.franquiaCodigo,
+            codigo: primeiraAssoc.franquiaCodigo,
+            limiteFranquia: primeiraAssoc.limiteFranquia,
+            periodoFranquia: primeiraAssoc.periodoFranquia
+          };
+        }
       }
-      else if (primeiraAssoc.franquiaNome) {
-        console.log('✅ Criando franquia a partir dos dados');
-        franquiaEncontrada = {
-          id: primeiraAssoc.franquiaId,
-          nome: primeiraAssoc.franquiaNome,
-          codigoRm: primeiraAssoc.franquiaCodigo,
-          codigo: primeiraAssoc.franquiaCodigo,
-          limiteFranquia: primeiraAssoc.limiteFranquia,
-          periodoFranquia: primeiraAssoc.periodoFranquia
-        };
+      
+      if (franquiaEncontrada) {
+        console.log('✅ Franquia encontrada:', franquiaEncontrada);
+        setFranquiaSelecionada(franquiaEncontrada);
+      } else {
+        console.log('❌ Nenhuma franquia encontrada');
+        setFranquiaSelecionada(null);
       }
+      
+      setModalFranquiaAberto(true);
+      
+    } catch (error) {
+      console.error('❌ Erro ao buscar franquia:', error);
+      showToast('Erro ao buscar franquia do produto', 'error');
     }
-    
-    if (franquiaEncontrada) {
-      console.log('✅ Franquia encontrada:', franquiaEncontrada);
-      setFranquiaSelecionada(franquiaEncontrada);
-    } else {
-      console.log('❌ Nenhuma franquia encontrada');
-      setFranquiaSelecionada(null);
-    }
-    
-    console.log('🔍 Abrindo modal com produto:', produtoCompleto);
-    setModalFranquiaAberto(true);
-    
-  } catch (error) {
-    console.error('❌ Erro ao buscar franquia:', error);
-    showToast('Erro ao buscar franquia do produto', 'error');
-  }
-};
+  };
 
   useEffect(() => {
     carregarProdutos();
@@ -455,12 +427,15 @@ const handleVerFranquia = async (produto: ProdutoResumoDTO) => {
             {loading ? '⏳ Carregando...' : '🔄 Atualizar'}
           </button>
           
-          <button
-            onClick={handleNovoProduto}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
-          >
-            ➕ Novo Produto
-          </button>
+          {/* 🔥 NOVO PRODUTO - PERMISSION GUARD */}
+          <PermissionGuard requiredPermissions={['PRODUTO_CREATE']}>
+            <button
+              onClick={handleNovoProduto}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
+            >
+              ➕ Novo Produto
+            </button>
+          </PermissionGuard>
         </div>
       </div>
 
@@ -583,12 +558,14 @@ const handleVerFranquia = async (produto: ProdutoResumoDTO) => {
                 ? 'Tente ajustar os filtros de busca.' 
                 : 'Comece criando seu primeiro produto.'}
             </p>
-            <button
-              onClick={handleNovoProduto}
-              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
-            >
-              ➕ Criar Primeiro Produto
-            </button>
+            <PermissionGuard requiredPermissions={['PRODUTO_CREATE']}>
+              <button
+                onClick={handleNovoProduto}
+                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+              >
+                ➕ Criar Primeiro Produto
+              </button>
+            </PermissionGuard>
           </div>
         ) : (
           <>
@@ -610,7 +587,6 @@ const handleVerFranquia = async (produto: ProdutoResumoDTO) => {
                     <tr key={produto.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-mono font-medium text-gray-900">
-                          {/* 🔥 CORRIGIDO: Usar codigoRm primeiro */}
                           {produto.codigoRm || produto.codigo}
                         </div>
                       </td>
@@ -649,27 +625,38 @@ const handleVerFranquia = async (produto: ProdutoResumoDTO) => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex gap-2">
-                          <button
-                            onClick={() => handleVerDetalhes(produto.id)}
-                            className="p-1 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded"
-                            title="Ver detalhes"
-                          >
-                            👁️
-                          </button>
-                          <button
-                            onClick={() => handleEditarProduto(produto.id)}
-                            className="p-1 text-yellow-600 hover:text-yellow-900 hover:bg-yellow-50 rounded"
-                            title="Editar"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => handleExcluirProduto(produto.id, produto.nome)}
-                            className="p-1 text-red-600 hover:text-red-900 hover:bg-red-50 rounded"
-                            title="Excluir"
-                          >
-                            🗑️
-                          </button>
+                          {/* 🔥 VER DETALHES - PERMISSION GUARD */}
+                          <PermissionGuard requiredPermissions={['PRODUTO_VIEW']}>
+                            <button
+                              onClick={() => handleVerDetalhes(produto.id)}
+                              className="p-1 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded"
+                              title="Ver detalhes"
+                            >
+                              👁️
+                            </button>
+                          </PermissionGuard>
+
+                          {/* 🔥 EDITAR - PERMISSION GUARD */}
+                          <PermissionGuard requiredPermissions={['PRODUTO_EDIT']}>
+                            <button
+                              onClick={() => handleEditarProduto(produto.id)}
+                              className="p-1 text-yellow-600 hover:text-yellow-900 hover:bg-yellow-50 rounded"
+                              title="Editar"
+                            >
+                              ✏️
+                            </button>
+                          </PermissionGuard>
+
+                          {/* 🔥 EXCLUIR - PERMISSION GUARD */}
+                          <PermissionGuard requiredPermissions={['PRODUTO_DELETE']}>
+                            <button
+                              onClick={() => handleExcluirProduto(produto.id, produto.nome)}
+                              className="p-1 text-red-600 hover:text-red-900 hover:bg-red-50 rounded"
+                              title="Excluir"
+                            >
+                              🗑️
+                            </button>
+                          </PermissionGuard>
                         </div>
                       </td>
                     </tr>
@@ -713,7 +700,7 @@ const handleVerFranquia = async (produto: ProdutoResumoDTO) => {
         )}
       </div>
 
-      {/* 🔥 Modal de Franquia */}
+      {/* Modal de Franquia */}
       <ModalFranquia
         aberto={modalFranquiaAberto}
         onFechar={() => setModalFranquiaAberto(false)}

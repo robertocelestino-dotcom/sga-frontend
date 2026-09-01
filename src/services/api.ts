@@ -1,6 +1,7 @@
 // src/services/api.ts
 
 import axios from "axios";
+import { useAuthStore } from "../stores/authStore";
 
 /* ============================================================================
    CONFIGURAÇÃO GLOBAL AXIOS
@@ -14,15 +15,16 @@ const api = axios.create({
   },
 });
 
-// 🔥 INTERCEPTOR DE REQUISIÇÃO COM TIMEOUT DINÂMICO
+// 🔥 INTERCEPTOR DE REQUISIÇÃO COM TIMEOUT DINÂMICO E TOKEN
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("authToken");
+    // Buscar token do store
+    const token = useAuthStore.getState().token;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     
-    const usuario = localStorage.getItem("usuario") || "SISTEMA";
+    const usuario = useAuthStore.getState().user?.username || "SISTEMA";
     config.headers["X-Usuario"] = usuario;
     
     // 🔥 AUMENTAR TIMEOUT PARA ENDPOINTS PESADOS
@@ -55,7 +57,7 @@ api.interceptors.request.use(
   }
 );
 
-// 🔥 INTERCEPTOR DE RESPOSTA COM TRATAMENTO DE TIMEOUT
+// 🔥 INTERCEPTOR DE RESPOSTA COM TRATAMENTO DE TIMEOUT E 401
 api.interceptors.response.use(
   (response) => {
     if (process.env.NODE_ENV === "development") {
@@ -79,9 +81,10 @@ api.interceptors.response.use(
       isTimeout: error.isTimeout || false
     });
 
+    // 🔥 TRATAMENTO DE 401 - Token expirado
     if (error.response?.status === 401) {
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("usuario");
+      const { logout } = useAuthStore.getState();
+      logout();
       if (typeof window !== "undefined" && window.location.pathname !== "/login") {
         window.location.href = "/login";
       }
@@ -92,7 +95,7 @@ api.interceptors.response.use(
 );
 
 /* ============================================================================
-   AUTENTICAÇÃO
+   AUTENTICAÇÃO (ATUALIZADO)
    ============================================================================ */
 export const authAPI = {
   async login(credentials: { username: string; password: string }) {
@@ -101,19 +104,14 @@ export const authAPI = {
   },
 
   async logout() {
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("usuario");
+    const { logout } = useAuthStore.getState();
+    logout();
     return Promise.resolve();
   },
 
   async getProfile() {
-    await api.get("/auth/teste");
-    return {
-      id: "0",
-      username: "usuario",
-      name: "Usuário logado",
-      role: "USER",
-    };
+    const response = await api.get("/auth/teste");
+    return response.data;
   },
 
   async validateToken() {
@@ -127,7 +125,7 @@ export const authAPI = {
 };
 
 /* ============================================================================
-   IMPORTAÇÃO SPC — COMPLETO
+   IMPORTAÇÃO SPC — COMPLETO (MANTIDO)
    ============================================================================ */
 export const importacaoSPCService = {
   async uploadArquivo(arquivo: File) {
@@ -209,7 +207,7 @@ export const importacaoSPCService = {
 };
 
 /* ============================================================================
-   SERVIÇO DE VERIFICAÇÃO (LEGADO)
+   SERVIÇO DE VERIFICAÇÃO (LEGADO) - MANTIDO
    ============================================================================ */
 export const verificacaoService = {
   async verificarImportacao(importacaoId: number) {
@@ -244,7 +242,7 @@ export const verificacaoService = {
 };
 
 /* ============================================================================
-   DASHBOARD DE VERIFICAÇÃO
+   DASHBOARD DE VERIFICAÇÃO - MANTIDO
    ============================================================================ */
 export async function getImportacoesLista() {
   const response = await api.get("/verificacao-importacao/listar");
@@ -295,7 +293,7 @@ export async function exportResumoPDF(importacaoId: number) {
 }
 
 /* ============================================================================
-   NOTAS DE DÉBITO
+   NOTAS DE DÉBITO - MANTIDO
    ============================================================================ */
 export async function listarNotas(
   importacaoId: number,
@@ -340,7 +338,7 @@ export async function visualizarNotaPDF(notaId: number) {
 }
 
 /* ============================================================================
-   SERVIÇO DE PRODUTOS
+   SERVIÇO DE PRODUTOS - MANTIDO
    ============================================================================ */
 export const produtoAPI = {
   async listarProdutos(params?: any) {
@@ -423,7 +421,7 @@ export const produtoAPI = {
 };
 
 /* ============================================================================
-   SERVIÇO DE ASSOCIADOS
+   SERVIÇO DE ASSOCIADOS - MANTIDO
    ============================================================================ */
 export const associadoAPI = {
   async listarAssociados(params?: any) {
@@ -518,42 +516,7 @@ export const associadoAPI = {
 };
 
 /* ============================================================================
-   HANDLER DE ERROS
-   ============================================================================ */
-export const errorHandler = {
-  getErrorMessage(error: any): string {
-    if (error?.response?.data?.erro) return error.response.data.erro;
-    if (error?.response?.data?.message) return error.response.data.message;
-    
-    if (error.isTimeout || error.code === "ECONNABORTED") {
-      return "⏰ A operação está demorando muito. Tente com menos dados ou processe em lotes menores.";
-    }
-
-    if (error.code === "ERR_NETWORK") {
-      return "Erro de conexão. Verifique se o servidor está online.";
-    }
-
-    if (error.response?.status === 413) {
-      return "Arquivo muito grande. Máximo permitido: 100MB.";
-    }
-
-    if (error.response?.status === 415) {
-      return "Tipo de arquivo inválido. Apenas .txt é permitido.";
-    }
-
-    if (error.response?.status === 404) return "Recurso não encontrado.";
-    if (error.response?.status === 400) return "Dados inválidos.";
-    if (error.response?.status === 500) return "Erro interno do servidor. Tente novamente.";
-
-    return error.message || "Erro desconhecido.";
-  },
-
-  isNetworkError: (e: any) => e?.code === "ERR_NETWORK",
-  isTimeoutError: (e: any) => e?.isTimeout || e?.code === "ECONNABORTED",
-};
-
-/* ============================================================================
-   SERVIÇO DE LOGS DO SISTEMA
+   SERVIÇO DE LOGS DO SISTEMA - MANTIDO
    ============================================================================ */
 export const sistemaLogAPI = {
   async buscarLogs(filtros: any) {
@@ -618,6 +581,49 @@ export const sistemaLogAPI = {
       return { status: "DOWN", message: "Serviço de logs não disponível" };
     }
   }
+};
+
+// 🔥 HANDLER DE ERROS - MANTIDO
+export const errorHandler = {
+  getErrorMessage(error: any): string {
+    if (error?.response?.data?.erro) return error.response.data.erro;
+    if (error?.response?.data?.message) return error.response.data.message;
+    
+    if (error.isTimeout || error.code === "ECONNABORTED") {
+      return "⏰ A operação está demorando muito. Tente com menos dados ou processe em lotes menores.";
+    }
+
+    if (error.code === "ERR_NETWORK") {
+      return "Erro de conexão. Verifique se o servidor está online.";
+    }
+
+    if (error.response?.status === 413) {
+      return "Arquivo muito grande. Máximo permitido: 100MB.";
+    }
+
+    if (error.response?.status === 415) {
+      return "Tipo de arquivo inválido. Apenas .txt é permitido.";
+    }
+
+    if (error.response?.status === 401) {
+      return "Sessão expirada. Faça login novamente.";
+    }
+
+    if (error.response?.status === 403) {
+      return "Você não tem permissão para realizar esta ação.";
+    }
+
+    if (error.response?.status === 404) return "Recurso não encontrado.";
+    if (error.response?.status === 400) return "Dados inválidos.";
+    if (error.response?.status === 500) return "Erro interno do servidor. Tente novamente.";
+
+    return error.message || "Erro desconhecido.";
+  },
+
+  isNetworkError: (e: any) => e?.code === "ERR_NETWORK",
+  isTimeoutError: (e: any) => e?.isTimeout || e?.code === "ECONNABORTED",
+  isUnauthorized: (e: any) => e?.response?.status === 401,
+  isForbidden: (e: any) => e?.response?.status === 403,
 };
 
 // 🔥 EXPORTAÇÃO PADRÃO

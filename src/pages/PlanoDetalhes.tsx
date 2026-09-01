@@ -1,3 +1,4 @@
+// src/pages/PlanoDetalhes.tsx - COM PERMISSION GUARD
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { planoService, PlanoDTO } from '../services/planoService';
@@ -6,6 +7,7 @@ import { PlanoProdutoFranquia } from '../types/franquia.types';
 import BreadCrumb from '../components/BreadCrumb';
 import Loading from '../components/Loading';
 import { useMessage } from '../providers/MessageProvider';
+import { PermissionGuard } from '../components/PermissionGuard'; // 🔥 ADICIONADO
 
 const PlanoDetalhes: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -26,11 +28,9 @@ const PlanoDetalhes: React.FC = () => {
     try {
       setLoading(true);
       
-      // Carregar dados do plano
       const planoData = await planoService.buscarPorId(parseInt(id));
       setPlano(planoData);
       
-      // Carregar associações do plano
       try {
         const associacoesData = await planoProdutoFranquiaService.listarPorPlano(parseInt(id));
         setAssociacoes(associacoesData);
@@ -107,12 +107,15 @@ const PlanoDetalhes: React.FC = () => {
               ← Voltar
             </button>
             
-            <button
-              onClick={handleEditar}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-            >
-              ✏️ Editar Plano
-            </button>
+            {/* 🔥 EDITAR PLANO - PERMISSION GUARD */}
+            <PermissionGuard requiredPermissions={['PLANO_EDIT']}>
+              <button
+                onClick={handleEditar}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+              >
+                ✏️ Editar Plano
+              </button>
+            </PermissionGuard>
           </div>
         </div>
 
@@ -290,12 +293,15 @@ const PlanoDetalhes: React.FC = () => {
             ← Voltar
           </button>
           
-          <button
-            onClick={handleEditar}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-          >
-            ✏️ Editar Plano
-          </button>
+          {/* 🔥 EDITAR PLANO - PERMISSION GUARD */}
+          <PermissionGuard requiredPermissions={['PLANO_EDIT']}>
+            <button
+              onClick={handleEditar}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+            >
+              ✏️ Editar Plano
+            </button>
+          </PermissionGuard>
         </div>
       </div>
     </div>

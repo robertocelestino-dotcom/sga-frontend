@@ -17,12 +17,13 @@ interface AuthState {
     login: (credentials: LoginRequest) => Promise<LoginResult>;
     logout: () => void;
     setAuth: (response: AuthResponse) => void;
+    checkAuth: () => void;
+    initialize: () => void;
     hasPermission: (permissao: string) => boolean;
     hasAnyPermission: (permissoes: string[]) => boolean;
     hasAllPermissions: (permissoes: string[]) => boolean;
     getMenus: () => Menu[];
     buildMenuTree: () => Menu[];
-    initialize: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -44,6 +45,17 @@ export const useAuthStore = create<AuthState>()(
                 } else {
                     set({ initialized: true });
                     console.log('🔄 Store inicializada sem token');
+                }
+            },
+
+            checkAuth: () => {
+                const state = get();
+                if (state.token && state.user) {
+                    set({ isAuthenticated: true });
+                    console.log('✅ Autenticação já verificada anteriormente');
+                } else {
+                    set({ isAuthenticated: false });
+                    console.log('❌ Usuário não autenticado');
                 }
             },
 

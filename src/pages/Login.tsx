@@ -5,7 +5,7 @@ import { useAuthStore } from '../stores/authStore'
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('admin')
-  const [password, setPassword] = useState('admin123')
+  const [password, setPassword] = useState('admin@2025')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   
@@ -77,7 +77,7 @@ const Login: React.FC = () => {
               <p className="text-sm text-blue-700">
                 <strong>Credenciais de teste:</strong><br />
                 Usuário: <strong>admin</strong><br />
-                Senha: <strong>admin123</strong>
+                Senha: <strong>admin@2025</strong>
               </p>
             </div>
           </div>

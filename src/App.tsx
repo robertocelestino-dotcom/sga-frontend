@@ -1,12 +1,18 @@
-// App.tsx - ATUALIZADO COM TODAS AS IMPORTAÇÕES DAS PÁGINAS DE FATURAMENTO
+// App.tsx - ATUALIZADO COM CONTROLE DE ACESSO E TODAS AS IMPORTAÇÕES
 import React, { useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './stores/authStore'
 import { MessageProvider } from './providers/MessageProvider'
 
+// Components de Controle de Acesso
+import { RouteGuard } from './components/RouteGuard'
+import { PermissionGuard } from './components/PermissionGuard'
+
+// Layout
 import Layout from './components/layout/Layout'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
+import Unauthorized from './pages/Unauthorized'
 
 // Importe todas as páginas que você tem na estrutura
 import Associados from './pages/Associados'
@@ -43,7 +49,7 @@ import Planos from './pages/Planos'
 import PlanoForm from './pages/PlanoForm'
 import PlanoDetalhes from './pages/PlanoDetalhes'
 
-// 🔥 PÁGINAS DE FATURAMENTO
+// PÁGINAS DE FATURAMENTO
 import ReguaFaturamentoPage from './pages/faturamento/ReguaFaturamento'
 import ReguaFaturamentoForm from './pages/faturamento/ReguaFaturamentoForm'
 import ReguaAssociados from './pages/faturamento/ReguaAssociados'
@@ -53,15 +59,22 @@ import IntegracaoRmPage from './pages/faturamento/IntegracaoRm'
 import FaturasGeradas from './pages/faturamento/FaturasGeradas'
 import FaturaDetalhes from './pages/faturamento/FaturaDetalhes'
 
-// 🔥 NOVAS PÁGINAS
+// NOVAS PÁGINAS
 import ImportacaoCancelamentos from './pages/ImportacaoCancelamentos'
+import Notificacoes from './pages/Notificacoes'
+import HistoricoSincronizacoes from './pages/HistoricoSincronizacoes'
+import Vendedores from './pages/Vendedores'
 
-import Notificacoes from './pages/Notificacoes';
+// INTEGRAÇÃO RM API
+import IntegracaoRmApi from './pages/faturamento/IntegracaoRmApi'
 
-// 🔥 IMPORTAR A NOVA PÁGINA DE INTEGRAÇÃO RM API
-import IntegracaoRmApi from './pages/faturamento/IntegracaoRmApi';
+// ADMIN - CONTROLE DE ACESSO
+import { Usuarios as AdminUsuarios } from './pages/admin/Usuarios'
+import { Perfis as AdminPerfis } from './pages/admin/Perfis'
+import { UsuarioForm as AdminUsuarioForm } from './pages/admin/UsuarioForm'
+import { PerfilForm as AdminPerfilForm } from './pages/admin/PerfilForm'
 
-// Adicione esta animação ao seu index.css
+// ANIMAÇÕES
 import './styles/animations.css'
 
 // -----------------------
@@ -73,7 +86,7 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 }
 
 // -----------------------
-// Rotas Privadas
+// Rotas Privadas (com verificação de autenticação)
 // -----------------------
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuthStore()
@@ -81,11 +94,12 @@ const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 }
 
 function App() {
-  const { checkAuth } = useAuthStore()
+  const { initialize, isAuthenticated } = useAuthStore()
 
   useEffect(() => {
-    checkAuth()
-  }, [checkAuth])
+    // Inicializar o store (verificar token salvo)
+    initialize()
+  }, [initialize])
 
   return (
     <MessageProvider>
@@ -93,7 +107,9 @@ function App() {
         <div className="App">
           <Routes>
 
-            {/* ROTA LOGIN */}
+            {/* ============================================== */}
+            {/* ROTA LOGIN (PÚBLICA) */}
+            {/* ============================================== */}
             <Route
               path="/login"
               element={
@@ -103,7 +119,14 @@ function App() {
               }
             />
 
+            {/* ============================================== */}
+            {/* ROTA UNAUTHORIZED (PÚBLICA) */}
+            {/* ============================================== */}
+            <Route path="/unauthorized" element={<Unauthorized />} />
+
+            {/* ============================================== */}
             {/* ROTAS PRIVADAS COM LAYOUT */}
+            {/* ============================================== */}
             <Route
               path="/"
               element={
@@ -115,55 +138,54 @@ function App() {
               {/* Redirecionamento padrão */}
               <Route index element={<Navigate to="/dashboard" replace />} />
 
-              {/* Dashboard */}
+              {/* ========== DASHBOARD ========== */}
               <Route path="dashboard" element={<Dashboard />} />
 
-              {/* Cadastro */}
+              {/* ========== CADASTROS ========== */}
+              {/* Associados */}
               <Route path="associados" element={<Associados />} />
               <Route path="associados/novo" element={<AssociadoForm />} />
               <Route path="associados/editar/:id" element={<AssociadoForm />} />
               <Route path="associados/:id" element={<AssociadoDetalhes />} />
               
-              {/* ROTA DE CONSUMO DE FRANQUIAS */}
+              {/* Consumo de Franquias */}
               <Route path="associados/:id/consumo-franquia" element={<ConsumoFranquiaPage />} />
               
+              {/* Usuários (antigo) */}
               <Route path="usuarios" element={<Usuarios />} />
+              
+              {/* Vendedores */}
+              <Route path="vendedores" element={<Vendedores />} />
+              
+              {/* Parâmetros */}
               <Route path="parametrizacao-associados" element={<ParametrizacaoAssociados />} />
               <Route path="tabela-precos" element={<TabelaPrecos />} />
               <Route path="tabela-valores" element={<TabelaValores />} />
 
-              {/* Produtos */}
+              {/* ========== PRODUTOS ========== */}
               <Route path="produtos" element={<Produtos />} />
               <Route path="produtos/novo" element={<ProdutoForm />} />
               <Route path="produtos/editar/:id" element={<ProdutoForm />} />
               <Route path="produtos/:id" element={<ProdutoDetalhes />} />
 
-              {/* Planos */}
+              {/* ========== PLANOS ========== */}
               <Route path="planos" element={<Planos />} />
               <Route path="planos/novo" element={<PlanoForm />} />
               <Route path="planos/editar/:id" element={<PlanoForm />} />
               <Route path="planos/:id" element={<PlanoDetalhes />} />
 
-              {/* Importação */}
+              {/* ========== IMPORTAÇÕES ========== */}
               <Route path="importacao-spc" element={<ImportacaoSPC />} />
               <Route path="importacao-associados" element={<ImportacaoAssociados />} />
               <Route path="importacao-beneficios" element={<ImportacaoBeneficios />} />
               <Route path="importacao-faturamentos" element={<ImportacaoFaturamentos />} />
-              
-              {/* 🔥 NOVA ROTA: Importação de Cancelamentos */}
               <Route path="importacao-cancelamentos" element={<ImportacaoCancelamentos />} />
 
-              {/* Rotas de verificação */}
-              <Route
-                path="importacao-spc/:importacaoId/verificacao"
-                element={<VerificacaoDashboard />}
-              />
-              <Route
-                path="importacao-spc/:importacaoId/verificacao-old"
-                element={<VerificacaoImportacao />}
-              />
+              {/* ========== VERIFICAÇÃO DE IMPORTAÇÕES ========== */}
+              <Route path="importacao-spc/:importacaoId/verificacao" element={<VerificacaoDashboard />} />
+              <Route path="importacao-spc/:importacaoId/verificacao-old" element={<VerificacaoImportacao />} />
 
-              {/* 🔥 ROTAS DE FATURAMENTO */}
+              {/* ========== FATURAMENTO ========== */}
               <Route path="faturamento">
                 <Route path="regua" element={<ReguaFaturamentoPage />} />
                 <Route path="regua/novo" element={<ReguaFaturamentoForm />} />
@@ -175,7 +197,7 @@ function App() {
                 <Route path="faturas/:id" element={<FaturaDetalhes />} />
                 <Route path="cancelamentos" element={<CancelamentosPage />} />
                 
-                {/* 🔥 INTEGRAÇÕES RM */}
+                {/* Integrações RM */}
                 <Route path="integracoes/rm" element={<IntegracaoRmPage />} />
                 <Route path="integracoes/rm-api" element={<IntegracaoRmApi />} />
               </Route>
@@ -184,25 +206,81 @@ function App() {
               <Route path="processar-faturamento" element={<ProcessarFaturamento />} />
               <Route path="tabelas-faturamento" element={<TabelasFaturamento />} />
 
-              {/* Notificações (legado) */}
-              <Route path="/notificacoes" element={<Notificacoes />} />
-
-              {/* Gestão */}
+              {/* ========== GESTÃO ========== */}
               <Route path="beneficios" element={<Beneficios />} />
               <Route path="servicos" element={<Servicos />} />
               <Route path="gestao-spc" element={<GestaoSPC />} />
               <Route path="atualizacao-associados" element={<AtualizacaoAssociados />} />
 
-              {/* Verificação */}
+              {/* ========== NOTIFICAÇÕES ========== */}
+              <Route path="notificacoes" element={<Notificacoes />} />
+
+              {/* ========== VERIFICAÇÃO ========== */}
               <Route path="verificacao-dashboard" element={<VerificacaoDashboard />} />
 
-              {/* Logs do Sistema */}
+              {/* ========== RELATÓRIOS E LOGS ========== */}
               <Route path="logs" element={<LogsSistema />} />
+              <Route path="sincronizacoes" element={<HistoricoSincronizacoes />} />
+
+              {/* ============================================================ */}
+              {/* ADMINISTRAÇÃO - CONTROLE DE ACESSO (Novo) */}
+              {/* ============================================================ */}
+              <Route
+                path="admin/usuarios"
+                element={
+                  <PermissionGuard requiredPermissions={['USUARIO_VIEW']}>
+                    <AdminUsuarios />
+                  </PermissionGuard>
+                }
+              />
+              <Route
+                path="admin/usuarios/novo"
+                element={
+                  <PermissionGuard requiredPermissions={['USUARIO_CREATE']}>
+                    <AdminUsuarioForm />
+                  </PermissionGuard>
+                }
+              />
+              <Route
+                path="admin/usuarios/:id"
+                element={
+                  <PermissionGuard requiredPermissions={['USUARIO_EDIT']}>
+                    <AdminUsuarioForm />
+                  </PermissionGuard>
+                }
+              />
+              <Route
+                path="admin/perfis"
+                element={
+                  <PermissionGuard requiredPermissions={['PERFIL_VIEW']}>
+                    <AdminPerfis />
+                  </PermissionGuard>
+                }
+              />
+              <Route
+                path="admin/perfis/novo"
+                element={
+                  <PermissionGuard requiredPermissions={['PERFIL_CREATE']}>
+                    <AdminPerfilForm />
+                  </PermissionGuard>
+                }
+              />
+              <Route
+                path="admin/perfis/:id"
+                element={
+                  <PermissionGuard requiredPermissions={['PERFIL_EDIT']}>
+                    <AdminPerfilForm />
+                  </PermissionGuard>
+                }
+              />
 
             </Route>
 
-            {/* FALLBACK - Redireciona para dashboard se rota não existir */}
+            {/* ============================================== */}
+            {/* FALLBACK - Redireciona para dashboard */}
+            {/* ============================================== */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
+
           </Routes>
         </div>
       </Router>

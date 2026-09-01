@@ -1,6 +1,7 @@
 // src/components/layout/Sidebar.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useAuthStore } from '../../stores/authStore';
 import {
   FaHome,
   FaUsers,
@@ -23,23 +24,81 @@ import {
   FaExchangeAlt,
   FaCloudUploadAlt,
   FaEnvelope,
-  FaPlug, // 🔥 Ícone para Integração RM API
+  FaPlug,
+  FaUserCog,
+  FaShieldAlt,
+  FaSlidersH,
+  FaDatabase,
 } from 'react-icons/fa';
+
+// Mapeamento de ícones
+const iconMap: Record<string, any> = {
+  'LayoutDashboard': FaHome,
+  'Database': FaDatabase,
+  'FileText': FaFileInvoiceDollar,
+  'UploadCloud': FaCloudUploadAlt,
+  'Bell': FaEnvelope,
+  'BarChart3': FaChartBar,
+  'Settings': FaCog,
+  'Users': FaUsers,
+  'Package': FaBox,
+  'Layers': FaClipboardCheck,
+  'UserCog': FaUserCog,
+  'Tags': FaTag,
+  'PlayCircle': FaPlay,
+  'FileCheck': FaClipboardCheck,
+  'Ruler': FaCalendarAlt,
+  'Server': FaDatabase,
+  'XCircle': FaTrashAlt,
+  'UserPlus': FaUserPlus,
+  'FileUp': FaFileImport,
+  'XSquare': FaTrashAlt,
+  'PackagePlus': FaBox,
+  'CheckCircle': FaClipboardCheck,
+  'PieChart': FaChartBar,
+  'ShieldCheck': FaShieldAlt,
+  'Activity': FaChartBar,
+  'RefreshCw': FaExchangeAlt,
+  'UserCheck': FaUserCog,
+  'Sliders': FaSlidersH,
+  'PlusCircle': FaUserPlus,
+};
+
+const getIcon = (iconName: string) => {
+  const Icon = iconMap[iconName];
+  return Icon ? <Icon size={18} /> : <FaCog size={18} />;
+};
 
 const Sidebar = () => {
   const location = useLocation();
-  const [menuAberto, setMenuAberto] = useState({
-    cadastro: false,
-    importacao: false,
-    faturamento: false,
-    gestao: false,
-    integracoes: false // 🔥 NOVO: Menu de Integrações
-  });
+  const { menus, buildMenuTree } = useAuthStore();
+  const [menuTree, setMenuTree] = useState<any[]>([]);
+  const [menuAberto, setMenuAberto] = useState<Record<number, boolean>>({});
+  const [loading, setLoading] = useState(true);
 
-  const toggleMenu = (menu: string) => {
+  useEffect(() => {
+    console.log('🔄 Sidebar: menus recebidos:', menus);
+    
+    if (buildMenuTree && typeof buildMenuTree === 'function') {
+      try {
+        const tree = buildMenuTree();
+        console.log('✅ Sidebar: árvore construída:', tree);
+        setMenuTree(tree);
+      } catch (error) {
+        console.error('❌ Sidebar: erro ao construir árvore:', error);
+        setMenuTree([]);
+      }
+    } else {
+      console.warn('⚠️ Sidebar: buildMenuTree não é uma função');
+      setMenuTree([]);
+    }
+    setLoading(false);
+  }, [menus, buildMenuTree]);
+
+  const toggleMenu = (menuId: number) => {
     setMenuAberto(prev => ({
       ...prev,
-      [menu]: !prev[menu]
+      [menuId]: !prev[menuId]
     }));
   };
 
@@ -47,175 +106,98 @@ const Sidebar = () => {
     return location.pathname === path || location.pathname.startsWith(`${path}/`);
   };
 
-  const menuItems = [
-    {
-      name: 'Dashboard',
-      path: '/dashboard',
-      icon: <FaHome size={18} />,
-      exact: true
-    },
-    {
-      name: 'Cadastro',
-      icon: <FaUserPlus size={18} />,
-      submenu: [
-        {
-          name: 'Associados',
-          path: '/associados',
-          icon: <FaUsers size={16} />,
-          description: 'Cadastro de associados'
-        },
-        {
-          name: 'Produtos',
-          path: '/produtos',
-          icon: <FaBox size={16} />,
-          description: 'Gestão de produtos e serviços'
-        },
-        {
-          name: 'Planos',
-          path: '/planos',
-          icon: <FaClipboardCheck size={16} />,
-          description: 'Gestão de planos e franquias'
-        },
-        {
-          name: 'Usuários',
-          path: '/usuarios',
-          icon: <FaUserPlus size={16} />,
-          description: 'Gestão de usuários'
-        },
-      ]
-    },
-    {
-      name: 'Importação',
-      icon: <FaFileImport size={18} />,
-      submenu: [
-        {
-          name: 'Importar Associados',
-          path: '/importacao-associados',
-          icon: <FaUsers size={16} />
-        },
-        {
-          name: 'Importar Faturamento SPC',
-          path: '/importacao-spc',
-          icon: <FaFileImport size={16} />
-        },
-        {
-          name: 'Importar Cancelamentos',
-          path: '/importacao-cancelamentos',
-          icon: <FaCloudUploadAlt size={16} />,
-          description: 'Importar cancelamentos de serviços'
-        }
-      ]
-    },
-    {
-      name: 'Faturamento',
-      icon: <FaMoneyBillWave size={18} />,
-      submenu: [
-        {
-          name: 'Régua de Faturamento',
-          path: '/faturamento/regua',
-          icon: <FaCalendarAlt size={16} />,
-          description: 'Configuração de períodos de faturamento'
-        },
-        {
-          name: 'Processar Faturamento',
-          path: '/faturamento/processar',
-          icon: <FaPlay size={16} />,
-          description: 'Executar processamento do faturamento'
-        },
-        {
-          name: 'Faturas Geradas',
-          path: '/faturamento/faturas',
-          icon: <FaFileInvoiceDollar size={16} />,
-          description: 'Consulta de faturas emitidas'
-        },
-        {
-          name: 'Cancelamentos',
-          path: '/faturamento/cancelamentos',
-          icon: <FaTrashAlt size={16} />,
-          description: 'Gerenciar cancelamentos'
-        }
-      ]
-    },
-    {
-      name: 'Integrações',
-      icon: <FaExchangeAlt size={18} />,
-      submenu: [
-        {
-          name: 'Integração RM (Arquivo)',
-          path: '/faturamento/integracoes/rm',
-          icon: <FaFileImport size={16} />,
-          description: 'Configuração e exportação de arquivos RM'
-        },
-        {
-          name: 'Integração RM (API)',
-          path: '/faturamento/integracoes/rm-api',
-          icon: <FaPlug size={16} />,
-          description: 'Integração via WebService/TBC'
-        }
-      ]
-    },
-    {
-      name: 'Gestão',
-      icon: <FaChartBar size={18} />,
-      submenu: [
-        {
-          name: 'Benefícios',
-          path: '/beneficios',
-          icon: <FaClipboardList size={16} />
-        },
-        {
-          name: 'Serviços',
-          path: '/servicos',
-          icon: <FaCog size={16} />
-        },
-        {
-          name: 'Gestão SPC',
-          path: '/gestao-spc',
-          icon: <FaChartBar size={16} />
-        },
-        {
-          name: 'Parâmetros',
-          path: '/parametrizacao-associados',
-          icon: <FaCog size={16} />,
-          description: 'Configurações do sistema'
-        },
-        {
-          name: 'Tabela de Preços',
-          path: '/tabela-precos',
-          icon: <FaTag size={16} />,
-          description: 'Preços e valores'
-        },
-        {
-          name: 'Tabela de Valores',
-          path: '/tabela-valores',
-          icon: <FaDollarSign size={16} />,
-          description: 'Valores e tarifas'
-        },
-        {
-          name: 'Tabelas de Faturamento',
-          path: '/tabelas-faturamento',
-          icon: <FaClipboardList size={16} />
-        }
-      ]
-    },
-    {
-      name: 'Verificação',
-      path: '/verificacao-dashboard',
-      icon: <FaChartBar size={18} />
-    },
-    {
-      name: 'Logs do Sistema',
-      path: '/logs',
-      icon: <FaClipboardList size={18} />,
-      exact: true
-    },
-    {
-      name: 'Notificações',
-      path: '/notificacoes',
-      icon: <FaEnvelope size={18} />,
-      exact: true
-    },
-  ];
+  const renderMenu = (items: any[], level: number = 0) => {
+    if (!items || items.length === 0) {
+      return (
+        <div className="text-gray-500 text-sm p-2">
+          Nenhum menu disponível
+        </div>
+      );
+    }
+
+    return items.map((item) => {
+      const Icon = getIcon(item.icone);
+      const hasSubMenus = item.subMenus && item.subMenus.length > 0;
+      const isExpanded = menuAberto[item.id] || false;
+      const isActiveRoute = item.caminho ? isActive(item.caminho) : false;
+
+      // Verificar se o menu está ativo (para destacar)
+      const isParentActive = hasSubMenus && item.subMenus.some((sub: any) => 
+        sub.caminho && isActive(sub.caminho)
+      );
+
+      if (hasSubMenus) {
+        return (
+          <div key={item.id} className="space-y-1">
+            <button
+              onClick={() => toggleMenu(item.id)}
+              className={`w-full flex items-center justify-between p-2 rounded-lg transition-colors text-sm ${
+                isExpanded || isParentActive
+                  ? 'bg-gray-800 text-white'
+                  : 'hover:bg-gray-800 text-gray-300'
+              }`}
+              style={{ paddingLeft: level * 16 + 12 }}
+            >
+              <div className="flex items-center gap-3">
+                {Icon}
+                <span className="font-medium">{item.nome}</span>
+              </div>
+              {isExpanded ? (
+                <FaChevronDown size={12} />
+              ) : (
+                <FaChevronRight size={12} />
+              )}
+            </button>
+
+            {isExpanded && (
+              <div className="ml-4 space-y-1">
+                {renderMenu(item.subMenus, level + 1)}
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      return (
+        <Link
+          key={item.id}
+          to={item.caminho || '#'}
+          className={`flex items-center gap-3 p-2 rounded-lg transition-colors text-sm ${
+            isActiveRoute
+              ? 'bg-blue-600 text-white'
+              : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+          }`}
+          style={{ paddingLeft: level * 16 + 20 }}
+        >
+          {Icon}
+          <span className="font-medium">{item.nome}</span>
+        </Link>
+      );
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="h-full bg-gray-900 text-white w-64 flex-shrink-0 overflow-y-auto">
+        <div className="p-4">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="bg-blue-600 p-2 rounded-lg">
+              <FaBox size={24} />
+            </div>
+            <div>
+              <h1 className="font-bold text-lg">SGA</h1>
+              <p className="text-xs text-gray-400">Carregando...</p>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="animate-pulse bg-gray-800 h-10 rounded-lg"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full bg-gray-900 text-white w-64 flex-shrink-0 overflow-y-auto">
@@ -231,68 +213,7 @@ const Sidebar = () => {
         </div>
 
         <nav className="space-y-1">
-          {menuItems.map((item) => (
-            <div key={item.name}>
-              {item.submenu ? (
-                <>
-                  <button
-                    onClick={() => toggleMenu(item.name.toLowerCase())}
-                    className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors ${
-                      menuAberto[item.name.toLowerCase() as keyof typeof menuAberto]
-                        ? 'bg-gray-800 text-white'
-                        : 'hover:bg-gray-800 text-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      {item.icon}
-                      <span className="font-medium">{item.name}</span>
-                    </div>
-                    {menuAberto[item.name.toLowerCase() as keyof typeof menuAberto] ? (
-                      <FaChevronDown size={14} />
-                    ) : (
-                      <FaChevronRight size={14} />
-                    )}
-                  </button>
-
-                  {menuAberto[item.name.toLowerCase() as keyof typeof menuAberto] && (
-                    <div className="ml-8 mt-1 space-y-1">
-                      {item.submenu.map((subitem) => (
-                        <Link
-                          key={subitem.name}
-                          to={subitem.path!}
-                          className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${
-                            isActive(subitem.path!)
-                              ? 'bg-blue-900 text-white'
-                              : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                          }`}
-                        >
-                          {subitem.icon}
-                          <div className="flex-1">
-                            <span className="text-sm font-medium">{subitem.name}</span>
-                            {subitem.description && (
-                              <p className="text-xs text-gray-500 mt-0.5">{subitem.description}</p>
-                            )}
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <Link
-                  to={item.path!}
-                  className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
-                    isActive(item.path!)
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                  }`}
-                >
-                  {item.icon}
-                  <span className="font-medium">{item.name}</span>
-                </Link>
-              )}
-            </div>
-          ))}
+          {renderMenu(menuTree)}
         </nav>
 
         {/* Versão do Sistema */}

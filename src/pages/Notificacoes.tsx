@@ -7,6 +7,8 @@ import ModalDetalheNotificacao from '../components/faturamento/ModalDetalheNotif
 import ConfirmModal from '../components/ui/ConfirmModal';
 import notificacaoService from '../services/notificacaoService';
 import api from '../services/api';
+import { PermissionGuard } from '../components/PermissionGuard'; // 🔥 ADICIONADO
+import { useAuthStore } from '../stores/authStore'; // 🔥 ADICIONADO
 
 interface Sincronizacao {
   id: number;
@@ -23,13 +25,15 @@ interface Sincronizacao {
 
 const Notificacoes: React.FC = () => {
   const { showToast } = useMessage();
+  const { hasPermission, user } = useAuthStore(); // 🔥 ADICIONADO
+  
   const [loading, setLoading] = useState(false);
   const [sincronizando, setSincronizando] = useState(false);
   const [desfazendo, setDesfazendo] = useState(false);
   const [notificacoesAgrupadas, setNotificacoesAgrupadas] = useState<any[]>([]);
   const [filtroCodigo, setFiltroCodigo] = useState('');
   
-  // 🔥 FILTROS: Data Inicial e Data Final
+  // FILTROS: Data Inicial e Data Final
   const [dataInicio, setDataInicio] = useState(() => {
     const hoje = new Date();
     return new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
@@ -49,11 +53,11 @@ const Notificacoes: React.FC = () => {
   const [ultimaSincronizacao, setUltimaSincronizacao] = useState<string>('');
   const [totalRegistros, setTotalRegistros] = useState<number>(0);
   
-  // 🔥 DADOS DO MS-SQL (TEMPORÁRIOS - NÃO SALVOS)
+  // DADOS DO MS-SQL (TEMPORÁRIOS - NÃO SALVOS)
   const [dadosMSSQL, setDadosMSSQL] = useState<any[]>([]);
   const [carregandoMSSQL, setCarregandoMSSQL] = useState(false);
 
-  // 🔥 HISTÓRICO DE SINCRONIZAÇÕES
+  // HISTÓRICO DE SINCRONIZAÇÕES
   const [historicoAberto, setHistoricoAberto] = useState(false);
   const [historico, setHistorico] = useState<Sincronizacao[]>([]);
   const [carregandoHistorico, setCarregandoHistorico] = useState(false);
@@ -61,15 +65,15 @@ const Notificacoes: React.FC = () => {
   const [historicoTotal, setHistoricoTotal] = useState(0);
   const [historicoTotalPaginas, setHistoricoTotalPaginas] = useState(0);
 
-  // 🔥 PAGINAÇÃO PRINCIPAL
+  // PAGINAÇÃO PRINCIPAL
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [itensPorPagina] = useState(10);
   const [totalPaginas, setTotalPaginas] = useState(0);
 
-  // 🔥 REF PARA CANCELAR BUSCA
+  // REF PARA CANCELAR BUSCA
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // 🔥 CONFIRM MODAL
+  // CONFIRM MODAL
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -92,7 +96,7 @@ const Notificacoes: React.FC = () => {
   const [modalDetalheAberto, setModalDetalheAberto] = useState(false);
   const [notificacaoSelecionada, setNotificacaoSelecionada] = useState<any>(null);
 
-  // 🔥 FORMATAR DATA PARA DD/MM/YYYY
+  // FORMATAR DATA PARA DD/MM/YYYY
   const formatarData = (data: Date): string => {
     const dia = String(data.getDate()).padStart(2, '0');
     const mes = String(data.getMonth() + 1).padStart(2, '0');
@@ -100,7 +104,7 @@ const Notificacoes: React.FC = () => {
     return `${dia}/${mes}/${ano}`;
   };
 
-  // 🔥 FORMATAR DATA E HORA (CORRIGIDO)
+  // FORMATAR DATA E HORA
   const formatarDataHora = (data: string): string => {
     if (!data) return '-';
     
@@ -117,14 +121,14 @@ const Notificacoes: React.FC = () => {
     }
   };
 
-  // 🔥 FORMATAR DATA PARA EXIBIÇÃO
+  // FORMATAR DATA PARA EXIBIÇÃO
   const formatarDataExibicao = (data: string): string => {
     if (!data) return '-';
     const partes = data.split('-');
     return `${partes[2]}/${partes[1]}/${partes[0]}`;
   };
 
-  // 🔥 CANCELAR BUSCA
+  // CANCELAR BUSCA
   const cancelarBusca = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -135,7 +139,7 @@ const Notificacoes: React.FC = () => {
     }
   };
 
-  // 🔥 CARREGAR DADOS DO MS-SQL (SEM SALVAR)
+  // CARREGAR DADOS DO MS-SQL (SEM SALVAR)
   const carregarGridMSSQL = async () => {
     if (!dataInicio || !dataFim) {
       showToast('⚠️ Selecione o período para buscar', 'warning');
@@ -205,7 +209,7 @@ const Notificacoes: React.FC = () => {
     }
   };
 
-  // 🔥 CARREGAR DADOS DA TABELA LOCAL (APÓS SINCRONIZAR)
+  // CARREGAR DADOS DA TABELA LOCAL (APÓS SINCRONIZAR)
   const carregarDadosLocal = async () => {
     if (!dataInicio || !dataFim) {
       showToast('⚠️ Selecione o período para buscar', 'warning');
@@ -252,7 +256,7 @@ const Notificacoes: React.FC = () => {
     }
   };
 
-  // 🔥 CARREGAR HISTÓRICO DE SINCRONIZAÇÕES
+  // CARREGAR HISTÓRICO DE SINCRONIZAÇÕES
   const carregarHistorico = async () => {
     setCarregandoHistorico(true);
     try {
@@ -286,7 +290,7 @@ const Notificacoes: React.FC = () => {
     }
   };
 
-  // 🔥 ABRIR CONFIRM MODAL PARA SINCRONIZAR
+  // ABRIR CONFIRM MODAL PARA SINCRONIZAR
   const openConfirmSincronizar = () => {
     const dataInicioStr = formatarData(dataInicio);
     const dataFimStr = formatarData(dataFim);
@@ -306,7 +310,7 @@ const Notificacoes: React.FC = () => {
     });
   };
 
-  // 🔥 ABRIR CONFIRM MODAL PARA DESFAZER
+  // ABRIR CONFIRM MODAL PARA DESFAZER
   const openConfirmDesfazer = (sincronizacao: Sincronizacao) => {
     setConfirmModal({
       isOpen: true,
@@ -324,7 +328,7 @@ const Notificacoes: React.FC = () => {
     });
   };
 
-  // 🔥 SINCRONIZAR (SALVAR NA TABELA LOCAL)
+  // SINCRONIZAR (SALVAR NA TABELA LOCAL)
   const handleSincronizar = async () => {
     setConfirmModal(prev => ({ ...prev, isOpen: false }));
     
@@ -357,7 +361,6 @@ const Notificacoes: React.FC = () => {
           showToast(`✅ ${processados} associados sincronizados com sucesso!`, 'success');
           setSincronizacaoRealizada(true);
           
-          // 🔥 FORMATAR DATA CORRETAMENTE (FUSO LOCAL)
           const agora = new Date();
           const dia = String(agora.getDate()).padStart(2, '0');
           const mes = String(agora.getMonth() + 1).padStart(2, '0');
@@ -366,13 +369,8 @@ const Notificacoes: React.FC = () => {
           const minutos = String(agora.getMinutes()).padStart(2, '0');
           setUltimaSincronizacao(`${dia}/${mes}/${ano} ${horas}:${minutos}`);
           
-          // 🔥 ATUALIZAR TOTAL DE REGISTROS
           setTotalRegistros(totalRegistrosResponse);
-          
-          // 🔥 RECARREGAR HISTÓRICO
           await carregarHistorico();
-          
-          // 🔥 RECARREGAR DADOS LOCAIS
           await carregarDadosLocal();
           
           setTemDados(true);
@@ -406,7 +404,7 @@ const Notificacoes: React.FC = () => {
     }
   };
 
-  // 🔥 DESFAZER SINCRONIZAÇÃO
+  // DESFAZER SINCRONIZAÇÃO
   const handleDesfazerSincronizacao = async (sincronizacao: Sincronizacao) => {
     setConfirmModal(prev => ({ ...prev, isOpen: false }));
     
@@ -440,7 +438,7 @@ const Notificacoes: React.FC = () => {
     }
   };
 
-  // 🔥 APLICAR FILTRO NA GRID
+  // APLICAR FILTRO NA GRID
   const aplicarFiltroGrid = () => {
     const filtro = filtroGrid.toLowerCase().trim();
     
@@ -471,7 +469,7 @@ const Notificacoes: React.FC = () => {
     }
   };
 
-  // 🔥 LIMPAR FILTRO DA GRID
+  // LIMPAR FILTRO DA GRID
   const limparFiltroGrid = () => {
     setFiltroGrid('');
     const dados = dadosMSSQL.length > 0 ? dadosMSSQL : notificacoesAgrupadas;
@@ -481,7 +479,7 @@ const Notificacoes: React.FC = () => {
     setPaginaAtual(1);
   };
 
-  // 🔥 LIMPAR FILTROS
+  // LIMPAR FILTROS
   const limparFiltros = () => {
     setFiltroCodigo('');
     setFiltroGrid('');
@@ -500,13 +498,13 @@ const Notificacoes: React.FC = () => {
     showToast('🧹 Filtros limpos', 'info');
   };
 
-  // 🔥 ABRIR MODAL DE DETALHES
+  // ABRIR MODAL DE DETALHES
   const handleAbrirDetalhes = (notificacao: any) => {
     setNotificacaoSelecionada(notificacao);
     setModalDetalheAberto(true);
   };
 
-  // 🔥 AGRUPAR NOTIFICAÇÕES POR CÓDIGO DO ASSOCIADO
+  // AGRUPAR NOTIFICAÇÕES POR CÓDIGO DO ASSOCIADO
   const notificacoesAgrupadasPorCodigo = () => {
     const mapa = new Map<number, any>();
     
@@ -539,7 +537,7 @@ const Notificacoes: React.FC = () => {
 
   const dadosAgrupados = notificacoesAgrupadasPorCodigo();
 
-  // 🔥 CALCULAR PAGINAÇÃO
+  // CALCULAR PAGINAÇÃO
   const indexUltimoItem = paginaAtual * itensPorPagina;
   const indexPrimeiroItem = indexUltimoItem - itensPorPagina;
   const itensPaginaAtual = dadosAgrupados.slice(indexPrimeiroItem, indexUltimoItem);
@@ -553,30 +551,35 @@ const Notificacoes: React.FC = () => {
     naoEnviadas: acc.naoEnviadas + n.naoEnviada
   }), { totalRegistros: 0, sms: 0, emails: 0, cartas: 0, naoEnviadas: 0 });
 
-  // 🔥 CARREGAR HISTÓRICO AO MONTAR
+  // CARREGAR HISTÓRICO AO MONTAR
   useEffect(() => {
     carregarHistorico();
   }, []);
 
-  // 🔥 RECARREGAR HISTÓRICO AO MUDAR PÁGINA
+  // RECARREGAR HISTÓRICO AO MUDAR PÁGINA
   useEffect(() => {
     if (historicoAberto) {
       carregarHistorico();
     }
   }, [historicoPagina]);
 
-  // 🔥 VERIFICAR SE BOTÃO SINCRONIZAR DEVE ESTAR DESABILITADO
+  // VERIFICAR SE BOTÃO SINCRONIZAR DEVE ESTAR DESABILITADO
   const sincronizarDesabilitado = sincronizando || loading || carregandoMSSQL;
 
-  // 🔥 PAGINAÇÃO DO HISTÓRICO
+  // PAGINAÇÃO DO HISTÓRICO
   const historicoIndexUltimo = historicoPagina * itensPorPagina;
   const historicoIndexPrimeiro = historicoIndexUltimo - itensPorPagina;
+
+  // 🔥 VERIFICAR SE O USUÁRIO PODE SINCRONIZAR (APENAS ADMIN E SUPER_ADMIN)
+  const podeSincronizar = hasPermission('NOTIFICACAO_CREATE') || 
+                          user?.role === 'ADMIN' || 
+                          user?.role === 'SUPER_ADMIN';
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <BreadCrumb atual="Notificações" />
 
-      {/* 🔥 CONFIRM MODAL */}
+      {/* CONFIRM MODAL */}
       <ConfirmModal
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
@@ -597,170 +600,188 @@ const Notificacoes: React.FC = () => {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button
-              onClick={openConfirmSincronizar}
-              disabled={sincronizarDesabilitado}
-              className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${
-                sincronizarDesabilitado 
-                  ? 'bg-gray-400 cursor-not-allowed' 
-                  : 'bg-blue-600 hover:bg-blue-700 text-white'
-              }`}
-              title="Salvar dados na tabela local"
+            {/* 🔥 BOTÃO SINCRONIZAR - PERMISSION GUARD */}
+            <PermissionGuard 
+              requiredPermissions={['NOTIFICACAO_CREATE']}
+              fallback={
+                <div className="px-4 py-2 bg-gray-200 text-gray-500 rounded-lg flex items-center gap-2 cursor-not-allowed">
+                  <span>🔒</span>
+                  Sincronizar (Sem permissão)
+                </div>
+              }
             >
-              {sincronizando ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Salvando...
-                </>
-              ) : (
-                <>
-                  <span>💾</span>
-                  Sincronizar
-                </>
-              )}
-            </button>
+              <button
+                onClick={openConfirmSincronizar}
+                disabled={sincronizarDesabilitado}
+                className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${
+                  sincronizarDesabilitado 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                }`}
+                title="Salvar dados na tabela local"
+              >
+                {sincronizando ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <span>💾</span>
+                    Sincronizar
+                  </>
+                )}
+              </button>
+            </PermissionGuard>
             
-            <button
-              onClick={() => {
-                setHistoricoAberto(!historicoAberto);
-                if (!historicoAberto) {
-                  carregarHistorico();
-                }
-              }}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
-            >
-              <span>📋</span>
-              {historicoAberto ? 'Ocultar Histórico' : 'Histórico'}
-            </button>
+            {/* 🔥 BOTÃO HISTÓRICO - PERMISSION GUARD */}
+            <PermissionGuard requiredPermissions={['NOTIFICACAO_VIEW']}>
+              <button
+                onClick={() => {
+                  setHistoricoAberto(!historicoAberto);
+                  if (!historicoAberto) {
+                    carregarHistorico();
+                  }
+                }}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
+              >
+                <span>📋</span>
+                {historicoAberto ? 'Ocultar Histórico' : 'Histórico'}
+              </button>
+            </PermissionGuard>
           </div>
         </div>
 
-        {/* 🔥 HISTÓRICO DE SINCRONIZAÇÕES */}
-        {historicoAberto && (
-          <div className="mb-6 border rounded-lg overflow-hidden">
-            <div className="bg-gray-50 px-4 py-2 border-b flex justify-between items-center">
-              <h2 className="text-sm font-semibold text-gray-700">📋 Histórico de Sincronizações</h2>
-              <span className="text-xs text-gray-500">{historicoTotal} registros</span>
-            </div>
-            
-            {carregandoHistorico ? (
-              <div className="flex justify-center py-8">
-                <Loading size="medium" />
+        {/* 🔥 HISTÓRICO DE SINCRONIZAÇÕES - PERMISSION GUARD */}
+        <PermissionGuard requiredPermissions={['NOTIFICACAO_VIEW']}>
+          {historicoAberto && (
+            <div className="mb-6 border rounded-lg overflow-hidden">
+              <div className="bg-gray-50 px-4 py-2 border-b flex justify-between items-center">
+                <h2 className="text-sm font-semibold text-gray-700">📋 Histórico de Sincronizações</h2>
+                <span className="text-xs text-gray-500">{historicoTotal} registros</span>
               </div>
-            ) : historico.length === 0 ? (
-              <div className="text-center py-8 text-gray-500 text-sm">
-                Nenhuma sincronização realizada
-              </div>
-            ) : (
-              <>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Período</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
-                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Assoc.</th>
-                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Reg.</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Data Sinc.</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 bg-white">
-                      {historico.map((sinc) => (
-                        <tr key={sinc.id} className="hover:bg-gray-50 transition-colors text-sm">
-                          <td className="px-3 py-2 font-mono text-gray-600">{sinc.id}</td>
-                          <td className="px-3 py-2 text-gray-600 whitespace-nowrap">
-                            {formatarDataExibicao(sinc.dataInicio)} à {formatarDataExibicao(sinc.dataFim)}
-                          </td>
-                          <td className="px-3 py-2 font-mono text-gray-600">
-                            {sinc.codigoAssociado || 'Todos'}
-                          </td>
-                          <td className="px-3 py-2 text-center font-medium">{sinc.totalAssociados}</td>
-                          <td className="px-3 py-2 text-center">{sinc.totalRegistros}</td>
-                          <td className="px-3 py-2 text-gray-500 text-xs whitespace-nowrap">
-                            {formatarDataHora(sinc.dataSincronizacao)}
-                          </td>
-                          <td className="px-3 py-2">
-                            <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
-                              sinc.status === 'CONCLUIDO' ? 'bg-green-100 text-green-800' :
-                              sinc.status === 'CANCELADO' ? 'bg-red-100 text-red-800' :
-                              'bg-yellow-100 text-yellow-800'
-                            }`}>
-                              {sinc.status || 'CONCLUIDO'}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2 text-center">
-                            {sinc.status !== 'CANCELADO' && (
-                              <button
-                                onClick={() => openConfirmDesfazer(sinc)}
-                                disabled={desfazendo}
-                                className="px-2 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200 disabled:opacity-50 transition-colors text-xs flex items-center gap-1 mx-auto"
-                              >
-                                {desfazendo ? (
-                                  <>
-                                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600"></div>
-                                  </>
-                                ) : (
-                                  '🗑️ Desfazer'
-                                )}
-                              </button>
-                            )}
-                            {sinc.status === 'CANCELADO' && (
-                              <span className="text-xs text-gray-400">Cancelado</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              
+              {carregandoHistorico ? (
+                <div className="flex justify-center py-8">
+                  <Loading size="medium" />
                 </div>
-                
-                {historicoTotalPaginas > 1 && (
-                  <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-t bg-gray-50">
-                    <div className="text-xs text-gray-500">
-                      Mostrando {historicoIndexPrimeiro + 1} - {Math.min(historicoIndexUltimo, historicoTotal)} de {historicoTotal}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-1">
-                      <button
-                        onClick={() => setHistoricoPagina(1)}
-                        disabled={historicoPagina === 1}
-                        className="px-2 py-1 border rounded disabled:opacity-50 hover:bg-gray-100 text-xs"
-                      >
-                        ⏮️
-                      </button>
-                      <button
-                        onClick={() => setHistoricoPagina(p => Math.max(1, p - 1))}
-                        disabled={historicoPagina === 1}
-                        className="px-2 py-1 border rounded disabled:opacity-50 hover:bg-gray-100 text-xs"
-                      >
-                        ◀
-                      </button>
-                      <span className="px-2 py-1 text-xs text-gray-600">
-                        {historicoPagina} / {historicoTotalPaginas}
-                      </span>
-                      <button
-                        onClick={() => setHistoricoPagina(p => Math.min(historicoTotalPaginas, p + 1))}
-                        disabled={historicoPagina === historicoTotalPaginas}
-                        className="px-2 py-1 border rounded disabled:opacity-50 hover:bg-gray-100 text-xs"
-                      >
-                        ▶
-                      </button>
-                      <button
-                        onClick={() => setHistoricoPagina(historicoTotalPaginas)}
-                        disabled={historicoPagina === historicoTotalPaginas}
-                        className="px-2 py-1 border rounded disabled:opacity-50 hover:bg-gray-100 text-xs"
-                      >
-                        ⏭️
-                      </button>
-                    </div>
+              ) : historico.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 text-sm">
+                  Nenhuma sincronização realizada
+                </div>
+              ) : (
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Período</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
+                          <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Assoc.</th>
+                          <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Reg.</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Data Sinc.</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                          <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 bg-white">
+                        {historico.map((sinc) => (
+                          <tr key={sinc.id} className="hover:bg-gray-50 transition-colors text-sm">
+                            <td className="px-3 py-2 font-mono text-gray-600">{sinc.id}</td>
+                            <td className="px-3 py-2 text-gray-600 whitespace-nowrap">
+                              {formatarDataExibicao(sinc.dataInicio)} à {formatarDataExibicao(sinc.dataFim)}
+                            </td>
+                            <td className="px-3 py-2 font-mono text-gray-600">
+                              {sinc.codigoAssociado || 'Todos'}
+                            </td>
+                            <td className="px-3 py-2 text-center font-medium">{sinc.totalAssociados}</td>
+                            <td className="px-3 py-2 text-center">{sinc.totalRegistros}</td>
+                            <td className="px-3 py-2 text-gray-500 text-xs whitespace-nowrap">
+                              {formatarDataHora(sinc.dataSincronizacao)}
+                            </td>
+                            <td className="px-3 py-2">
+                              <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
+                                sinc.status === 'CONCLUIDO' ? 'bg-green-100 text-green-800' :
+                                sinc.status === 'CANCELADO' ? 'bg-red-100 text-red-800' :
+                                'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {sinc.status || 'CONCLUIDO'}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              {sinc.status !== 'CANCELADO' && (
+                                <PermissionGuard requiredPermissions={['NOTIFICACAO_CREATE']}>
+                                  <button
+                                    onClick={() => openConfirmDesfazer(sinc)}
+                                    disabled={desfazendo}
+                                    className="px-2 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200 disabled:opacity-50 transition-colors text-xs flex items-center gap-1 mx-auto"
+                                  >
+                                    {desfazendo ? (
+                                      <>
+                                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600"></div>
+                                      </>
+                                    ) : (
+                                      '🗑️ Desfazer'
+                                    )}
+                                  </button>
+                                </PermissionGuard>
+                              )}
+                              {sinc.status === 'CANCELADO' && (
+                                <span className="text-xs text-gray-400">Cancelado</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
+                  
+                  {historicoTotalPaginas > 1 && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-t bg-gray-50">
+                      <div className="text-xs text-gray-500">
+                        Mostrando {historicoIndexPrimeiro + 1} - {Math.min(historicoIndexUltimo, historicoTotal)} de {historicoTotal}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1">
+                        <button
+                          onClick={() => setHistoricoPagina(1)}
+                          disabled={historicoPagina === 1}
+                          className="px-2 py-1 border rounded disabled:opacity-50 hover:bg-gray-100 text-xs"
+                        >
+                          ⏮️
+                        </button>
+                        <button
+                          onClick={() => setHistoricoPagina(p => Math.max(1, p - 1))}
+                          disabled={historicoPagina === 1}
+                          className="px-2 py-1 border rounded disabled:opacity-50 hover:bg-gray-100 text-xs"
+                        >
+                          ◀
+                        </button>
+                        <span className="px-2 py-1 text-xs text-gray-600">
+                          {historicoPagina} / {historicoTotalPaginas}
+                        </span>
+                        <button
+                          onClick={() => setHistoricoPagina(p => Math.min(historicoTotalPaginas, p + 1))}
+                          disabled={historicoPagina === historicoTotalPaginas}
+                          className="px-2 py-1 border rounded disabled:opacity-50 hover:bg-gray-100 text-xs"
+                        >
+                          ▶
+                        </button>
+                        <button
+                          onClick={() => setHistoricoPagina(historicoTotalPaginas)}
+                          disabled={historicoPagina === historicoTotalPaginas}
+                          className="px-2 py-1 border rounded disabled:opacity-50 hover:bg-gray-100 text-xs"
+                        >
+                          ⏭️
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </PermissionGuard>
 
         {/* 🔥 STATUS DE SINCRONIZAÇÃO */}
         {sincronizacaoRealizada && (
@@ -773,7 +794,7 @@ const Notificacoes: React.FC = () => {
                 </p>
                 <p className="text-xs text-green-700 mt-1">
                   {ultimaSincronizacao && `Última sincronização: ${ultimaSincronizacao}`}
-                  <span className="ml-2">Total de registros: {totalRegistros}</span>
+                  <span className="ml-2">Total de registros: ${totalRegistros}</span>
                 </p>
               </div>
             </div>
@@ -815,7 +836,7 @@ const Notificacoes: React.FC = () => {
           </div>
         )}
 
-        {/* 🔥 FILTROS */}
+        {/* FILTROS */}
         <div className="bg-gray-50 p-4 rounded-lg mb-6">
           <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
             <div>
@@ -904,7 +925,7 @@ const Notificacoes: React.FC = () => {
             </div>
           </div>
           
-          {/* 🔥 FILTRO DE BUSCA NA GRID */}
+          {/* FILTRO DE BUSCA NA GRID */}
           {buscaRealizada && temDados && (
             <div className="mt-3 flex items-center gap-2 border-t pt-3">
               <span className="text-xs font-medium text-gray-500">🔍 Filtrar Grid:</span>
@@ -938,7 +959,7 @@ const Notificacoes: React.FC = () => {
             </div>
           )}
           
-          {/* 🔥 INDICADORES DE STATUS */}
+          {/* INDICADORES DE STATUS */}
           {carregandoMSSQL && (
             <div className="mt-3 flex items-center gap-2 text-sm text-purple-600">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
@@ -994,7 +1015,7 @@ const Notificacoes: React.FC = () => {
         ) : !buscaRealizada ? (
           <div className="text-center py-12 bg-gray-50 rounded-lg">
             <div className="text-5xl mb-4">📊</div>
-            <p className="text-gray-500">Clique em "Carregar Grid" para buscar dados do MS-SQL</p>
+            <p className="text-gray-500">Clique em "Buscar" para carregar os dados</p>
             <p className="text-sm text-gray-400 mt-1">Os dados serão exibidos sem serem salvos</p>
           </div>
         ) : dadosAgrupados.length === 0 ? (
@@ -1057,7 +1078,7 @@ const Notificacoes: React.FC = () => {
               </table>
             </div>
 
-            {/* 🔥 PAGINAÇÃO */}
+            {/* PAGINAÇÃO */}
             {totalPaginas > 1 && (
               <div className="flex flex-wrap items-center justify-between gap-4 mt-4 pt-4 border-t">
                 <div className="text-sm text-gray-500">
@@ -1122,7 +1143,7 @@ const Notificacoes: React.FC = () => {
         </div>
       </div>
 
-      {/* 🔥 MODAL DE DETALHES */}
+      {/* MODAL DE DETALHES */}
       <ModalDetalheNotificacao
         isOpen={modalDetalheAberto}
         onClose={() => {

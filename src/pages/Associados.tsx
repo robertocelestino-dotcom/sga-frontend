@@ -1,4 +1,4 @@
-// src/pages/Associados.tsx - VERSÃO COM BOTÃO DE IMPORTAÇÃO E MIGRAÇÃO
+// src/pages/Associados.tsx - VERSÃO COM PERMISSION GUARD
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -11,6 +11,8 @@ import {
 import BreadCrumb from '../components/BreadCrumb';
 import Loading from '../components/Loading';
 import { useMessage } from '../providers/MessageProvider';
+import { PermissionGuard } from '../components/PermissionGuard'; // 🔥 ADICIONADO
+import { useAuthStore } from '../stores/authStore'; // 🔥 ADICIONADO
 
 // Hook de debounce personalizado
 const useDebounce = <T,>(value: T, delay: number): T => {
@@ -32,6 +34,7 @@ const useDebounce = <T,>(value: T, delay: number): T => {
 const AssociadosPage: React.FC = () => {
   const navigate = useNavigate();
   const { showToast, showConfirm } = useMessage();
+  const { hasPermission } = useAuthStore(); // 🔥 ADICIONADO
   
   // Estados
   const [associados, setAssociados] = useState<AssociadoResumoDTO[]>([]);
@@ -78,7 +81,6 @@ const AssociadosPage: React.FC = () => {
 
   // 🔴 CORREÇÃO: Atualizar filtros com debounce e sem criar loop
   useEffect(() => {
-    // Atualiza o ref com os valores atuais
     filtrosAtivosRef.current = filtrosAtivos;
   }, [filtrosAtivos]);
 
@@ -87,7 +89,7 @@ const AssociadosPage: React.FC = () => {
     const timer = setTimeout(() => {
       const novosFiltros: AssociadoFiltros = {
         ...filtrosAtivosRef.current,
-        page: 0, // Sempre voltar para primeira página ao filtrar
+        page: 0,
         codigoSpc: debouncedCodigoSpc || undefined,
         cnpjCpf: debouncedCnpjCpf || undefined,
         nomeRazao: debouncedNomeRazao || undefined,
@@ -95,7 +97,6 @@ const AssociadosPage: React.FC = () => {
         status: inputValues.status || undefined
       };
 
-      // Remover campos undefined
       Object.keys(novosFiltros).forEach(key => {
         if (novosFiltros[key as keyof AssociadoFiltros] === undefined) {
           delete novosFiltros[key as keyof AssociadoFiltros];
@@ -103,7 +104,7 @@ const AssociadosPage: React.FC = () => {
       });
 
       setFiltrosAtivos(novosFiltros);
-    }, 50); // Pequeno delay para agrupar atualizações
+    }, 50);
 
     return () => clearTimeout(timer);
   }, [debouncedNomeRazao, debouncedCodigoSpc, debouncedCnpjCpf, inputValues.tipoPessoa, inputValues.status]);
@@ -129,7 +130,6 @@ const AssociadosPage: React.FC = () => {
           number: response.number || 0
         });
       } else if (Array.isArray(response)) {
-        // Se a resposta for um array direto (sem paginação)
         setAssociados(response);
         setPaginaInfo({
           totalElements: response.length,
@@ -155,21 +155,20 @@ const AssociadosPage: React.FC = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       carregarAssociados(filtrosAtivos);
-    }, 100); // Debounce para evitar chamadas muito rápidas
+    }, 100);
     
     return () => clearTimeout(timer);
   }, [filtrosAtivos]);
 
   // 🔴 CORREÇÃO: Carregamento inicial (apenas uma vez)
   useEffect(() => {
-    // Carrega dados iniciais
     carregarAssociados({
       page: 0,
       size: 10,
       sort: 'nomeRazao',
       direction: 'asc'
     });
-  }, []); // Array vazio = executa apenas uma vez
+  }, []);
 
   // Handlers para os inputs
   const handleInputChange = (campo: keyof typeof inputValues, valor: string) => {
@@ -186,7 +185,6 @@ const AssociadosPage: React.FC = () => {
       [campo]: valor
     }));
     
-    // Para selects, atualizar filtros imediatamente
     setFiltrosAtivos(prev => ({
       ...prev,
       [campo]: valor || undefined,
@@ -213,7 +211,6 @@ const AssociadosPage: React.FC = () => {
     
     showToast('Filtros limpos', 'info');
     
-    // Dar foco ao campo nome após limpar
     setTimeout(() => {
       if (nomeInputRef.current) {
         nomeInputRef.current.focus();
@@ -221,7 +218,7 @@ const AssociadosPage: React.FC = () => {
     }, 100);
   };
 
-  // Busca manual (para quando o usuário quiser forçar uma busca)
+  // Busca manual
   const handleBuscarAgora = () => {
     const novosFiltros: AssociadoFiltros = {
       ...filtrosAtivos,
@@ -246,6 +243,11 @@ const AssociadosPage: React.FC = () => {
     navigate(`/associados/${id}`);
   };
 
+  const handleMigrarRegua = (id: number) => {
+    // Navegar para a tela de migração ou abrir modal
+    navigate(`/associados/${id}/migrar-regua`);
+  };
+
   const handleExcluirAssociado = async (id: number, nome: string) => {
     const confirmado = await showConfirm({
       title: 'Confirmar exclusão',
@@ -260,7 +262,6 @@ const AssociadosPage: React.FC = () => {
     try {
       await associadoService.excluir(id);
       showToast('Associado excluído com sucesso!', 'success');
-      // Recarrega os dados
       carregarAssociados(filtrosAtivos);
     } catch (error: any) {
       console.error('Erro ao excluir associado:', error);
@@ -291,15 +292,12 @@ const AssociadosPage: React.FC = () => {
     return cnpjCpf;
   };
 
-  // 🔴 FUNÇÃO CORRIGIDA PARA FORMATAR DATAS
   const formatarData = (dataString?: string): string => {
     if (!dataString || dataString.trim() === '') return '-';
     
     try {
-      // Remover qualquer espaço em branco
       const dataLimpa = dataString.trim();
       
-      // Caso 1: Data ISO (YYYY-MM-DD ou YYYY-MM-DDTHH:mm:ss)
       if (dataLimpa.includes('T') || /^\d{4}-\d{2}-\d{2}/.test(dataLimpa)) {
         const dataObj = new Date(dataLimpa);
         
@@ -307,7 +305,6 @@ const AssociadosPage: React.FC = () => {
           return '-';
         }
         
-        // Usar UTC para consistência
         const dia = String(dataObj.getUTCDate()).padStart(2, '0');
         const mes = String(dataObj.getUTCMonth() + 1).padStart(2, '0');
         const ano = dataObj.getUTCFullYear();
@@ -315,7 +312,6 @@ const AssociadosPage: React.FC = () => {
         return `${dia}/${mes}/${ano}`;
       }
       
-      // Caso 2: Data no formato DD/MM/YYYY
       if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(dataLimpa)) {
         const partes = dataLimpa.split('/');
         if (partes.length === 3) {
@@ -324,7 +320,6 @@ const AssociadosPage: React.FC = () => {
         }
       }
       
-      // Caso 3: Data no formato YYYY/MM/DD
       if (/^\d{4}\/\d{1,2}\/\d{1,2}/.test(dataLimpa)) {
         const partes = dataLimpa.split('/');
         if (partes.length === 3) {
@@ -333,9 +328,7 @@ const AssociadosPage: React.FC = () => {
         }
       }
       
-      // Caso 4: Data com formato estranho (ex: "27 15:37:38/01/2026")
       if (dataLimpa.includes(' ')) {
-        // Tentar extrair a parte da data
         const match = dataLimpa.match(/(\d{1,2})\s+[^\/]*\/(\d{1,2})\/(\d{4})/);
         if (match) {
           const [, dia, mes, ano] = match;
@@ -343,7 +336,6 @@ const AssociadosPage: React.FC = () => {
         }
       }
       
-      console.warn('Formato de data não reconhecido:', dataString);
       return '-';
       
     } catch (error) {
@@ -352,122 +344,55 @@ const AssociadosPage: React.FC = () => {
     }
   };
 
-  // 🔴 FUNÇÃO ESPECÍFICA PARA DATA DE CADASTRO (com timestamp)
-const formatarDataCadastro = (dataString?: string): string => {
-  if (!dataString || dataString.trim() === '') return '-';
-  
-  try {
-    // Para data de cadastro, queremos apenas a data, ignorando o horário
-    const dataLimpa = dataString.trim();
+  const formatarDataCadastro = (dataString?: string): string => {
+    if (!dataString || dataString.trim() === '') return '-';
     
-    // Extrair apenas a parte da data
-    let dataPart = dataLimpa;
-    
-    // Se tiver espaço, pegar a parte antes do espaço
-    if (dataLimpa.includes(' ')) {
-      dataPart = dataLimpa.split(' ')[0];
+    try {
+      const dataLimpa = dataString.trim();
+      
+      let dataPart = dataLimpa;
+      
+      if (dataLimpa.includes(' ')) {
+        dataPart = dataLimpa.split(' ')[0];
+      }
+      
+      if (dataPart.includes('T')) {
+        dataPart = dataPart.split('T')[0];
+      }
+      
+      const [ano, mes, dia] = dataPart.split('-').map(Number);
+      
+      if (!ano || !mes || !dia) {
+        return formatarData(dataString);
+      }
+      
+      return `${String(dia).padStart(2, '0')}/${String(mes).padStart(2, '0')}/${ano}`;
+      
+    } catch (error) {
+      console.error('Erro ao formatar data de cadastro:', error, 'Data:', dataString);
+      return formatarData(dataString);
     }
-    
-    // Se tiver 'T', pegar a parte antes do 'T'
-    if (dataPart.includes('T')) {
-      dataPart = dataPart.split('T')[0];
-    }
-    
-    // Parse manual da data no formato YYYY-MM-DD
-    const [ano, mes, dia] = dataPart.split('-').map(Number);
-    
-    if (!ano || !mes || !dia) {
-      return formatarData(dataString); // Fallback para a função geral
-    }
-    
-    return `${String(dia).padStart(2, '0')}/${String(mes).padStart(2, '0')}/${ano}`;
-    
-  } catch (error) {
-    console.error('Erro ao formatar data de cadastro:', error, 'Data:', dataString);
-    return formatarData(dataString); // Fallback
-  }
-};
+  };
 
-const formatarDataFiliacao = (dataString?: string) => {
-  if (!dataString || dataString.trim() === '') return '-';
-  
-  try {
-    // Para datas de filiação, que são apenas data sem hora
-    // Remover qualquer parte de tempo
-    const dataPart = dataString.split('T')[0];
+  const formatarDataFiliacao = (dataString?: string) => {
+    if (!dataString || dataString.trim() === '') return '-';
     
-    if (!dataPart) return '-';
-    
-    // Parse manual para evitar problemas de fuso
-    const [ano, mes, dia] = dataPart.split('-');
-    
-    if (!ano || !mes || !dia) return '-';
-    
-    return `${dia.padStart(2, '0')}/${mes.padStart(2, '0')}/${ano}`;
-  } catch {
-    return '-';
-  }
-};
-
-// 🔴 FUNÇÃO PARA DATA DE FILIAÇÃO COM STATUS VISUAL (versão corrigida)
-const formatarDataFiliacaoComStatus = (dataString?: string) => {
-  const dataFormatada = formatarDataFiliacao(dataString);
-  
-  if (dataFormatada === '-') {
-    return {
-      texto: 'Não informada',
-      classe: 'text-gray-400 italic'
-    };
-  }
-  
-  // Calcular diferença de dias para coloração
-  try {
-    // Parse da data formatada (DD/MM/YYYY)
-    const [diaStr, mesStr, anoStr] = dataFormatada.split('/');
-    const dia = parseInt(diaStr);
-    const mes = parseInt(mesStr) - 1; // Mês 0-indexed
-    const ano = parseInt(anoStr);
-    
-    const dataFiliacao = new Date(ano, mes, dia);
-    const hoje = new Date();
-    
-    // Zerar horas para comparar apenas datas
-    const hojeSemHora = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
-    const dataFiliacaoSemHora = new Date(ano, mes, dia);
-    
-    const diffTempo = hojeSemHora.getTime() - dataFiliacaoSemHora.getTime();
-    const diffDias = diffTempo / (1000 * 3600 * 24);
-    
-    if (diffDias <= 30) {
-      // Data recente (últimos 30 dias)
-      return {
-        texto: dataFormatada,
-        classe: 'text-green-600 font-medium'
-      };
-    } else if (diffDias > 365) {
-      // Data antiga (mais de 1 ano)
-      return {
-        texto: dataFormatada,
-        classe: 'text-yellow-600'
-      };
-    } else {
-      // Data normal
-      return {
-        texto: dataFormatada,
-        classe: 'text-gray-600'
-      };
+    try {
+      const dataPart = dataString.split('T')[0];
+      
+      if (!dataPart) return '-';
+      
+      const [ano, mes, dia] = dataPart.split('-');
+      
+      if (!ano || !mes || !dia) return '-';
+      
+      return `${dia.padStart(2, '0')}/${mes.padStart(2, '0')}/${ano}`;
+    } catch {
+      return '-';
     }
-  } catch {
-    return {
-      texto: dataFormatada,
-      classe: 'text-gray-600'
-    };
-  }
-};
+  };
 
-  // Nova função para formatar data com status visual
-  const formatarDataComStatus = (dataString?: string) => {
-    //const dataFormatada = formatarData(dataString);
+  const formatarDataFiliacaoComStatus = (dataString?: string) => {
     const dataFormatada = formatarDataFiliacao(dataString);
     
     if (dataFormatada === '-') {
@@ -477,27 +402,32 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
       };
     }
     
-    // Verificar se a data é recente (últimos 30 dias)
     try {
-      const data = new Date(dataString || '');
+      const [diaStr, mesStr, anoStr] = dataFormatada.split('/');
+      const dia = parseInt(diaStr);
+      const mes = parseInt(mesStr) - 1;
+      const ano = parseInt(anoStr);
+      
+      const dataFiliacao = new Date(ano, mes, dia);
       const hoje = new Date();
-      const diffTempo = hoje.getTime() - data.getTime();
+      
+      const hojeSemHora = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+      const dataFiliacaoSemHora = new Date(ano, mes, dia);
+      
+      const diffTempo = hojeSemHora.getTime() - dataFiliacaoSemHora.getTime();
       const diffDias = diffTempo / (1000 * 3600 * 24);
       
       if (diffDias <= 30) {
-        // Data recente (últimos 30 dias)
         return {
           texto: dataFormatada,
           classe: 'text-green-600 font-medium'
         };
       } else if (diffDias > 365) {
-        // Data antiga (mais de 1 ano)
         return {
           texto: dataFormatada,
           classe: 'text-yellow-600'
         };
       } else {
-        // Data normal
         return {
           texto: dataFormatada,
           classe: 'text-gray-600'
@@ -511,7 +441,46 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
     }
   };
 
-  // Atualize a função getStatusColor:
+  const formatarDataComStatus = (dataString?: string) => {
+    const dataFormatada = formatarDataFiliacao(dataString);
+    
+    if (dataFormatada === '-') {
+      return {
+        texto: 'Não informada',
+        classe: 'text-gray-400 italic'
+      };
+    }
+    
+    try {
+      const data = new Date(dataString || '');
+      const hoje = new Date();
+      const diffTempo = hoje.getTime() - data.getTime();
+      const diffDias = diffTempo / (1000 * 3600 * 24);
+      
+      if (diffDias <= 30) {
+        return {
+          texto: dataFormatada,
+          classe: 'text-green-600 font-medium'
+        };
+      } else if (diffDias > 365) {
+        return {
+          texto: dataFormatada,
+          classe: 'text-yellow-600'
+        };
+      } else {
+        return {
+          texto: dataFormatada,
+          classe: 'text-gray-600'
+        };
+      }
+    } catch {
+      return {
+        texto: dataFormatada,
+        classe: 'text-gray-600'
+      };
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'A': return 'bg-green-100 text-green-800';
@@ -521,7 +490,6 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
     }
   };
 
-  // Cores para tipo pessoa
   const getTipoPessoaColor = (tipo: string) => {
     switch (tipo) {
       case 'F': return 'bg-blue-100 text-blue-800';
@@ -530,19 +498,16 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
     }
   };
 
-  // Atualize a função getStatusText:
   const getStatusText = (status: string) => {
     const opcao = associadoOpcoes.status.find(s => s.value === status);
     return opcao ? opcao.label : status;
   };
 
-  // Texto para tipo pessoa
   const getTipoPessoaText = (tipo: string) => {
     const opcao = associadoOpcoes.tipoPessoa.find(t => t.value === tipo);
     return opcao ? opcao.label : tipo;
   };
 
-  // Formatar valor
   const formatarValor = (valor?: number) => {
     if (!valor) return '-';
     return new Intl.NumberFormat('pt-BR', {
@@ -551,12 +516,10 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
     }).format(valor);
   };
 
-  // Indicador de loading específico para filtros
   const isFiltrando = debouncedNomeRazao !== inputValues.nomeRazao || 
                       debouncedCodigoSpc !== inputValues.codigoSpc ||
                       debouncedCnpjCpf !== inputValues.cnpjCpf;
 
-  // Loading inicial
   if (loading && associados.length === 0) {
     return <Loading />;
   }
@@ -579,7 +542,6 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
           <button
             onClick={() => {
               setMostrarFiltros(!mostrarFiltros);
-              // Dar foco ao campo nome quando abrir os filtros
               setTimeout(() => {
                 if (nomeInputRef.current && mostrarFiltros === false) {
                   nomeInputRef.current.focus();
@@ -599,20 +561,25 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
             {loading ? '⏳ Carregando...' : '🔄 Atualizar'}
           </button>
           
-          <button
-            onClick={handleNovoAssociado}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 transition-colors"
-          >
-            ➕ Novo Associado
-          </button>
+          {/* 🔥 NOVO ASSOCIADO - PERMISSION GUARD */}
+          <PermissionGuard requiredPermissions={['ASSOCIADO_CREATE']}>
+            <button
+              onClick={handleNovoAssociado}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 transition-colors"
+            >
+              ➕ Novo Associado
+            </button>
+          </PermissionGuard>
           
-          {/* 🔥 BOTÃO DE IMPORTAÇÃO */}
-          <button
-            onClick={() => navigate('/importacao-associados')}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 transition-colors"
-          >
-            📥 Importar Associados
-          </button>
+          {/* 🔥 IMPORTAÇÃO - PERMISSION GUARD */}
+          <PermissionGuard requiredPermissions={['ASSOCIADO_CREATE']}>
+            <button
+              onClick={() => navigate('/importacao-associados')}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 transition-colors"
+            >
+              📥 Importar Associados
+            </button>
+          </PermissionGuard>
         </div>
       </div>
 
@@ -639,7 +606,6 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-            {/* Campo: Código SPC */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Código SPC
@@ -657,7 +623,6 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
               />
             </div>
             
-            {/* Campo: CNPJ/CPF */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 CNPJ/CPF
@@ -677,7 +642,6 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
               </p>
             </div>
             
-            {/* Campo: Nome/Razão Social */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Nome/Razão Social
@@ -695,7 +659,6 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
               />
             </div>
             
-            {/* Campo: Tipo Pessoa */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Tipo Pessoa</label>
               <select
@@ -712,7 +675,6 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
               </select>
             </div>
             
-            {/* Campo: Status */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
               <select
@@ -730,7 +692,6 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
             </div>
           </div>
           
-          {/* Indicadores ativos */}
           <div className="mt-4 pt-4 border-t border-gray-200">
             <div className="flex flex-wrap gap-2">
               {inputValues.codigoSpc && (
@@ -779,12 +740,14 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
                 ? 'Tente ajustar os filtros de busca.' 
                 : 'Comece criando seu primeiro associado.'}
             </p>
-            <button
-              onClick={handleNovoAssociado}
-              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors"
-            >
-              ➕ Criar Primeiro Associado
-            </button>
+            <PermissionGuard requiredPermissions={['ASSOCIADO_CREATE']}>
+              <button
+                onClick={handleNovoAssociado}
+                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors"
+              >
+                ➕ Criar Primeiro Associado
+              </button>
+            </PermissionGuard>
           </div>
         ) : (
           <>
@@ -817,7 +780,6 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {associados.map((associado) => {
-                    // Formatar data de filiação com status visual
                     const dataFiliacaoFormatada = formatarDataComStatus(associado.dataFiliacao);
                     
                     return (
@@ -832,7 +794,7 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
                           <div className="text-xs text-gray-500">
                             {associado.codigoRm || 'Sem código RM'}
                           </div>
-                         </td>
+                        </td>
                         <td className="px-6 py-4">
                           <div className="text-sm font-medium text-gray-900">{associado.nomeRazao}</div>
                           {associado.nomeFantasia && (
@@ -840,7 +802,6 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
                               {associado.nomeFantasia}
                             </div>
                           )}
-                          {/* Informações adicionais */}
                           <div className="text-xs text-gray-400 mt-1">
                             {associado.planoNome && (
                               <span className="mr-2">📋 {associado.planoNome}</span>
@@ -849,7 +810,7 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
                               <span>👤 {associado.vendedorNome}</span>
                             )}
                           </div>
-                         </td>
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">
                             {formatarCnpjCpf(associado.cnpjCpf)}
@@ -857,12 +818,12 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
                           <div className="text-xs text-gray-500">
                             {associado.tipoPessoa === 'F' ? 'Pessoa Física' : 'Pessoa Jurídica'}
                           </div>
-                         </td>
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTipoPessoaColor(associado.tipoPessoa)}`}>
                             {getTipoPessoaText(associado.tipoPessoa)}
                           </span>
-                          </td>
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(associado.status)}`}>
                             {getStatusText(associado.status)}
@@ -872,7 +833,7 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
                               💰 {formatarValor(associado.faturamentoMinimo)}
                             </div>
                           )}
-                          </td>
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className={`text-sm ${dataFiliacaoFormatada.classe}`}>
                             {dataFiliacaoFormatada.texto}
@@ -882,46 +843,59 @@ const formatarDataFiliacaoComStatus = (dataString?: string) => {
                               {associado.dataCadastro && (
                                 <span title={`Cadastrado em: ${formatarData(associado.dataCadastro)}`}>
                                   📅 Cadastro: {formatarDataCadastro(associado.dataCadastro)}
-                                  
                                 </span>
                               )}
                             </div>
                           )}
-                          </td>
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex flex-wrap gap-1">
-                            <button
-                              onClick={() => handleVerDetalhes(associado.id)}
-                              className="p-1 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded transition-colors"
-                              title="Ver detalhes"
-                            >
-                              👁️
-                            </button>
-                            <button
-                              onClick={() => handleEditarAssociado(associado.id)}
-                              className="p-1 text-yellow-600 hover:text-yellow-900 hover:bg-yellow-50 rounded transition-colors"
-                              title="Editar"
-                            >
-                              ✏️
-                            </button>
-                            {/* 🔥 BOTÃO MIGRAR RÉGUA - NOVO */}
-                            <button
-                              onClick={() => navigate(`/associados/${associado.id}`)}
-                              className="p-1 text-purple-600 hover:text-purple-900 hover:bg-purple-50 rounded transition-colors"
-                              title="Migrar Régua"
-                            >
-                              🔄
-                            </button>
-                            <button
-                              onClick={() => handleExcluirAssociado(associado.id, associado.nomeRazao)}
-                              className="p-1 text-red-600 hover:text-red-900 hover:bg-red-50 rounded transition-colors"
-                              title="Excluir"
-                            >
-                              🗑️
-                            </button>
+                            {/* 🔥 VISUALIZAR - PERMISSION GUARD */}
+                            <PermissionGuard requiredPermissions={['ASSOCIADO_VIEW']}>
+                              <button
+                                onClick={() => handleVerDetalhes(associado.id)}
+                                className="p-1 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded transition-colors"
+                                title="Ver detalhes"
+                              >
+                                👁️
+                              </button>
+                            </PermissionGuard>
+
+                            {/* 🔥 EDITAR - PERMISSION GUARD */}
+                            <PermissionGuard requiredPermissions={['ASSOCIADO_EDIT']}>
+                              <button
+                                onClick={() => handleEditarAssociado(associado.id)}
+                                className="p-1 text-yellow-600 hover:text-yellow-900 hover:bg-yellow-50 rounded transition-colors"
+                                title="Editar"
+                              >
+                                ✏️
+                              </button>
+                            </PermissionGuard>
+
+                            {/* 🔥 MIGRAR RÉGUA - PERMISSION GUARD */}
+                            <PermissionGuard requiredPermissions={['ASSOCIADO_MIGRAR_REGUA']}>
+                              <button
+                                onClick={() => handleMigrarRegua(associado.id)}
+                                className="p-1 text-purple-600 hover:text-purple-900 hover:bg-purple-50 rounded transition-colors"
+                                title="Migrar Régua"
+                              >
+                                🔄
+                              </button>
+                            </PermissionGuard>
+
+                            {/* 🔥 EXCLUIR - PERMISSION GUARD */}
+                            <PermissionGuard requiredPermissions={['ASSOCIADO_DELETE']}>
+                              <button
+                                onClick={() => handleExcluirAssociado(associado.id, associado.nomeRazao)}
+                                className="p-1 text-red-600 hover:text-red-900 hover:bg-red-50 rounded transition-colors"
+                                title="Excluir"
+                              >
+                                🗑️
+                              </button>
+                            </PermissionGuard>
                           </div>
-                          </td>
-                       </tr>
+                        </td>
+                      </tr>
                     );
                   })}
                 </tbody>

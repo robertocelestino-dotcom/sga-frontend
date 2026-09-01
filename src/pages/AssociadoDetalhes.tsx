@@ -10,8 +10,9 @@ import { AssociadoProdutoResumo } from '../types/associadoProduto.types';
 import { AssociadoDefFaturamentoResumo } from '../types/associadoDefFaturamento.types';
 import BreadCrumb from '../components/BreadCrumb';
 import Loading from '../components/Loading';
+import { PermissionGuard } from '../components/PermissionGuard'; // 🔥 ADICIONADO
 
-// ========== NOVOS IMPORTS PARA MIGRAÇÃO ==========
+// ========== IMPORTS PARA MIGRAÇÃO ==========
 import ModalMigracaoRegua from '../components/associado/ModalMigracaoRegua';
 import HistoricoMigracao from '../components/associado/HistoricoMigracao';
 import migracaoReguaService from '../services/migracaoReguaService';
@@ -26,7 +27,7 @@ const AssociadoDetalhes: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // ========== NOVOS ESTADOS PARA MIGRAÇÃO ==========
+  // ========== ESTADOS PARA MIGRAÇÃO ==========
   const [modalMigracaoAberta, setModalMigracaoAberta] = useState(false);
   const [reguaAtual, setReguaAtual] = useState<{ id: number; nome: string } | null>(null);
   const [mostrarHistorico, setMostrarHistorico] = useState(false);
@@ -47,10 +48,8 @@ const AssociadoDetalhes: React.FC = () => {
     try {
         const data = await migracaoReguaService.buscarReguaAtivaDoAssociado(associado!.id);
         
-        // 🔥 LOG PARA DEBUG
         console.log('📥 Dados da régua recebidos:', data);
         
-        // 🔥 VERIFICAR SE OS DADOS ESTÃO NO FORMATO CORRETO
         if (data && data.regua) {
             setReguaAtual({
                 id: data.regua.id,
@@ -58,7 +57,6 @@ const AssociadoDetalhes: React.FC = () => {
             });
             console.log(`✅ Régua carregada: ${data.regua.nome} (ID: ${data.regua.id})`);
         } else if (data && data.id && data.reguaId) {
-            // 🔥 FORMATO ALTERNATIVO (se o backend retornar diferente)
             setReguaAtual({
                 id: data.reguaId,
                 nome: data.reguaNome || 'Régua'
@@ -86,11 +84,9 @@ const AssociadoDetalhes: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      // Carregar dados do associado
       const associadoData = await associadoService.buscarPorId(parseInt(id));
       setAssociado(associadoData);
       
-      // Carregar produtos habilitados
       try {
         const produtosData = await associadoProdutoService.listarPorAssociado(parseInt(id));
         setProdutosHabilitados(produtosData);
@@ -98,7 +94,6 @@ const AssociadoDetalhes: React.FC = () => {
         console.log('Produtos habilitados não disponíveis:', prodError);
       }
       
-      // Carregar configurações de faturamento
       try {
         const faturamentoData = await associadoDefFaturamentoService.listarPorAssociado(parseInt(id));
         setConfiguracoesFaturamento(faturamentoData);
@@ -118,6 +113,7 @@ const AssociadoDetalhes: React.FC = () => {
     navigate('/associados');
   };
   
+  // 🔥 HANDLERS DE NAVEGAÇÃO (sem alterações)
   const handleEditarAssociado = () => {
     navigate(`/associados/editar/${id}`);
   };
@@ -165,18 +161,15 @@ const AssociadoDetalhes: React.FC = () => {
     });
   };
   
-  // Funções de formatação
+  // ========== FUNÇÕES DE FORMATAÇÃO (sem alterações) ==========
   const formatarCnpjCpf = (cnpjCpf: string) => {
     if (!cnpjCpf) return '-';
-    
     const apenasNumeros = cnpjCpf.replace(/\D/g, '');
-    
     if (apenasNumeros.length === 11) {
       return apenasNumeros.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
     } else if (apenasNumeros.length === 14) {
       return apenasNumeros.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
     }
-    
     return cnpjCpf;
   };
   
@@ -196,10 +189,8 @@ const AssociadoDetalhes: React.FC = () => {
   const getStatusInfo = (status: string) => {
     const opcao = associadoOpcoes.status.find(s => s.value === status);
     if (!opcao) return { label: 'Desconhecido', color: 'bg-gray-100 text-gray-800' };
-    
     const colorClass = status === 'A' ? 'bg-green-100 text-green-800' : 
                       status === 'I' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800';
-    
     return { label: opcao.label, colorClass };
   };
   
@@ -279,7 +270,7 @@ const AssociadoDetalhes: React.FC = () => {
       />
       
       <div className="bg-white rounded-xl shadow-lg p-6 mt-6">
-        {/* Cabeçalho */}
+        {/* ========== CABEÇALHO ========== */}
         <div className="flex justify-between items-center mb-8">
           <div>
             <div className="flex items-center gap-3 mb-2">
@@ -303,51 +294,61 @@ const AssociadoDetalhes: React.FC = () => {
               ← Voltar
             </button>
             
-            {/* 🔥 BOTÃO MIGRAR RÉGUA - NOVO */}
-            <button
-              onClick={() => setModalMigracaoAberta(true)}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
-            >
-              <span>🔄</span>
-              Migrar Régua
-              {reguaAtual && (
-                <span className="ml-1 text-xs bg-purple-500 px-2 py-0.5 rounded-full">
-                  {reguaAtual.nome}
-                </span>
-              )}
-            </button>
-            
-            <button
-              onClick={handleEditarAssociado}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors"
-            >
-              ✏️ Editar Associado
-            </button>
+            {/* 🔥 MIGRAR RÉGUA - PERMISSION GUARD */}
+            <PermissionGuard requiredPermissions={['ASSOCIADO_MIGRAR_REGUA']}>
+              <button
+                onClick={() => setModalMigracaoAberta(true)}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+              >
+                <span>🔄</span>
+                Migrar Régua
+                {reguaAtual && (
+                  <span className="ml-1 text-xs bg-purple-500 px-2 py-0.5 rounded-full">
+                    {reguaAtual.nome}
+                  </span>
+                )}
+              </button>
+            </PermissionGuard>
+
+            {/* 🔥 EDITAR ASSOCIADO - PERMISSION GUARD */}
+            <PermissionGuard requiredPermissions={['ASSOCIADO_EDIT']}>
+              <button
+                onClick={handleEditarAssociado}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors"
+              >
+                ✏️ Editar Associado
+              </button>
+            </PermissionGuard>
           </div>
         </div>
         
-        {/* 🔥 NOVO BOTÃO DE CONSUMO DE FRANQUIA */}
+        {/* ========== BOTÕES ADICIONAIS ========== */}
         <div className="mb-6 flex flex-wrap justify-between items-center gap-4">
           <div className="flex gap-3">
-            <Link
-              to={`/associados/${id}/consumo-franquia`}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2 transition-colors"
-            >
-              <span>📊</span>
-              Ver Consumo de Franquias
-            </Link>
+            {/* 🔥 CONSUMO DE FRANQUIA - PERMISSION GUARD */}
+            <PermissionGuard requiredPermissions={['ASSOCIADO_VIEW']}>
+              <Link
+                to={`/associados/${id}/consumo-franquia`}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2 transition-colors"
+              >
+                <span>📊</span>
+                Ver Consumo de Franquias
+              </Link>
+            </PermissionGuard>
           </div>
           
-          {/* 🔥 BOTÃO HISTÓRICO DE MIGRAÇÕES - NOVO */}
-          <button
-            onClick={() => setMostrarHistorico(!mostrarHistorico)}
-            className="px-4 py-2 border border-purple-300 text-purple-600 rounded-lg hover:bg-purple-50 transition-colors flex items-center gap-2"
-          >
-            {mostrarHistorico ? '▼' : '▶'} Histórico de Migrações
-          </button>
+          {/* 🔥 HISTÓRICO DE MIGRAÇÕES - PERMISSION GUARD */}
+          <PermissionGuard requiredPermissions={['ASSOCIADO_VIEW']}>
+            <button
+              onClick={() => setMostrarHistorico(!mostrarHistorico)}
+              className="px-4 py-2 border border-purple-300 text-purple-600 rounded-lg hover:bg-purple-50 transition-colors flex items-center gap-2"
+            >
+              {mostrarHistorico ? '▼' : '▶'} Histórico de Migrações
+            </button>
+          </PermissionGuard>
         </div>
         
-        {/* 🔥 HISTÓRICO DE MIGRAÇÕES - NOVO */}
+        {/* ========== HISTÓRICO DE MIGRAÇÕES ========== */}
         {mostrarHistorico && (
           <div className="mb-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
             <h3 className="text-sm font-medium text-purple-800 mb-3">📋 Histórico de Migrações de Régua</h3>
@@ -355,7 +356,7 @@ const AssociadoDetalhes: React.FC = () => {
           </div>
         )}
         
-        {/* Grid Principal */}
+        {/* ========== GRID PRINCIPAL ========== */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Coluna 1: Informações Básicas */}
           <div className="lg:col-span-2 space-y-6">
@@ -366,14 +367,19 @@ const AssociadoDetalhes: React.FC = () => {
                   <div className="w-1 h-6 bg-blue-600 rounded"></div>
                   <h2 className="text-lg font-semibold text-gray-800">Informações Básicas</h2>
                 </div>
-                <button
-                  onClick={handleEditarAssociado}
-                  className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 flex items-center gap-1 transition-colors text-sm"
-                >
-                  ✏️ Editar
-                </button>
+                
+                {/* 🔥 EDITAR INFORMAÇÕES - PERMISSION GUARD */}
+                <PermissionGuard requiredPermissions={['ASSOCIADO_EDIT']}>
+                  <button
+                    onClick={handleEditarAssociado}
+                    className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 flex items-center gap-1 transition-colors text-sm"
+                  >
+                    ✏️ Editar
+                  </button>
+                </PermissionGuard>
               </div>
               
+              {/* ... resto do conteúdo (sem alterações) ... */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">Nome/Razão Social</label>
@@ -398,7 +404,6 @@ const AssociadoDetalhes: React.FC = () => {
                   <p className="text-gray-800">{formatarData(associado.dataCadastro)}</p>
                 </div>
                 
-                {/* Data de Filiação */}
                 {associado.dataFiliacao && (
                   <div>
                     <label className="block text-sm font-medium text-gray-500 mb-1">Data de Filiação</label>
@@ -421,7 +426,6 @@ const AssociadoDetalhes: React.FC = () => {
                   <p className="text-gray-800">{formatarValor(associado.faturamentoMinimo)}</p>
                 </div>
                 
-                {/* Vendedores */}
                 <div className="md:col-span-2 border-t pt-4 mt-4">
                   <label className="block text-sm font-medium text-gray-500 mb-2">Vendedores Responsáveis</label>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -435,7 +439,6 @@ const AssociadoDetalhes: React.FC = () => {
                       </p>
                     </div>
                     
-                    {/* Vendedor Externo */}
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Vendedor Externo</label>
                       <p className="text-gray-800">
@@ -448,7 +451,6 @@ const AssociadoDetalhes: React.FC = () => {
                   </div>
                 </div>
                 
-                {/* Plano e Categoria - NOVO */}
                 {(associado.planoId || associado.planoNome) && (
                   <div>
                     <label className="block text-sm font-medium text-gray-500 mb-1">Plano</label>
@@ -483,12 +485,16 @@ const AssociadoDetalhes: React.FC = () => {
                       {associado.enderecos.length}
                     </span>
                   </div>
-                  <button
-                    onClick={() => handleEditarEndereco()}
-                    className="px-3 py-1 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 flex items-center gap-1 transition-colors text-sm"
-                  >
-                    ✏️ Editar
-                  </button>
+                  
+                  {/* 🔥 EDITAR ENDEREÇOS - PERMISSION GUARD */}
+                  <PermissionGuard requiredPermissions={['ASSOCIADO_EDIT']}>
+                    <button
+                      onClick={() => handleEditarEndereco()}
+                      className="px-3 py-1 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 flex items-center gap-1 transition-colors text-sm"
+                    >
+                      ✏️ Editar
+                    </button>
+                  </PermissionGuard>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -506,12 +512,16 @@ const AssociadoDetalhes: React.FC = () => {
                             {getTipoEnderecoInfo(endereco.tipoEndereco)}
                           </span>
                         </div>
-                        <button
-                          onClick={() => handleEditarEndereco(endereco.tipoEndereco)}
-                          className="px-2 py-1 bg-gray-50 text-gray-600 rounded hover:bg-gray-100 text-xs transition-colors"
-                        >
-                          Editar
-                        </button>
+                        
+                        {/* 🔥 EDITAR ENDEREÇO INDIVIDUAL - PERMISSION GUARD */}
+                        <PermissionGuard requiredPermissions={['ASSOCIADO_EDIT']}>
+                          <button
+                            onClick={() => handleEditarEndereco(endereco.tipoEndereco)}
+                            className="px-2 py-1 bg-gray-50 text-gray-600 rounded hover:bg-gray-100 text-xs transition-colors"
+                          >
+                            Editar
+                          </button>
+                        </PermissionGuard>
                       </div>
                       
                       <div className="space-y-2">
@@ -521,13 +531,11 @@ const AssociadoDetalhes: React.FC = () => {
                             <span className="text-gray-600"> - {endereco.complemento}</span>
                           )}
                         </p>
-                        
                         <p className="text-gray-800">
                           {endereco.bairro}
                           {endereco.cidade && ` - ${endereco.cidade}`}
                           {endereco.estado && `/${endereco.estado}`}
                         </p>
-                        
                         {endereco.cep && (
                           <p className="text-gray-600 text-sm">
                             CEP: {endereco.cep.replace(/(\d{5})(\d{3})/, '$1-$2')}
@@ -541,7 +549,7 @@ const AssociadoDetalhes: React.FC = () => {
             )}
           </div>
           
-          {/* Coluna 2: Contatos e Outras Informações */}
+          {/* Coluna 2: Contatos */}
           <div className="space-y-6">
             {/* Card Telefones */}
             {associado.telefones && associado.telefones.length > 0 && (
@@ -554,12 +562,16 @@ const AssociadoDetalhes: React.FC = () => {
                       {associado.telefones.length}
                     </span>
                   </div>
-                  <button
-                    onClick={() => handleEditarTelefones()}
-                    className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 flex items-center gap-1 transition-colors text-sm"
-                  >
-                    ✏️ Editar
-                  </button>
+                  
+                  {/* 🔥 EDITAR TELEFONES - PERMISSION GUARD */}
+                  <PermissionGuard requiredPermissions={['ASSOCIADO_EDIT']}>
+                    <button
+                      onClick={() => handleEditarTelefones()}
+                      className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 flex items-center gap-1 transition-colors text-sm"
+                    >
+                      ✏️ Editar
+                    </button>
+                  </PermissionGuard>
                 </div>
                 
                 <div className="space-y-4">
@@ -572,12 +584,16 @@ const AssociadoDetalhes: React.FC = () => {
                             {getTipoTelefoneInfo(telefone.tipoTelefone)}
                           </span>
                         </div>
-                        <button
-                          onClick={() => handleEditarTelefones(telefone.tipoTelefone)}
-                          className="px-2 py-1 bg-gray-50 text-gray-600 rounded hover:bg-gray-100 text-xs transition-colors"
-                        >
-                          Editar
-                        </button>
+                        
+                        {/* 🔥 EDITAR TELEFONE INDIVIDUAL - PERMISSION GUARD */}
+                        <PermissionGuard requiredPermissions={['ASSOCIADO_EDIT']}>
+                          <button
+                            onClick={() => handleEditarTelefones(telefone.tipoTelefone)}
+                            className="px-2 py-1 bg-gray-50 text-gray-600 rounded hover:bg-gray-100 text-xs transition-colors"
+                          >
+                            Editar
+                          </button>
+                        </PermissionGuard>
                       </div>
                       
                       <p className="text-gray-800 text-lg font-medium mb-1">
@@ -613,12 +629,16 @@ const AssociadoDetalhes: React.FC = () => {
                       {associado.emails.length}
                     </span>
                   </div>
-                  <button
-                    onClick={() => handleEditarEmails()}
-                    className="px-3 py-1 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 flex items-center gap-1 transition-colors text-sm"
-                  >
-                    ✏️ Editar
-                  </button>
+                  
+                  {/* 🔥 EDITAR EMAILS - PERMISSION GUARD */}
+                  <PermissionGuard requiredPermissions={['ASSOCIADO_EDIT']}>
+                    <button
+                      onClick={() => handleEditarEmails()}
+                      className="px-3 py-1 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 flex items-center gap-1 transition-colors text-sm"
+                    >
+                      ✏️ Editar
+                    </button>
+                  </PermissionGuard>
                 </div>
                 
                 <div className="space-y-4">
@@ -631,12 +651,16 @@ const AssociadoDetalhes: React.FC = () => {
                             {getTipoEmailInfo(email.tipoEmail)}
                           </span>
                         </div>
-                        <button
-                          onClick={() => handleEditarEmails(email.tipoEmail)}
-                          className="px-2 py-1 bg-gray-50 text-gray-600 rounded hover:bg-gray-100 text-xs transition-colors"
-                        >
-                          Editar
-                        </button>
+                        
+                        {/* 🔥 EDITAR EMAIL INDIVIDUAL - PERMISSION GUARD */}
+                        <PermissionGuard requiredPermissions={['ASSOCIADO_EDIT']}>
+                          <button
+                            onClick={() => handleEditarEmails(email.tipoEmail)}
+                            className="px-2 py-1 bg-gray-50 text-gray-600 rounded hover:bg-gray-100 text-xs transition-colors"
+                          >
+                            Editar
+                          </button>
+                        </PermissionGuard>
                       </div>
                       
                       <p className="text-gray-800 break-all">{email.email}</p>
@@ -656,7 +680,7 @@ const AssociadoDetalhes: React.FC = () => {
           </div>
         </div>
 
-        {/* Card Configurações de Faturamento */}
+        {/* ========== CONFIGURAÇÕES DE FATURAMENTO ========== */}
         {configuracoesFaturamento.length > 0 && (
           <div className="mt-6 border border-gray-200 rounded-lg p-6">
             <div className="flex justify-between items-center mb-6">
@@ -667,12 +691,16 @@ const AssociadoDetalhes: React.FC = () => {
                   {configuracoesFaturamento.length}
                 </span>
               </div>
-              <button
-                onClick={handleEditarFaturamento}
-                className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 flex items-center gap-1 transition-colors text-sm"
-              >
-                ✏️ Editar
-              </button>
+              
+              {/* 🔥 EDITAR FATURAMENTO - PERMISSION GUARD */}
+              <PermissionGuard requiredPermissions={['ASSOCIADO_EDIT']}>
+                <button
+                  onClick={handleEditarFaturamento}
+                  className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 flex items-center gap-1 transition-colors text-sm"
+                >
+                  ✏️ Editar
+                </button>
+              </PermissionGuard>
             </div>
             
             <div className="overflow-x-auto">
@@ -722,7 +750,7 @@ const AssociadoDetalhes: React.FC = () => {
           </div>
         )}
 
-        {/* Card Produtos Habilitados */}
+        {/* ========== PRODUTOS HABILITADOS ========== */}
         {produtosHabilitados.length > 0 && (
           <div className="mt-6 border border-gray-200 rounded-lg p-6">
             <div className="flex justify-between items-center mb-6">
@@ -733,12 +761,16 @@ const AssociadoDetalhes: React.FC = () => {
                   {produtosHabilitados.length}
                 </span>
               </div>
-              <button
-                onClick={handleEditarProdutos}
-                className="px-3 py-1 bg-teal-50 text-teal-600 rounded-lg hover:bg-teal-100 flex items-center gap-1 transition-colors text-sm"
-              >
-                ✏️ Editar
-              </button>
+              
+              {/* 🔥 EDITAR PRODUTOS - PERMISSION GUARD */}
+              <PermissionGuard requiredPermissions={['ASSOCIADO_EDIT']}>
+                <button
+                  onClick={handleEditarProdutos}
+                  className="px-3 py-1 bg-teal-50 text-teal-600 rounded-lg hover:bg-teal-100 flex items-center gap-1 transition-colors text-sm"
+                >
+                  ✏️ Editar
+                </button>
+              </PermissionGuard>
             </div>
             
             <div className="overflow-x-auto">
@@ -812,16 +844,18 @@ const AssociadoDetalhes: React.FC = () => {
         )}
       </div>
 
-      {/* 🔥 MODAL DE MIGRAÇÃO - NOVO */}
-      <ModalMigracaoRegua
-        isOpen={modalMigracaoAberta}
-        onClose={() => setModalMigracaoAberta(false)}
-        associadoId={associado.id}
-        associadoNome={associado.nomeRazao}
-        reguaAtualId={reguaAtual?.id || 0}
-        reguaAtualNome={reguaAtual?.nome || 'Nenhuma'}
-        onSuccess={handleMigracaoSuccess}
-      />
+      {/* ========== MODAL DE MIGRAÇÃO ========== */}
+      <PermissionGuard requiredPermissions={['ASSOCIADO_MIGRAR_REGUA']}>
+        <ModalMigracaoRegua
+          isOpen={modalMigracaoAberta}
+          onClose={() => setModalMigracaoAberta(false)}
+          associadoId={associado.id}
+          associadoNome={associado.nomeRazao}
+          reguaAtualId={reguaAtual?.id || 0}
+          reguaAtualNome={reguaAtual?.nome || 'Nenhuma'}
+          onSuccess={handleMigracaoSuccess}
+        />
+      </PermissionGuard>
     </div>
   );
 };

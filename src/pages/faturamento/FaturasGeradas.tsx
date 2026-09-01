@@ -14,6 +14,8 @@ import api from '../../services/api';
 import { rmApiService } from '../../services/rmApiService';
 import { RmApiPreVisualizacaoItem } from '../../types/rmApi.types';
 import { FaPlug, FaFileExport, FaCheckCircle, FaTimesCircle, FaEye } from 'react-icons/fa';
+import { PermissionGuard } from '../../components/PermissionGuard';
+import { useAuthStore } from '../../stores/authStore';
 
 // ============================================================
 // FUNÇÕES AUXILIARES
@@ -54,23 +56,17 @@ const getNotaDebitoId = (fatura: Fatura): number | null => {
 };
 
 // ============================================================
-// 🔥 FUNÇÕES AUXILIARES DE DATA (CORRIGIDAS)
+// FORMATADORES DE DATA
 // ============================================================
 
-/**
- * 🔥 Formata uma data sem considerar timezone
- * Evita problemas com datas que vêm do backend
- */
 const formatDate = (dateStr: string): string => {
   if (!dateStr) return '-';
   try {
-    // 🔥 Remove o timezone da string para evitar problemas
     const cleanDateStr = dateStr.replace(/[+-]\d{2}:\d{2}$/, '');
     const [year, month, day] = cleanDateStr.split('T')[0].split('-').map(Number);
     const date = new Date(year, month - 1, day);
-    
+
     if (isNaN(date.getTime())) return dateStr;
-    
     return date.toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
@@ -81,9 +77,6 @@ const formatDate = (dateStr: string): string => {
   }
 };
 
-/**
- * 🔥 Formata data e hora sem timezone
- */
 const formatDateTime = (dateStr: string): string => {
   if (!dateStr) return '-';
   try {
@@ -91,11 +84,10 @@ const formatDateTime = (dateStr: string): string => {
     const parts = cleanDateStr.split('T');
     const dateParts = parts[0].split('-').map(Number);
     const timeParts = parts[1]?.split(':').map(Number) || [0, 0];
-    
+
     const date = new Date(dateParts[0], dateParts[1] - 1, dateParts[2], timeParts[0], timeParts[1]);
-    
+
     if (isNaN(date.getTime())) return dateStr;
-    
     return date.toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
@@ -116,30 +108,31 @@ const formatDateTime = (dateStr: string): string => {
 const FaturasGeradas: React.FC = () => {
   const navigate = useNavigate();
   const { showToast } = useMessage();
-  
+  const { hasPermission, user } = useAuthStore();
+
   const [faturas, setFaturas] = useState<Fatura[]>([]);
   const [loading, setLoading] = useState(false);
-  
+
   // Seleção
   const [faturasSelecionadas, setFaturasSelecionadas] = useState<Set<number>>(new Set());
   const [selecionarTodos, setSelecionarTodos] = useState(false);
   const [totalFaturas, setTotalFaturas] = useState(0);
-  
+
   // Dados completos das faturas selecionadas
   const [dadosFaturasSelecionadas, setDadosFaturasSelecionadas] = useState<Fatura[]>([]);
-  
+
   // Exportação RM (Arquivo)
   const [modalExportacaoRmAberta, setModalExportacaoRmAberta] = useState(false);
   const [modalResultadoExportacaoAberta, setModalResultadoExportacaoAberta] = useState(false);
   const [resultadoExportacao, setResultadoExportacao] = useState<any>(null);
   const [exportandoRm, setExportandoRm] = useState(false);
   const [blobArquivoRm, setBlobArquivoRm] = useState<Blob | null>(null);
-  
+
   // Integração API
   const [integrandoApi, setIntegrandoApi] = useState(false);
   const [modalResultadoApiAberta, setModalResultadoApiAberta] = useState(false);
   const [resultadoApi, setResultadoApi] = useState<IntegracaoApiResultado | null>(null);
-  
+
   // Pré-visualização XML
   const [modalVisualizarXmlAberto, setModalVisualizarXmlAberto] = useState(false);
   const [carregandoPreVisualizacao, setCarregandoPreVisualizacao] = useState(false);
@@ -147,14 +140,14 @@ const FaturasGeradas: React.FC = () => {
     total: number;
     detalhes: RmApiPreVisualizacaoItem[];
   }>({ total: 0, detalhes: [] });
-  
+
   // Modais de confirmação
   const [modalConfirmacaoApiAberta, setModalConfirmacaoApiAberta] = useState(false);
   const [modalConfirmacaoAberta, setModalConfirmacaoAberta] = useState(false);
   const [faturaParaExcluir, setFaturaParaExcluir] = useState<{ id: number; status: string; numeroFatura: string } | null>(null);
   const [modalConfirmacaoMassaAberta, setModalConfirmacaoMassaAberta] = useState(false);
   const [excluindoEmMassa, setExcluindoEmMassa] = useState(false);
-  
+
   // Filtros
   const [filtroNumero, setFiltroNumero] = useState('');
   const [filtroAssociado, setFiltroAssociado] = useState('');
@@ -163,12 +156,18 @@ const FaturasGeradas: React.FC = () => {
   const [filtroAno, setFiltroAno] = useState(new Date().getFullYear());
   const [filtroRegua, setFiltroRegua] = useState<number | undefined>(undefined);
   const [reguas, setReguas] = useState<any[]>([]);
-  
+
   // Paginação
   const [pagina, setPagina] = useState(0);
   const [totalPaginas, setTotalPaginas] = useState(0);
   const [totalItens, setTotalItens] = useState(0);
   const pageSize = 10;
+
+  // 🔒 PERMISSÕES
+  const podeVisualizar = hasPermission('FATURA_VIEW') || user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+  const podeIntegrarApi = hasPermission('FATURA_EXPORT_RM') || user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+  const podeExportarRm = hasPermission('FATURA_EXPORT_RM') || user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+  const podeExcluirFatura = hasPermission('FATURA_DELETE') || user?.role === 'SUPER_ADMIN';
 
   // ============================================================
   // CARREGAR DADOS
@@ -197,12 +196,12 @@ const FaturasGeradas: React.FC = () => {
         ano: filtroAno,
         reguaId: filtroRegua
       });
-      
+
       setFaturas(response.content);
       setTotalPaginas(response.totalPages);
       setTotalItens(response.totalElements);
       setTotalFaturas(response.totalElements);
-      
+
     } catch (error: any) {
       console.error('Erro ao carregar faturas:', error);
       showToast(error.response?.data?.message || 'Erro ao carregar faturas', 'error');
@@ -257,33 +256,33 @@ const FaturasGeradas: React.FC = () => {
         ano: filtroAno,
         reguaId: filtroRegua
       };
-      
+
       const primeiraPagina = await faturamentoService.listarFaturas(0, pageSize, params);
       const totalElements = primeiraPagina.totalElements || 0;
-      
+
       if (totalElements === 0) {
         showToast('Nenhuma fatura encontrada', 'info');
         setLoading(false);
         return;
       }
-      
+
       const totalPaginasParaCarregar = Math.ceil(totalElements / pageSize);
       const todasFaturas: Fatura[] = [];
-      
+
       for (let page = 0; page < totalPaginasParaCarregar; page++) {
         const response = await faturamentoService.listarFaturas(page, pageSize, params);
         todasFaturas.push(...response.content);
       }
-      
+
       const todosIds = todasFaturas.map(f => f.id);
-      
+
       setFaturasSelecionadas(new Set(todosIds));
       setDadosFaturasSelecionadas(todasFaturas);
       setSelecionarTodos(true);
-      
+
       const total = todasFaturas.reduce((acc, f) => acc + (f.valorTotal || 0), 0);
       showToast(`${todosIds.length} fatura(s) selecionada(s) - Total: R$ ${total.toFixed(2)}`, 'info');
-      
+
     } catch (error: any) {
       console.error('Erro ao carregar todas as faturas:', error);
       showToast(error.response?.data?.message || 'Erro ao selecionar todas as faturas', 'error');
@@ -381,8 +380,8 @@ const FaturasGeradas: React.FC = () => {
     setIntegrandoApi(true);
 
     try {
-      const faturasParaIntegrar = dadosFaturasSelecionadas.length > 0 
-        ? dadosFaturasSelecionadas 
+      const faturasParaIntegrar = dadosFaturasSelecionadas.length > 0
+        ? dadosFaturasSelecionadas
         : faturas.filter(f => faturasSelecionadas.has(f.id) && temNotaDebito(f));
 
       const notaIds = faturasParaIntegrar
@@ -428,43 +427,43 @@ const FaturasGeradas: React.FC = () => {
     setExportandoRm(true);
     try {
       const faturaIds = Array.from(faturasSelecionadas);
-      
+
       let reguaId = filtroRegua;
-      
+
       if (!reguaId && faturaIds.length > 0) {
         const primeiraFatura = faturas.find(f => f.id === faturaIds[0]);
         if (primeiraFatura && (primeiraFatura as any).reguaId) {
           reguaId = (primeiraFatura as any).reguaId;
         }
       }
-      
+
       const mesReferencia = `${filtroAno}-${String(filtroMes).padStart(2, '0')}`;
-  
+
       const { blob, metadados } = await faturamentoService.exportarRmMultiplasFaturasComMetadados(
         faturaIds,
         ultimoNumeroRps,
         reguaId,
         mesReferencia
       );
-      
+
       const nomeArquivo = gerarNomeArquivoRm();
-      
+
       setBlobArquivoRm(blob);
-      
+
       setResultadoExportacao({
         ...metadados,
         nomeArquivo
       });
-  
+
       setModalExportacaoRmAberta(false);
       setModalResultadoExportacaoAberta(true);
-      
+
       setFaturasSelecionadas(new Set());
       setDadosFaturasSelecionadas([]);
       setSelecionarTodos(false);
-  
+
       await carregarFaturas();
-      
+
     } catch (error: any) {
       console.error('❌ Erro ao exportar RM:', error);
       showToast(error.message || 'Erro ao exportar arquivo RM', 'error');
@@ -478,7 +477,7 @@ const FaturasGeradas: React.FC = () => {
       showToast('Arquivo não disponível para download', 'error');
       return;
     }
-    
+
     try {
       const nomeArquivo = gerarNomeArquivoRm();
       const url = window.URL.createObjectURL(blobArquivoRm);
@@ -489,7 +488,7 @@ const FaturasGeradas: React.FC = () => {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
+
       showToast(`📥 Download do arquivo ${nomeArquivo} iniciado!`, 'success');
     } catch (error) {
       console.error('Erro ao baixar arquivo:', error);
@@ -542,13 +541,13 @@ const FaturasGeradas: React.FC = () => {
 
   const executarExclusaoMassa = async () => {
     if (faturasSelecionadas.size === 0) return;
-    
+
     setExcluindoEmMassa(true);
     const ids = Array.from(faturasSelecionadas);
     let sucessos = 0;
     let erros = 0;
     const motivosErro: string[] = [];
-    
+
     try {
       for (const id of ids) {
         try {
@@ -559,7 +558,7 @@ const FaturasGeradas: React.FC = () => {
           motivosErro.push(`Fatura ${id}: ${error.response?.data?.message || error.message}`);
         }
       }
-      
+
       if (sucessos > 0 && erros === 0) {
         showToast(`✅ ${sucessos} fatura(s) excluída(s) com sucesso!`, 'success');
       } else if (sucessos > 0 && erros > 0) {
@@ -567,7 +566,7 @@ const FaturasGeradas: React.FC = () => {
       } else {
         showToast(`❌ Nenhuma fatura excluída. ${erros} erro(s)`, 'error');
       }
-      
+
       setFaturasSelecionadas(new Set());
       setDadosFaturasSelecionadas([]);
       setSelecionarTodos(false);
@@ -677,10 +676,23 @@ const FaturasGeradas: React.FC = () => {
   // RENDER
   // ============================================================
 
+  if (!podeVisualizar) {
+    return (
+      <div className="p-6 max-w-7xl mx-auto">
+        <BreadCrumb atual="Faturas Geradas" />
+        <div className="bg-white rounded-xl shadow-lg p-12 mt-6 text-center">
+          <div className="text-6xl mb-4">🔒</div>
+          <h2 className="text-2xl font-bold text-gray-700 mb-2">Acesso Negado</h2>
+          <p className="text-gray-500">Você não tem permissão para visualizar as faturas geradas.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <BreadCrumb atual="Faturas Geradas" />
-      
+
       <div className="bg-white rounded-xl shadow-lg p-6 mt-6">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-800 mb-2">📄 Faturas Geradas</h1>
@@ -693,8 +705,8 @@ const FaturasGeradas: React.FC = () => {
             )}
           </p>
         </div>
-        
-        {/* Botões de Ação em Massa */}
+
+        {/* Botões de Ação em Massa - com PermissionGuard */}
         {faturasSelecionadas.size > 0 && (
           <div className="flex flex-wrap justify-between items-center mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
             <div>
@@ -706,61 +718,73 @@ const FaturasGeradas: React.FC = () => {
               </span>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button
-                onClick={handlePreVisualizarXml}
-                disabled={carregandoPreVisualizacao}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 flex items-center gap-2 text-sm"
-              >
-                {carregandoPreVisualizacao ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                ) : (
-                  <FaEye className="text-sm" />
-                )}
-                Pré-visualizar XML
-              </button>
+              {/* 🔒 PRÉ-VISUALIZAR XML - FATURA_VIEW */}
+              <PermissionGuard requiredPermissions={['FATURA_VIEW']}>
+                <button
+                  onClick={handlePreVisualizarXml}
+                  disabled={carregandoPreVisualizacao}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 flex items-center gap-2 text-sm"
+                >
+                  {carregandoPreVisualizacao ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <FaEye className="text-sm" />
+                  )}
+                  Pré-visualizar XML
+                </button>
+              </PermissionGuard>
 
-              <button
-                onClick={handleIntegrarApi}
-                disabled={integrandoApi}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400 flex items-center gap-2 text-sm"
-              >
-                {integrandoApi ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                ) : (
-                  <FaPlug className="text-sm" />
-                )}
-                Integrar API
-              </button>
-              
-              <button
-                onClick={() => setModalExportacaoRmAberta(true)}
-                disabled={exportandoRm}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 flex items-center gap-2 text-sm"
-              >
-                {exportandoRm ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                ) : (
-                  <FaFileExport className="text-sm" />
-                )}
-                Exportar Arquivo
-              </button>
-              
-              <button
-                onClick={handleConfirmarExclusaoMassa}
-                disabled={excluindoEmMassa}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 flex items-center gap-2 text-sm"
-              >
-                {excluindoEmMassa ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                ) : (
-                  '🗑️'
-                )}
-                Excluir
-              </button>
+              {/* 🔒 INTEGRAR API - FATURA_EXPORT_RM */}
+              <PermissionGuard requiredPermissions={['FATURA_EXPORT_RM']}>
+                <button
+                  onClick={handleIntegrarApi}
+                  disabled={integrandoApi}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400 flex items-center gap-2 text-sm"
+                >
+                  {integrandoApi ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <FaPlug className="text-sm" />
+                  )}
+                  Integrar API
+                </button>
+              </PermissionGuard>
+
+              {/* 🔒 EXPORTAR ARQUIVO - FATURA_EXPORT_RM */}
+              <PermissionGuard requiredPermissions={['FATURA_EXPORT_RM']}>
+                <button
+                  onClick={() => setModalExportacaoRmAberta(true)}
+                  disabled={exportandoRm}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 flex items-center gap-2 text-sm"
+                >
+                  {exportandoRm ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <FaFileExport className="text-sm" />
+                  )}
+                  Exportar Arquivo
+                </button>
+              </PermissionGuard>
+
+              {/* 🔒 EXCLUIR - FATURA_DELETE */}
+              <PermissionGuard requiredPermissions={['FATURA_DELETE']}>
+                <button
+                  onClick={handleConfirmarExclusaoMassa}
+                  disabled={excluindoEmMassa}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 flex items-center gap-2 text-sm"
+                >
+                  {excluindoEmMassa ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    '🗑️'
+                  )}
+                  Excluir
+                </button>
+              </PermissionGuard>
             </div>
           </div>
         )}
-        
+
         {/* Filtros */}
         <div className="bg-gray-50 p-4 rounded-lg mb-6">
           <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
@@ -789,7 +813,7 @@ const FaturasGeradas: React.FC = () => {
               <option value="CANCELADA">❌ Cancelada</option>
               <option value="SIMULADO">🔍 Simulado</option>
             </select>
-            
+
             <select
               value={filtroRegua || ''}
               onChange={(e) => setFiltroRegua(e.target.value ? parseInt(e.target.value) : undefined)}
@@ -802,16 +826,16 @@ const FaturasGeradas: React.FC = () => {
                 </option>
               ))}
             </select>
-            
+
             <select
               value={filtroMes}
               onChange={(e) => setFiltroMes(parseInt(e.target.value))}
               className="p-2 border rounded-lg"
             >
-              {['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
+              {['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
                 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'].map((mes, idx) => (
-                <option key={idx} value={idx + 1}>{mes}</option>
-              ))}
+                  <option key={idx} value={idx + 1}>{mes}</option>
+                ))}
             </select>
             <input
               type="number"
@@ -832,7 +856,7 @@ const FaturasGeradas: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         {/* Resumo */}
         {!loading && faturas.length > 0 && (
           <div className="mb-4 text-sm text-gray-500">
@@ -842,7 +866,7 @@ const FaturasGeradas: React.FC = () => {
             )}
           </div>
         )}
-        
+
         {/* Tabela de Faturas */}
         {loading ? (
           <div className="flex justify-center py-12">
@@ -907,14 +931,14 @@ const FaturasGeradas: React.FC = () => {
                         <td className="px-4 py-3 text-sm text-gray-600">{fatura.cnpjCpf || '-'}</td>
                         <td className="px-4 py-3">
                           {(fatura as any).reguaNome ? (
-                            <span 
+                            <span
                               className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full"
-                              style={{ 
+                              style={{
                                 backgroundColor: getReguaColor((fatura as any).reguaCor) + '20',
                                 color: getReguaColor((fatura as any).reguaCor)
                               }}
                             >
-                              <span 
+                              <span
                                 className="w-2 h-2 rounded-full"
                                 style={{ backgroundColor: getReguaColor((fatura as any).reguaCor) }}
                               ></span>
@@ -946,46 +970,59 @@ const FaturasGeradas: React.FC = () => {
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center gap-1 whitespace-nowrap">
-                            <button
-                              onClick={() => handleVerDetalhes(fatura.id)}
-                              className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
-                              title="Ver detalhes"
-                            >
-                              👁️
-                            </button>
-                            <button
-                              onClick={() => handleExportarPdf(fatura.id, fatura.numeroFatura)}
-                              className="p-1.5 text-green-600 hover:text-green-800 hover:bg-green-50 rounded transition-colors"
-                              title="Exportar PDF"
-                            >
-                              📄
-                            </button>
-                            
-                            <button
-                              onClick={() => navigate(`/faturamento/faturas/${fatura.id}`)}
-                              className="p-1.5 text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded transition-colors"
-                              title="Ver Logs"
-                            >
-                              📝
-                            </button>
-                            
-                            {podeExcluir(fatura.status) ? (
+                            {/* 🔒 VER DETALHES - FATURA_VIEW */}
+                            <PermissionGuard requiredPermissions={['FATURA_VIEW']}>
                               <button
-                                onClick={() => handleConfirmarExclusao(fatura.id, fatura.status, fatura.numeroFatura)}
-                                className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
-                                title="Excluir fatura"
+                                onClick={() => handleVerDetalhes(fatura.id)}
+                                className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                                title="Ver detalhes"
                               >
-                                🗑️
+                                👁️
                               </button>
-                            ) : (
+                            </PermissionGuard>
+
+                            {/* 🔒 EXPORTAR PDF - FATURA_VIEW */}
+                            <PermissionGuard requiredPermissions={['FATURA_VIEW']}>
                               <button
-                                className="p-1.5 text-gray-400 cursor-not-allowed"
-                                title={`Não é possível excluir fatura com status: ${fatura.status}`}
-                                disabled
+                                onClick={() => handleExportarPdf(fatura.id, fatura.numeroFatura)}
+                                className="p-1.5 text-green-600 hover:text-green-800 hover:bg-green-50 rounded transition-colors"
+                                title="Exportar PDF"
                               >
-                                🚫
+                                📄
                               </button>
-                            )}
+                            </PermissionGuard>
+
+                            {/* 🔒 VER LOGS - FATURA_VIEW */}
+                            <PermissionGuard requiredPermissions={['FATURA_VIEW']}>
+                              <button
+                                onClick={() => navigate(`/faturamento/faturas/${fatura.id}`)}
+                                className="p-1.5 text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded transition-colors"
+                                title="Ver Logs"
+                              >
+                                📝
+                              </button>
+                            </PermissionGuard>
+
+                            {/* 🔒 EXCLUIR - FATURA_DELETE */}
+                            <PermissionGuard requiredPermissions={['FATURA_DELETE']}>
+                              {podeExcluir(fatura.status) ? (
+                                <button
+                                  onClick={() => handleConfirmarExclusao(fatura.id, fatura.status, fatura.numeroFatura)}
+                                  className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
+                                  title="Excluir fatura"
+                                >
+                                  🗑️
+                                </button>
+                              ) : (
+                                <button
+                                  className="p-1.5 text-gray-400 cursor-not-allowed"
+                                  title={`Não é possível excluir fatura com status: ${fatura.status}`}
+                                  disabled
+                                >
+                                  🚫
+                                </button>
+                              )}
+                            </PermissionGuard>
                           </div>
                         </td>
                       </tr>
@@ -994,7 +1031,7 @@ const FaturasGeradas: React.FC = () => {
                 </tbody>
               </table>
             </div>
-            
+
             {/* Paginação */}
             {totalPaginas > 1 && (
               <div className="flex flex-wrap items-center justify-between gap-4 mt-4 pt-4 border-t">
@@ -1039,11 +1076,11 @@ const FaturasGeradas: React.FC = () => {
           </>
         )}
       </div>
-      
+
       {/* ============================================================
         MODAIS
       ============================================================ */}
-      
+
       <ModalVisualizarXml
         isOpen={modalVisualizarXmlAberto}
         onClose={() => setModalVisualizarXmlAberto(false)}
@@ -1055,7 +1092,7 @@ const FaturasGeradas: React.FC = () => {
         total={preVisualizacao.total}
         processando={integrandoApi}
       />
-      
+
       <ConfirmModal
         isOpen={modalConfirmacaoApiAberta}
         title="🔌 Integrar via API"
@@ -1066,7 +1103,7 @@ const FaturasGeradas: React.FC = () => {
         onConfirm={executarIntegracaoApi}
         onCancel={() => setModalConfirmacaoApiAberta(false)}
       />
-      
+
       <ConfirmModal
         isOpen={modalConfirmacaoAberta}
         title="Confirmar Exclusão"
@@ -1077,7 +1114,7 @@ const FaturasGeradas: React.FC = () => {
         onConfirm={executarExclusao}
         onCancel={cancelarExclusao}
       />
-      
+
       <ConfirmModal
         isOpen={modalConfirmacaoMassaAberta}
         title="Confirmar Exclusão em Massa"
@@ -1088,7 +1125,7 @@ const FaturasGeradas: React.FC = () => {
         onConfirm={executarExclusaoMassa}
         onCancel={cancelarExclusaoMassa}
       />
-      
+
       <ModalExportacaoRm
         isOpen={modalExportacaoRmAberta}
         onClose={() => setModalExportacaoRmAberta(false)}
@@ -1097,7 +1134,7 @@ const FaturasGeradas: React.FC = () => {
         valorTotal={valorTotalSelecionadas}
         processando={exportandoRm}
       />
-      
+
       <ModalResultadoExportacaoRm
         isOpen={modalResultadoExportacaoAberta}
         onClose={() => setModalResultadoExportacaoAberta(false)}
