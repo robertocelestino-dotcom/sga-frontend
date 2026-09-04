@@ -1,7 +1,11 @@
 // src/services/associadoImportacaoService.ts
 
 import api from './api';
-import { AssociadoImportacaoLinha, ResultadoImportacao } from '../types/associadoImportacao';
+import { 
+  AssociadoImportacaoLinha, 
+  ResultadoImportacao,
+  AssociadoInativado 
+} from '../types/associadoImportacao';
 import { associadoService } from './associadoService';
 
 // 🔥 CONSTANTES DE CONFIGURAÇÃO PADRÃO DE FATURAMENTO
@@ -497,7 +501,7 @@ export const associadoImportacaoService = {
         codigoSpc: linha.codigoSpc || undefined,
         codigoRm: linha.codigoRm || undefined,
         faturamentoMinimo: linha.faturamentoMinimo || 0,
-        dataFiliacao: dataFiliacaoISO, // 🔥 PODE SER NULL
+        dataFiliacao: dataFiliacaoISO,
         vendedorId: vendedorId,
         vendedorExternoId: vendedorExternoId,
         planoId: planoId,
@@ -520,6 +524,8 @@ export const associadoImportacaoService = {
     let criados = 0;
     let atualizados = 0;
     let configuracoesCriadas = 0;
+    let inativados = 0;
+    let associadosInativados: AssociadoInativado[] = [];
     
     if (associadosParaAPI.length > 0) {
       try {
@@ -531,44 +537,52 @@ export const associadoImportacaoService = {
         const headers = response.headers;
         console.log('📊 Headers recebidos:', headers);
         
-        // 🔥 TENTAR DIFERENTES FORMATOS DE HEADER
+        // 🔥 LER HEADERS EXISTENTES
         criados = parseInt(
           headers['x-importacao-criados'] || 
           headers['X-Importacao-Criados'] || 
-          headers['x-importacao-criados'.toLowerCase()] || 
           '0'
         );
         
         atualizados = parseInt(
           headers['x-importacao-atualizados'] || 
           headers['X-Importacao-Atualizados'] || 
-          headers['x-importacao-atualizados'.toLowerCase()] || 
           '0'
         );
         
         configuracoesCriadas = parseInt(
           headers['x-importacao-configuracoes'] || 
           headers['X-Importacao-Configuracoes'] || 
-          headers['x-importacao-configuracoes'.toLowerCase()] || 
           '0'
         );
+        
+        // ============================================================
+        // 🔥 LER HEADERS DE INATIVAÇÃO
+        // ============================================================
+        inativados = parseInt(
+          headers['x-importacao-inativados'] || 
+          headers['X-Importacao-Inativados'] || 
+          '0'
+        );
+        
+        const inativadosListStr = headers['x-importacao-inativados-list'] || 
+                                   headers['X-Importacao-Inativados-List'];
+        if (inativadosListStr) {
+          try {
+            associadosInativados = JSON.parse(inativadosListStr);
+            console.log(`📋 ${associadosInativados.length} associados inativados recebidos`);
+          } catch (parseError) {
+            console.warn('Erro ao parsear lista de inativados:', parseError);
+          }
+        }
         
         const erros = parseInt(
           headers['x-importacao-erros'] || 
           headers['X-Importacao-Erros'] || 
-          headers['x-importacao-erros'.toLowerCase()] || 
           '0'
         );
         
-        // 🔥 SE OS HEADERS NÃO VIERAM, TENTAR PEGAR DO RESPONSE DATA
-        if (criados === 0 && atualizados === 0 && response.data && response.data.length > 0) {
-          console.warn('⚠️ Headers não encontrados, tentando calcular a partir dos dados...');
-          // O backend retorna a lista de associados importados
-          // Podemos contar quantos foram criados vs atualizados baseado no ID
-          // Mas é melhor confiar nos headers
-        }
-        
-        console.log(`📊 Importação concluída: ${criados} criados, ${atualizados} atualizados, ${configuracoesCriadas} configurações criadas`);
+        console.log(`📊 Importação concluída: ${criados} criados, ${atualizados} atualizados, ${inativados} inativados, ${configuracoesCriadas} configurações`);
         
         associadosImportados.push(...response.data);
         
@@ -609,7 +623,7 @@ export const associadoImportacaoService = {
     
     onProgress?.(95, 'Finalizando importação...');
     
-    // 🔥 CORREÇÃO: MAPEAR O RESULTADO COMPLETO
+    // 🔥 RESULTADO COMPLETO (ATUALIZADO)
     const resultadoFinal: ResultadoImportacao = {
       totalLinhas: linhas.length,
       linhasProcessadas: associadosParaAPI.length - linhasComErro.length,
@@ -618,7 +632,10 @@ export const associadoImportacaoService = {
       criados: criados || 0,
       atualizados: atualizados || 0,
       configuracoesCriadas: configuracoesCriadas || 0,
-      erros: linhasComErro
+      inativados: inativados || 0,
+      associadosInativados: associadosInativados || [],
+      erros: linhasComErro,
+      detalhes: []
     };
     
     console.log('📊 Resultado final:', {
@@ -627,6 +644,7 @@ export const associadoImportacaoService = {
       erros: resultadoFinal.linhasComErro,
       criados: resultadoFinal.criados,
       atualizados: resultadoFinal.atualizados,
+      inativados: resultadoFinal.inativados,
       configuracoesCriadas: resultadoFinal.configuracoesCriadas
     });
     
@@ -655,6 +673,7 @@ export const associadoImportacaoService = {
       '# - Para associados já existentes, a configuração será criada apenas se não existir',
       '# - O campo "codigo_vendedor_externo" será atualizado em associados existentes',
       '# - Data deve estar no formato DD/MM/AAAA ou AAAA-MM-DD',
+      '# - ATENÇÃO: Associados ATIVOS que não estiverem no arquivo serão INATIVADOS automaticamente!',
       '# ============================================================',
       ''
     ];

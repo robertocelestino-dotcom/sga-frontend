@@ -36,6 +36,17 @@ interface AssociadoImportacaoLinha {
   erros?: string[];
 }
 
+// 🔥 NOVO TIPO LOCAL
+interface AssociadoInativado {
+  id: number;
+  cnpjCpf: string;
+  nomeRazao: string;
+  status: string;
+  dataInativacao?: string;
+  motivoInativacao?: string;
+}
+
+// 🔥 RESULTADO DA IMPORTAÇÃO (ATUALIZADO)
 interface ResultadoImportacao {
   totalLinhas: number;
   linhasProcessadas: number;
@@ -44,6 +55,8 @@ interface ResultadoImportacao {
   criados?: number;
   atualizados?: number;
   configuracoesCriadas?: number;
+  inativados?: number;
+  associadosInativados?: AssociadoInativado[];
   erros: Array<{
     linha: number;
     mensagem: string;
@@ -61,6 +74,7 @@ const ImportacaoAssociados: React.FC = () => {
   const [mensagemProgresso, setMensagemProgresso] = useState('');
   const [resultado, setResultado] = useState<ResultadoImportacao | null>(null);
   const [mostrarErros, setMostrarErros] = useState(false);
+  const [mostrarInativados, setMostrarInativados] = useState(false);
   const [progressoAnimado, setProgressoAnimado] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -213,6 +227,8 @@ const ImportacaoAssociados: React.FC = () => {
         criados: resultadoImportacao.criados || 0,
         atualizados: resultadoImportacao.atualizados || 0,
         configuracoesCriadas: resultadoImportacao.configuracoesCriadas || 0,
+        inativados: resultadoImportacao.inativados || 0,
+        associadosInativados: resultadoImportacao.associadosInativados || [],
         erros: resultadoImportacao.erros || []
       };
       
@@ -227,30 +243,26 @@ const ImportacaoAssociados: React.FC = () => {
       const totalLinhas = resultadoMapeado.totalLinhas || 1;
       const taxaSucesso = Math.round((totalProcessados / totalLinhas) * 100);
       
-      // 🔥 MENSAGEM PERSONALIZADA
-      if (resultadoMapeado.linhasComErro === 0) {
+      // 🔥 MENSAGEM PERSONALIZADA COM INATIVAÇÕES
+      let mensagem = '';
+      if (resultadoMapeado.inativados && resultadoMapeado.inativados > 0) {
+        mensagem = `✅ ${resultadoMapeado.criados} criados, ${resultadoMapeado.atualizados} atualizados, 🔴 ${resultadoMapeado.inativados} inativados (${taxaSucesso}% de sucesso)`;
+        showToast(mensagem, 'warning');
+      } else if (resultadoMapeado.linhasComErro === 0) {
         if (resultadoMapeado.criados > 0 || resultadoMapeado.atualizados > 0) {
-          showToast(
-            `✅ ${resultadoMapeado.criados} criados, ${resultadoMapeado.atualizados} atualizados com sucesso! (${taxaSucesso}% de sucesso)`,
-            'success'
-          );
+          mensagem = `✅ ${resultadoMapeado.criados} criados, ${resultadoMapeado.atualizados} atualizados com sucesso! (${taxaSucesso}% de sucesso)`;
+          showToast(mensagem, 'success');
         } else {
-          showToast(
-            `⚠️ Nenhum associado foi importado. Verifique se o arquivo contém dados válidos.`,
-            'warning'
-          );
+          mensagem = `⚠️ Nenhum associado foi importado. Verifique se o arquivo contém dados válidos.`;
+          showToast(mensagem, 'warning');
         }
       } else {
         if (resultadoMapeado.criados > 0 || resultadoMapeado.atualizados > 0) {
-          showToast(
-            `⚠️ ${resultadoMapeado.criados} criados, ${resultadoMapeado.atualizados} atualizados, ${resultadoMapeado.linhasComErro} com erro (${taxaSucesso}% de sucesso)`,
-            'warning'
-          );
+          mensagem = `⚠️ ${resultadoMapeado.criados} criados, ${resultadoMapeado.atualizados} atualizados, ${resultadoMapeado.linhasComErro} com erro (${taxaSucesso}% de sucesso)`;
+          showToast(mensagem, 'warning');
         } else {
-          showToast(
-            `❌ ${resultadoMapeado.linhasComErro} erros encontrados. Nenhum associado foi importado.`,
-            'error'
-          );
+          mensagem = `❌ ${resultadoMapeado.linhasComErro} erros encontrados. Nenhum associado foi importado.`;
+          showToast(mensagem, 'error');
         }
       }
       
@@ -443,6 +455,7 @@ const ImportacaoAssociados: React.FC = () => {
               <li>5. Campos opcionais podem ser deixados em branco</li>
               <li>6. O sistema validará os dados antes de importar</li>
               <li>7. Associados com CNPJ/CPF existente serão atualizados</li>
+              <li>8. 🔥 Associados ATIVOS que não estiverem no arquivo serão INATIVADOS</li>
             </ul>
             
             <div className="mt-4 p-3 bg-blue-50 rounded-lg">
@@ -453,7 +466,7 @@ const ImportacaoAssociados: React.FC = () => {
           </div>
         </div>
         
-        {/* 🔥 RESULTADO DA IMPORTAÇÃO - CORRIGIDO */}
+        {/* 🔥 RESULTADO DA IMPORTAÇÃO - ATUALIZADO */}
         {resultado && (
           <div className="mt-8 border-t border-gray-200 pt-6">
             <div className="flex flex-wrap justify-between items-center mb-4 gap-3">
@@ -470,8 +483,8 @@ const ImportacaoAssociados: React.FC = () => {
               )}
             </div>
             
-            {/* 🔥 CARDS DE RESUMO - COM DESTAQUE PARA CADA MÉTRICA */}
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
+            {/* 🔥 CARDS DE RESUMO - COM DESTAQUE PARA CADA MÉTRICA (7 cards) */}
+            <div className="grid grid-cols-2 md:grid-cols-7 gap-4 mb-6">
               {/* Total de Linhas */}
               <div className="bg-gray-50 p-4 rounded-lg text-center border border-gray-200">
                 <div className="text-2xl font-bold text-gray-700">{resultado.totalLinhas || 0}</div>
@@ -496,9 +509,15 @@ const ImportacaoAssociados: React.FC = () => {
                 <div className="text-sm text-gray-600">✏️ Atualizados</div>
               </div>
               
-              {/* Erros */}
+              {/* 🔥 NOVO CARD: INATIVADOS */}
               <div className="bg-red-50 p-4 rounded-lg text-center border border-red-200">
-                <div className="text-2xl font-bold text-red-600">{resultado.linhasComErro || 0}</div>
+                <div className="text-2xl font-bold text-red-600">{resultado.inativados || 0}</div>
+                <div className="text-sm text-gray-600">🔴 Inativados</div>
+              </div>
+              
+              {/* Erros */}
+              <div className="bg-orange-50 p-4 rounded-lg text-center border border-orange-200">
+                <div className="text-2xl font-bold text-orange-600">{resultado.linhasComErro || 0}</div>
                 <div className="text-sm text-gray-600">❌ Erros</div>
               </div>
               
@@ -638,6 +657,7 @@ const ImportacaoAssociados: React.FC = () => {
                     <p className="text-xs text-green-700 mt-1">
                       {resultado.criados} associados criados e {resultado.atualizados} atualizados.
                       {resultado.configuracoesCriadas > 0 && ` ${resultado.configuracoesCriadas} configurações de faturamento criadas.`}
+                      {resultado.inativados && resultado.inativados > 0 && ` ${resultado.inativados} associados inativados automaticamente.`}
                     </p>
                     <p className="text-xs text-green-600 mt-1">
                       🎯 Taxa de sucesso: {calcularTaxaSucesso(resultado)}%
@@ -688,6 +708,79 @@ const ImportacaoAssociados: React.FC = () => {
                     </table>
                   </div>
                 )}
+              </div>
+            )}
+            
+            {/* 🔥 LISTA DE ASSOCIADOS INATIVADOS */}
+            {resultado.inativados && resultado.inativados > 0 && resultado.associadosInativados && (
+              <div className="mt-4">
+                <button
+                  onClick={() => setMostrarInativados(!mostrarInativados)}
+                  className="flex items-center gap-2 text-red-600 hover:text-red-800 mb-3 font-medium"
+                >
+                  {mostrarInativados ? '▼' : '▶'} Associados Inativados ({resultado.inativados})
+                </button>
+                
+                {mostrarInativados && (
+                  <div className="overflow-x-auto border rounded-lg">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-red-50">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-red-700 uppercase">CNPJ/CPF</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-red-700 uppercase">Nome/Razão</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-red-700 uppercase">Status</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-red-700 uppercase">Data Inativação</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-red-700 uppercase">Motivo</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {resultado.associadosInativados.map((associado) => (
+                          <tr key={associado.id} className="hover:bg-red-50">
+                            <td className="px-4 py-2 font-mono text-sm">{associado.cnpjCpf}</td>
+                            <td className="px-4 py-2 max-w-xs truncate" title={associado.nomeRazao}>
+                              {associado.nomeRazao}
+                            </td>
+                            <td className="px-4 py-2">
+                              <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">
+                                INATIVO
+                              </span>
+                            </td>
+                            <td className="px-4 py-2 text-sm">
+                              {associado.dataInativacao 
+                                ? new Date(associado.dataInativacao).toLocaleDateString('pt-BR') 
+                                : '-'}
+                            </td>
+                            <td className="px-4 py-2 text-xs text-gray-600 max-w-xs truncate" 
+                                title={associado.motivoInativacao}>
+                              {associado.motivoInativacao || 'INATIVAÇÃO PROCESSAMENTO AUTOMATICO'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* 🔥 MENSAGEM DE INATIVAÇÃO */}
+            {resultado.inativados && resultado.inativados > 0 && (
+              <div className="mt-4 p-4 bg-red-50 rounded-lg border border-red-200">
+                <div className="flex items-start gap-3">
+                  <span className="text-xl">⚠️</span>
+                  <div>
+                    <p className="text-sm font-medium text-red-800">
+                      {resultado.inativados} associados foram inativados automaticamente
+                    </p>
+                    <p className="text-xs text-red-700 mt-1">
+                      Motivo: <strong>INATIVAÇÃO PROCESSAMENTO AUTOMATICO</strong>
+                    </p>
+                    <p className="text-xs text-red-600 mt-1">
+                      Estes associados estavam com status <strong>ATIVO</strong> no sistema, 
+                      mas não foram encontrados no arquivo importado.
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
           </div>

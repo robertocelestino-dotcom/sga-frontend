@@ -1,4 +1,22 @@
 // Tipos para importação de associados
+
+// ============================================================
+// 🔥 TIPO: ASSOCIADO INATIVADO
+// ============================================================
+
+export interface AssociadoInativado {
+  id: number;
+  cnpjCpf: string;
+  nomeRazao: string;
+  status: string;
+  dataInativacao?: string;
+  motivoInativacao?: string;
+}
+
+// ============================================================
+// TIPO: LINHA DE IMPORTAÇÃO (EXISTENTE)
+// ============================================================
+
 export interface AssociadoImportacaoLinha {
     // Dados obrigatórios
     tipoPessoa: 'F' | 'J';
@@ -47,8 +65,12 @@ export interface AssociadoImportacaoLinha {
     linha?: number;
     erros?: string[];
   }
-  
-  export interface ResultadoImportacao {
+
+// ============================================================
+// 🔥 RESULTADO DA IMPORTAÇÃO (ATUALIZADO)
+// ============================================================
+
+export interface ResultadoImportacao {
     totalLinhas: number;
     linhasProcessadas: number;
     linhasComErro: number;
@@ -61,5 +83,7 @@ export interface AssociadoImportacaoLinha {
     detalhes: AssociadoImportacaoLinha[];
     criados?: number;
     atualizados?: number;
-    configuracoesCriadas?: number; // 🔥 NOVO CAMPO
-  }
+    configuracoesCriadas?: number;
+    inativados?: number;                    // 🔥 NOVO
+    associadosInativados?: AssociadoInativado[];  // 🔥 NOVO
+}
