@@ -1,29 +1,57 @@
-// ============================================================
-//                    PERFIL SERVICE
-// ============================================================
+// src/services/perfilService.ts
 
-// services/perfilService.ts
 import api from './api';
 import { Perfil } from '../types/auth';
 
 export interface PerfilRequest {
     nome: string;
     descricao: string;
-    ativo: boolean;
+    ativo?: boolean;
     menusIds?: number[];
     permissoesIds?: number[];
 }
 
 export const perfilService = {
-    // 🔥 CORRIGIDO: adicionar /admin no caminho
+    // Listar todos os perfis
     async listar(): Promise<Perfil[]> {
         const response = await api.get('/admin/perfis');
         return response.data;
     },
 
-    async listarAtivos(): Promise<Perfil[]> {
-        const response = await api.get('/admin/perfis/ativos');
-        return response.data;
+    // 🔥 Listar perfis com verificação de permissão
+    async listarComPermissao(permissoesUsuario: string[]): Promise<Perfil[]> {
+        const todos = await this.listar();
+        
+        // Filtrar perfis baseado nas permissões do usuário
+        return todos.filter(perfil => {
+            // SUPER_ADMIN sempre vê tudo
+            if (permissoesUsuario.includes('SUPER_ADMIN')) {
+                return true;
+            }
+            
+            // ADMIN vê todos exceto SUPER_ADMIN
+            if (permissoesUsuario.includes('ADMIN')) {
+                return perfil.nome !== 'SUPER_ADMIN';
+            }
+            
+            // Usuários com permissão PERFIL_VIEW veem todos
+            if (permissoesUsuario.includes('PERFIL_VIEW')) {
+                return true;
+            }
+            
+            // Outros usuários só veem perfis que podem gerenciar
+            const podeVer = permissoesUsuario.includes('PERFIL_VIEW');
+            const podeEditar = permissoesUsuario.includes('PERFIL_EDIT');
+            const podeCriar = permissoesUsuario.includes('PERFIL_CREATE');
+            const podeDeletar = permissoesUsuario.includes('PERFIL_DELETE');
+            
+            // Se não tem nenhuma permissão de perfil, não vê nada
+            if (!podeVer && !podeEditar && !podeCriar && !podeDeletar) {
+                return false;
+            }
+            
+            return true;
+        });
     },
 
     async buscarPorId(id: number): Promise<Perfil> {
@@ -45,19 +73,8 @@ export const perfilService = {
         await api.delete(`/admin/perfis/${id}`);
     },
 
-    async associarMenu(perfilId: number, menuId: number): Promise<void> {
-        await api.post(`/admin/perfis/${perfilId}/menus/${menuId}`);
-    },
-
-    async removerMenu(perfilId: number, menuId: number): Promise<void> {
-        await api.delete(`/admin/perfis/${perfilId}/menus/${menuId}`);
-    },
-
-    async associarPermissao(perfilId: number, permissaoId: number): Promise<void> {
-        await api.post(`/admin/perfis/${perfilId}/permissoes/${permissaoId}`);
-    },
-
-    async removerPermissao(perfilId: number, permissaoId: number): Promise<void> {
-        await api.delete(`/admin/perfis/${perfilId}/permissoes/${permissaoId}`);
+    async listarAtivos(): Promise<Perfil[]> {
+        const response = await api.get('/admin/perfis/ativos');
+        return response.data;
     }
 };

@@ -1,16 +1,17 @@
 // src/pages/admin/Perfis.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { 
     Plus, Edit, Trash2, Shield, CheckCircle, XCircle, Search, 
     Crown, UserCog, Users, User, Wrench, Eye, UserCheck,
-    Award, Star, Briefcase, Settings, UserCircle
+    Award, Star, Briefcase, Settings, UserCircle, EyeOff
 } from 'lucide-react';
 import { perfilService } from '../../services/perfilService';
 import { PermissionGuard } from '../../components/PermissionGuard';
 import { Perfil } from '../../types/auth';
 import ConfirmModal from '../../components/ui/ConfirmModal';
 import { useMessage } from '../../providers/MessageProvider';
+import { useAuthStore } from '../../stores/authStore';
 
 // 🔥 MAPEAMENTO DE ÍCONES POR PERFIL
 const getPerfilIcon = (nome: string) => {
@@ -76,13 +77,48 @@ const getPerfilBadge = (nome: string) => {
 
 export const Perfis: React.FC = () => {
     const { showToast } = useMessage();
+    const { permissoes, user } = useAuthStore();
+    
     const [perfis, setPerfis] = useState<Perfil[]>([]);
     const [loading, setLoading] = useState(true);
-    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-    const [selectedPerfil, setSelectedPerfil] = useState<Perfil | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);
+    const [perfilSelecionado, setPerfilSelecionado] = useState<Perfil | null>(null);
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+
+    // 🔥 VERIFICAR PERMISSÕES DO USUÁRIO
+    const isSuperAdmin = user?.perfilNome === 'SUPER_ADMIN' || permissoes.includes('SUPER_ADMIN');
+    const isAdmin = user?.perfilNome === 'ADMIN' || permissoes.includes('ADMIN');
+    const podeVerPerfis = permissoes.includes('PERFIL_VIEW') || isSuperAdmin || isAdmin;
+    const podeEditarPerfis = permissoes.includes('PERFIL_EDIT') || isSuperAdmin || isAdmin;
+    const podeCriarPerfis = permissoes.includes('PERFIL_CREATE') || isSuperAdmin || isAdmin;
+    const podeDeletarPerfis = permissoes.includes('PERFIL_DELETE') || isSuperAdmin || isAdmin;
+
+    // 🔥 VERIFICAR SE O PERFIL É VISÍVEL PARA O USUÁRIO
+    const isPerfilVisivel = (perfil: Perfil): boolean => {
+        // SUPER_ADMIN vê tudo
+        if (isSuperAdmin) return true;
+        
+        // ADMIN vê todos exceto SUPER_ADMIN
+        if (isAdmin) {
+            return perfil.nome !== 'SUPER_ADMIN';
+        }
+        
+        // Usuários com PERFIL_VIEW vêem todos
+        if (podeVerPerfis) return true;
+        
+        // Usuários com permissões de edição/criação/exclusão vêem todos
+        if (podeEditarPerfis || podeCriarPerfis || podeDeletarPerfis) return true;
+        
+        // Se não tem nenhuma permissão de perfil, não vê nada
+        return false;
+    };
+
+    // 🔥 FILTRAR PERFIS VISÍVEIS
+    const perfisVisiveis = useMemo(() => {
+        return perfis.filter(p => isPerfilVisivel(p));
+    }, [perfis]);
 
     useEffect(() => {
         carregarPerfis();
@@ -95,34 +131,35 @@ export const Perfis: React.FC = () => {
             setPerfis(data);
         } catch (error) {
             console.error('Erro ao carregar perfis:', error);
-            showToast('Erro ao carregar perfis', 'error');
+            showToast('❌ Erro ao carregar perfis', 'error');
         } finally {
             setLoading(false);
         }
     };
 
     const handleDeleteClick = (perfil: Perfil) => {
-        setSelectedPerfil(perfil);
+        setPerfilSelecionado(perfil);
         setDeleteModalOpen(true);
     };
 
     const handleDeleteConfirm = async () => {
-        if (selectedPerfil) {
+        if (perfilSelecionado) {
             try {
-                await perfilService.deletar(selectedPerfil.id);
-                showToast('Perfil excluído com sucesso!', 'success');
+                await perfilService.deletar(perfilSelecionado.id);
+                showToast(`✅ Perfil "${perfilSelecionado.nome}" excluído com sucesso!`, 'success');
                 await carregarPerfis();
-            } catch (error) {
+            } catch (error: any) {
                 console.error('Erro ao excluir perfil:', error);
-                showToast('Erro ao excluir perfil', 'error');
+                const errorMsg = error.response?.data?.message || '❌ Erro ao excluir perfil';
+                showToast(errorMsg, 'error');
             } finally {
                 setDeleteModalOpen(false);
-                setSelectedPerfil(null);
+                setPerfilSelecionado(null);
             }
         }
     };
 
-    const perfisFiltrados = perfis.filter(p =>
+    const perfisFiltrados = perfisVisiveis.filter(p =>
         p.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (p.descricao && p.descricao.toLowerCase().includes(searchTerm.toLowerCase()))
     );
@@ -150,17 +187,36 @@ export const Perfis: React.FC = () => {
         );
     }
 
+    // 🔥 SE NÃO TIVER PERMISSÃO PARA VER PERFIS
+    if (!podeVerPerfis && !isSuperAdmin && !isAdmin) {
+        return (
+            <div className="p-6">
+                <div className="bg-white rounded-xl shadow-lg p-12 text-center">
+                    <div className="text-6xl mb-4">🔒</div>
+                    <h2 className="text-2xl font-bold text-gray-700 mb-2">Acesso Restrito</h2>
+                    <p className="text-gray-500">Você não tem permissão para visualizar perfis de acesso.</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="p-6">
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Perfis de Acesso</h1>
+                    <h1 className="text-2xl font-bold text-gray-800">🛡️ Perfis de Acesso</h1>
                     <p className="text-gray-600 text-sm mt-1">
                         Gerencie os perfis e suas permissões no sistema
+                        {perfisVisiveis.length < perfis.length && (
+                            <span className="ml-2 text-xs text-gray-400">
+                                ({perfisVisiveis.length} visíveis de {perfis.length} total)
+                            </span>
+                        )}
                     </p>
                 </div>
-                <PermissionGuard requiredRoles={['SUPER_ADMIN']}>
+                {/* 🔥 PERFIL_CREATE */}
+                {podeCriarPerfis && (
                     <Link
                         to="/admin/perfis/novo"
                         className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
@@ -168,8 +224,18 @@ export const Perfis: React.FC = () => {
                         <Plus size={20} />
                         Novo Perfil
                     </Link>
-                </PermissionGuard>
+                )}
             </div>
+
+            {/* 🔥 INDICADOR DE PERFIL OCULTO */}
+            {perfisVisiveis.length < perfis.length && (
+                <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center gap-2">
+                    <EyeOff size={18} className="text-yellow-600" />
+                    <span className="text-sm text-yellow-700">
+                        Alguns perfis estão ocultos pois você não tem permissão para visualizá-los.
+                    </span>
+                </div>
+            )}
 
             {/* Filtros e Busca */}
             <div className="bg-white rounded-lg shadow p-4 mb-6">
@@ -225,7 +291,7 @@ export const Perfis: React.FC = () => {
                             {perfisPaginados.length === 0 ? (
                                 <tr>
                                     <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                                        Nenhum perfil encontrado
+                                        {searchTerm ? 'Nenhum perfil encontrado para esta busca' : 'Nenhum perfil cadastrado'}
                                     </td>
                                 </tr>
                             ) : (
@@ -233,6 +299,10 @@ export const Perfis: React.FC = () => {
                                     const { icon: Icon, color, bg, border } = getPerfilIcon(perfil.nome);
                                     const bgColor = getPerfilBgColor(perfil.nome);
                                     const badge = getPerfilBadge(perfil.nome);
+                                    
+                                    // 🔥 VERIFICAR SE O PERFIL É EDITÁVEL
+                                    const isEditable = podeEditarPerfis || isSuperAdmin || isAdmin;
+                                    const isDeletable = podeDeletarPerfis || isSuperAdmin || isAdmin;
 
                                     return (
                                         <tr key={perfil.id} className={`hover:bg-gray-50 transition-colors ${bgColor}`}>
@@ -270,24 +340,37 @@ export const Perfis: React.FC = () => {
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex justify-end gap-2">
-                                                    <PermissionGuard requiredRoles={['SUPER_ADMIN']}>
+                                                    {/* 🔥 PERFIL_EDIT */}
+                                                    {isEditable && (
                                                         <Link
                                                             to={`/admin/perfis/${perfil.id}`}
-                                                            className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50"
-                                                            title="Editar"
+                                                            className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50 transition-colors"
+                                                            title="Editar perfil"
                                                         >
                                                             <Edit size={18} />
                                                         </Link>
-                                                    </PermissionGuard>
-                                                    <PermissionGuard requiredRoles={['SUPER_ADMIN']}>
+                                                    )}
+                                                    {!isEditable && (
+                                                        <span className="text-gray-300 p-1" title="Sem permissão para editar">
+                                                            <Edit size={18} className="opacity-30" />
+                                                        </span>
+                                                    )}
+
+                                                    {/* 🔥 PERFIL_DELETE */}
+                                                    {isDeletable && (
                                                         <button
                                                             onClick={() => handleDeleteClick(perfil)}
-                                                            className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"
-                                                            title="Excluir"
+                                                            className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50 transition-colors"
+                                                            title="Excluir perfil"
                                                         >
                                                             <Trash2 size={18} />
                                                         </button>
-                                                    </PermissionGuard>
+                                                    )}
+                                                    {!isDeletable && (
+                                                        <span className="text-gray-300 p-1" title="Sem permissão para excluir">
+                                                            <Trash2 size={18} className="opacity-30" />
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
@@ -308,9 +391,9 @@ export const Perfis: React.FC = () => {
                             <button
                                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                                 disabled={currentPage === 1}
-                                className="px-3 py-1 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                                className="px-3 py-1 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors"
                             >
-                                Anterior
+                                ◀ Anterior
                             </button>
                             <span className="px-3 py-1 text-gray-600">
                                 Página {currentPage} de {totalPages}
@@ -318,9 +401,9 @@ export const Perfis: React.FC = () => {
                             <button
                                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                                 disabled={currentPage === totalPages}
-                                className="px-3 py-1 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                                className="px-3 py-1 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors"
                             >
-                                Próxima
+                                Próxima ▶
                             </button>
                         </div>
                     </div>
@@ -332,8 +415,8 @@ export const Perfis: React.FC = () => {
                 isOpen={deleteModalOpen}
                 onClose={() => setDeleteModalOpen(false)}
                 onConfirm={handleDeleteConfirm}
-                title="Confirmar Exclusão"
-                message={`Tem certeza que deseja excluir o perfil "${selectedPerfil?.nome}"? Esta ação não poderá ser desfeita.`}
+                title="🗑️ Confirmar Exclusão"
+                message={`Tem certeza que deseja excluir o perfil "${perfilSelecionado?.nome}"?\n\nEsta ação não poderá ser desfeita.`}
                 confirmText="Sim, Excluir"
                 cancelText="Cancelar"
                 type="danger"
