@@ -8,7 +8,7 @@ import { PermissionGuard } from '../../components/PermissionGuard';
 import { Perfil, Menu } from '../../types/auth';
 import { useMessage } from '../../providers/MessageProvider';
 
-// 🔥 PERMISSÕES COM NOMES EM PORTUGUÊS
+// 🔥 PERMISSÕES COM NOMES EM PORTUGUÊS - INCLUINDO CONFERÊNCIA
 const PERMISSOES_DISPONIVEIS = [
     // Dashboard
     { id: 1, nome: 'Dashboard - Visualizar', descricao: 'Visualizar dashboard', categoria: 'Dashboard' },
@@ -38,40 +38,42 @@ const PERMISSOES_DISPONIVEIS = [
     { id: 17, nome: 'Faturas - Processar', descricao: 'Processar faturamento', categoria: 'Faturamento' },
     { id: 18, nome: 'Faturas - Exportar RM', descricao: 'Exportar para RM', categoria: 'Faturamento' },
     { id: 19, nome: 'Faturas - Cancelar', descricao: 'Cancelar faturas', categoria: 'Faturamento' },
+    // 🔥 NOVA PERMISSÃO: CONFERÊNCIA DE FATURAMENTO
+    { id: 20, nome: 'Conferência - Visualizar', descricao: 'Visualizar conferência de faturamento', categoria: 'Faturamento' },
     
     // Importações
-    { id: 20, nome: 'Importações - Visualizar', descricao: 'Visualizar importações', categoria: 'Importações' },
-    { id: 21, nome: 'Importações - Incluir', descricao: 'Realizar importações', categoria: 'Importações' },
-    { id: 22, nome: 'Importações - Verificar', descricao: 'Verificar importações', categoria: 'Importações' },
-    { id: 23, nome: 'Importações - Corrigir', descricao: 'Corrigir divergências', categoria: 'Importações' },
+    { id: 21, nome: 'Importações - Visualizar', descricao: 'Visualizar importações', categoria: 'Importações' },
+    { id: 22, nome: 'Importações - Incluir', descricao: 'Realizar importações', categoria: 'Importações' },
+    { id: 23, nome: 'Importações - Verificar', descricao: 'Verificar importações', categoria: 'Importações' },
+    { id: 24, nome: 'Importações - Corrigir', descricao: 'Corrigir divergências', categoria: 'Importações' },
     
     // Integrações
-    { id: 24, nome: 'RM - Visualizar', descricao: 'Visualizar configurações RM', categoria: 'Integrações' },
-    { id: 25, nome: 'RM - Configurar', descricao: 'Editar configurações RM', categoria: 'Integrações' },
-    { id: 26, nome: 'RM - Executar', descricao: 'Executar integração RM', categoria: 'Integrações' },
+    { id: 25, nome: 'RM - Visualizar', descricao: 'Visualizar configurações RM', categoria: 'Integrações' },
+    { id: 26, nome: 'RM - Configurar', descricao: 'Editar configurações RM', categoria: 'Integrações' },
+    { id: 27, nome: 'RM - Executar', descricao: 'Executar integração RM', categoria: 'Integrações' },
     
     // Relatórios
-    { id: 27, nome: 'Relatórios - Visualizar', descricao: 'Visualizar relatórios', categoria: 'Relatórios' },
-    { id: 28, nome: 'Relatórios - Exportar', descricao: 'Exportar relatórios', categoria: 'Relatórios' },
-    { id: 29, nome: 'Logs - Visualizar', descricao: 'Visualizar logs do sistema', categoria: 'Relatórios' },
+    { id: 28, nome: 'Relatórios - Visualizar', descricao: 'Visualizar relatórios', categoria: 'Relatórios' },
+    { id: 29, nome: 'Relatórios - Exportar', descricao: 'Exportar relatórios', categoria: 'Relatórios' },
+    { id: 30, nome: 'Logs - Visualizar', descricao: 'Visualizar logs do sistema', categoria: 'Relatórios' },
     
     // Administração - Usuários
-    { id: 30, nome: 'Usuários - Visualizar', descricao: 'Visualizar usuários', categoria: 'Usuários' },
-    { id: 31, nome: 'Usuários - Incluir', descricao: 'Incluir usuários', categoria: 'Usuários' },
-    { id: 32, nome: 'Usuários - Alterar', descricao: 'Alterar usuários', categoria: 'Usuários' },
-    { id: 33, nome: 'Usuários - Excluir', descricao: 'Excluir usuários', categoria: 'Usuários' },
-    { id: 34, nome: 'Usuários - Bloquear', descricao: 'Bloquear/desbloquear usuários', categoria: 'Usuários' },
+    { id: 31, nome: 'Usuários - Visualizar', descricao: 'Visualizar usuários', categoria: 'Usuários' },
+    { id: 32, nome: 'Usuários - Incluir', descricao: 'Incluir usuários', categoria: 'Usuários' },
+    { id: 33, nome: 'Usuários - Alterar', descricao: 'Alterar usuários', categoria: 'Usuários' },
+    { id: 34, nome: 'Usuários - Excluir', descricao: 'Excluir usuários', categoria: 'Usuários' },
+    { id: 35, nome: 'Usuários - Bloquear', descricao: 'Bloquear/desbloquear usuários', categoria: 'Usuários' },
     
     // Administração - Perfis
-    { id: 35, nome: 'Perfis - Visualizar', descricao: 'Visualizar perfis', categoria: 'Perfis' },
-    { id: 36, nome: 'Perfis - Incluir', descricao: 'Incluir perfis', categoria: 'Perfis' },
-    { id: 37, nome: 'Perfis - Alterar', descricao: 'Alterar perfis', categoria: 'Perfis' },
-    { id: 38, nome: 'Perfis - Excluir', descricao: 'Excluir perfis', categoria: 'Perfis' },
-    { id: 39, nome: 'Perfis - Associar', descricao: 'Associar menus/permissões', categoria: 'Perfis' },
+    { id: 36, nome: 'Perfis - Visualizar', descricao: 'Visualizar perfis', categoria: 'Perfis' },
+    { id: 37, nome: 'Perfis - Incluir', descricao: 'Incluir perfis', categoria: 'Perfis' },
+    { id: 38, nome: 'Perfis - Alterar', descricao: 'Alterar perfis', categoria: 'Perfis' },
+    { id: 39, nome: 'Perfis - Excluir', descricao: 'Excluir perfis', categoria: 'Perfis' },
+    { id: 40, nome: 'Perfis - Associar', descricao: 'Associar menus/permissões', categoria: 'Perfis' },
     
     // Administração - Parâmetros
-    { id: 40, nome: 'Parâmetros - Visualizar', descricao: 'Visualizar parâmetros', categoria: 'Parâmetros' },
-    { id: 41, nome: 'Parâmetros - Alterar', descricao: 'Alterar parâmetros', categoria: 'Parâmetros' },
+    { id: 41, nome: 'Parâmetros - Visualizar', descricao: 'Visualizar parâmetros', categoria: 'Parâmetros' },
+    { id: 42, nome: 'Parâmetros - Alterar', descricao: 'Alterar parâmetros', categoria: 'Parâmetros' },
 ];
 
 // Agrupar permissões por categoria
@@ -91,7 +93,7 @@ export const PerfilForm: React.FC = () => {
     const [saving, setSaving] = useState(false);
     const [menus, setMenus] = useState<Menu[]>([]);
     const [expandedMenus, setExpandedMenus] = useState<Set<number>>(new Set());
-    const [expandedPermissoes, setExpandedPermissoes] = useState<Set<string>>(new Set(['Dashboard', 'Associados']));
+    const [expandedPermissoes, setExpandedPermissoes] = useState<Set<string>>(new Set(['Dashboard', 'Associados', 'Faturamento']));
     const [formData, setFormData] = useState({
         nome: '',
         descricao: '',

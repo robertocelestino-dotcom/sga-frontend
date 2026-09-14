@@ -19,7 +19,7 @@ import { Usuarios } from '../pages/admin/Usuarios';
 import { UsuarioForm } from '../pages/admin/UsuarioForm';
 import { Perfis } from '../pages/admin/Perfis';
 import { PerfilForm } from '../pages/admin/PerfilForm';
-
+import ConferenciaFaturamento from '../pages/faturamento/ConferenciaFaturamento';
 // Outras páginas (importar conforme necessário)
 // import Associados from '../pages/Associados';
 // import Produtos from '../pages/Produtos';

@@ -7,8 +7,8 @@ import ModalDetalheNotificacao from '../components/faturamento/ModalDetalheNotif
 import ConfirmModal from '../components/ui/ConfirmModal';
 import notificacaoService from '../services/notificacaoService';
 import api from '../services/api';
-import { PermissionGuard } from '../components/PermissionGuard'; // 🔥 ADICIONADO
-import { useAuthStore } from '../stores/authStore'; // 🔥 ADICIONADO
+import { PermissionGuard } from '../components/PermissionGuard';
+import { useAuthStore } from '../stores/authStore';
 
 interface Sincronizacao {
   id: number;
@@ -25,7 +25,7 @@ interface Sincronizacao {
 
 const Notificacoes: React.FC = () => {
   const { showToast } = useMessage();
-  const { hasPermission, user } = useAuthStore(); // 🔥 ADICIONADO
+  const { hasPermission, user } = useAuthStore();
   
   const [loading, setLoading] = useState(false);
   const [sincronizando, setSincronizando] = useState(false);
@@ -95,6 +95,13 @@ const Notificacoes: React.FC = () => {
   // Modal de Detalhes
   const [modalDetalheAberto, setModalDetalheAberto] = useState(false);
   const [notificacaoSelecionada, setNotificacaoSelecionada] = useState<any>(null);
+
+  // 🔥 VERIFICAR SE O USUÁRIO PODE SINCRONIZAR
+  const podeSincronizar = hasPermission('NOTIFICACAO_CREATE') || 
+                          user?.role === 'ADMIN' || 
+                          user?.role === 'SUPER_ADMIN' ||
+                          user?.role === 'ROLE_ADMIN' ||
+                          user?.role === 'ROLE_SUPER_ADMIN';
 
   // FORMATAR DATA PARA DD/MM/YYYY
   const formatarData = (data: Date): string => {
@@ -564,16 +571,11 @@ const Notificacoes: React.FC = () => {
   }, [historicoPagina]);
 
   // VERIFICAR SE BOTÃO SINCRONIZAR DEVE ESTAR DESABILITADO
-  const sincronizarDesabilitado = sincronizando || loading || carregandoMSSQL;
+  const sincronizarDesabilitado = sincronizando || loading || carregandoMSSQL || !podeSincronizar;
 
   // PAGINAÇÃO DO HISTÓRICO
   const historicoIndexUltimo = historicoPagina * itensPorPagina;
   const historicoIndexPrimeiro = historicoIndexUltimo - itensPorPagina;
-
-  // 🔥 VERIFICAR SE O USUÁRIO PODE SINCRONIZAR (APENAS ADMIN E SUPER_ADMIN)
-  const podeSincronizar = hasPermission('NOTIFICACAO_CREATE') || 
-                          user?.role === 'ADMIN' || 
-                          user?.role === 'SUPER_ADMIN';
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -600,188 +602,174 @@ const Notificacoes: React.FC = () => {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {/* 🔥 BOTÃO SINCRONIZAR - PERMISSION GUARD */}
-            <PermissionGuard 
-              requiredPermissions={['NOTIFICACAO_CREATE']}
-              fallback={
-                <div className="px-4 py-2 bg-gray-200 text-gray-500 rounded-lg flex items-center gap-2 cursor-not-allowed">
-                  <span>🔒</span>
-                  Sincronizar (Sem permissão)
-                </div>
-              }
+            {/* 🔥 BOTÃO SINCRONIZAR - CORRIGIDO */}
+            <button
+              onClick={openConfirmSincronizar}
+              disabled={sincronizarDesabilitado}
+              className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${
+                sincronizarDesabilitado 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }`}
+              title={podeSincronizar ? "Salvar dados na tabela local" : "Sem permissão para sincronizar"}
             >
-              <button
-                onClick={openConfirmSincronizar}
-                disabled={sincronizarDesabilitado}
-                className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${
-                  sincronizarDesabilitado 
-                    ? 'bg-gray-400 cursor-not-allowed' 
-                    : 'bg-blue-600 hover:bg-blue-700 text-white'
-                }`}
-                title="Salvar dados na tabela local"
-              >
-                {sincronizando ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Salvando...
-                  </>
-                ) : (
-                  <>
-                    <span>💾</span>
-                    Sincronizar
-                  </>
-                )}
-              </button>
-            </PermissionGuard>
+              {sincronizando ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <span>💾</span>
+                  Sincronizar
+                </>
+              )}
+            </button>
             
-            {/* 🔥 BOTÃO HISTÓRICO - PERMISSION GUARD */}
-            <PermissionGuard requiredPermissions={['NOTIFICACAO_VIEW']}>
-              <button
-                onClick={() => {
-                  setHistoricoAberto(!historicoAberto);
-                  if (!historicoAberto) {
-                    carregarHistorico();
-                  }
-                }}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
-              >
-                <span>📋</span>
-                {historicoAberto ? 'Ocultar Histórico' : 'Histórico'}
-              </button>
-            </PermissionGuard>
+            {/* 🔥 BOTÃO HISTÓRICO */}
+            <button
+              onClick={() => {
+                setHistoricoAberto(!historicoAberto);
+                if (!historicoAberto) {
+                  carregarHistorico();
+                }
+              }}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
+            >
+              <span>📋</span>
+              {historicoAberto ? 'Ocultar Histórico' : 'Histórico'}
+            </button>
           </div>
         </div>
 
-        {/* 🔥 HISTÓRICO DE SINCRONIZAÇÕES - PERMISSION GUARD */}
-        <PermissionGuard requiredPermissions={['NOTIFICACAO_VIEW']}>
-          {historicoAberto && (
-            <div className="mb-6 border rounded-lg overflow-hidden">
-              <div className="bg-gray-50 px-4 py-2 border-b flex justify-between items-center">
-                <h2 className="text-sm font-semibold text-gray-700">📋 Histórico de Sincronizações</h2>
-                <span className="text-xs text-gray-500">{historicoTotal} registros</span>
-              </div>
-              
-              {carregandoHistorico ? (
-                <div className="flex justify-center py-8">
-                  <Loading size="medium" />
-                </div>
-              ) : historico.length === 0 ? (
-                <div className="text-center py-8 text-gray-500 text-sm">
-                  Nenhuma sincronização realizada
-                </div>
-              ) : (
-                <>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Período</th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
-                          <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Assoc.</th>
-                          <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Reg.</th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Data Sinc.</th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                          <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Ações</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200 bg-white">
-                        {historico.map((sinc) => (
-                          <tr key={sinc.id} className="hover:bg-gray-50 transition-colors text-sm">
-                            <td className="px-3 py-2 font-mono text-gray-600">{sinc.id}</td>
-                            <td className="px-3 py-2 text-gray-600 whitespace-nowrap">
-                              {formatarDataExibicao(sinc.dataInicio)} à {formatarDataExibicao(sinc.dataFim)}
-                            </td>
-                            <td className="px-3 py-2 font-mono text-gray-600">
-                              {sinc.codigoAssociado || 'Todos'}
-                            </td>
-                            <td className="px-3 py-2 text-center font-medium">{sinc.totalAssociados}</td>
-                            <td className="px-3 py-2 text-center">{sinc.totalRegistros}</td>
-                            <td className="px-3 py-2 text-gray-500 text-xs whitespace-nowrap">
-                              {formatarDataHora(sinc.dataSincronizacao)}
-                            </td>
-                            <td className="px-3 py-2">
-                              <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
-                                sinc.status === 'CONCLUIDO' ? 'bg-green-100 text-green-800' :
-                                sinc.status === 'CANCELADO' ? 'bg-red-100 text-red-800' :
-                                'bg-yellow-100 text-yellow-800'
-                              }`}>
-                                {sinc.status || 'CONCLUIDO'}
-                              </span>
-                            </td>
-                            <td className="px-3 py-2 text-center">
-                              {sinc.status !== 'CANCELADO' && (
-                                <PermissionGuard requiredPermissions={['NOTIFICACAO_CREATE']}>
-                                  <button
-                                    onClick={() => openConfirmDesfazer(sinc)}
-                                    disabled={desfazendo}
-                                    className="px-2 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200 disabled:opacity-50 transition-colors text-xs flex items-center gap-1 mx-auto"
-                                  >
-                                    {desfazendo ? (
-                                      <>
-                                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600"></div>
-                                      </>
-                                    ) : (
-                                      '🗑️ Desfazer'
-                                    )}
-                                  </button>
-                                </PermissionGuard>
-                              )}
-                              {sinc.status === 'CANCELADO' && (
-                                <span className="text-xs text-gray-400">Cancelado</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  
-                  {historicoTotalPaginas > 1 && (
-                    <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-t bg-gray-50">
-                      <div className="text-xs text-gray-500">
-                        Mostrando {historicoIndexPrimeiro + 1} - {Math.min(historicoIndexUltimo, historicoTotal)} de {historicoTotal}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-1">
-                        <button
-                          onClick={() => setHistoricoPagina(1)}
-                          disabled={historicoPagina === 1}
-                          className="px-2 py-1 border rounded disabled:opacity-50 hover:bg-gray-100 text-xs"
-                        >
-                          ⏮️
-                        </button>
-                        <button
-                          onClick={() => setHistoricoPagina(p => Math.max(1, p - 1))}
-                          disabled={historicoPagina === 1}
-                          className="px-2 py-1 border rounded disabled:opacity-50 hover:bg-gray-100 text-xs"
-                        >
-                          ◀
-                        </button>
-                        <span className="px-2 py-1 text-xs text-gray-600">
-                          {historicoPagina} / {historicoTotalPaginas}
-                        </span>
-                        <button
-                          onClick={() => setHistoricoPagina(p => Math.min(historicoTotalPaginas, p + 1))}
-                          disabled={historicoPagina === historicoTotalPaginas}
-                          className="px-2 py-1 border rounded disabled:opacity-50 hover:bg-gray-100 text-xs"
-                        >
-                          ▶
-                        </button>
-                        <button
-                          onClick={() => setHistoricoPagina(historicoTotalPaginas)}
-                          disabled={historicoPagina === historicoTotalPaginas}
-                          className="px-2 py-1 border rounded disabled:opacity-50 hover:bg-gray-100 text-xs"
-                        >
-                          ⏭️
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
+        {/* 🔥 HISTÓRICO DE SINCRONIZAÇÕES */}
+        {historicoAberto && (
+          <div className="mb-6 border rounded-lg overflow-hidden">
+            <div className="bg-gray-50 px-4 py-2 border-b flex justify-between items-center">
+              <h2 className="text-sm font-semibold text-gray-700">📋 Histórico de Sincronizações</h2>
+              <span className="text-xs text-gray-500">{historicoTotal} registros</span>
             </div>
-          )}
-        </PermissionGuard>
+            
+            {carregandoHistorico ? (
+              <div className="flex justify-center py-8">
+                <Loading size="medium" />
+              </div>
+            ) : historico.length === 0 ? (
+              <div className="text-center py-8 text-gray-500 text-sm">
+                Nenhuma sincronização realizada
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Período</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
+                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Assoc.</th>
+                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Reg.</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Data Sinc.</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 bg-white">
+                      {historico.map((sinc) => (
+                        <tr key={sinc.id} className="hover:bg-gray-50 transition-colors text-sm">
+                          <td className="px-3 py-2 font-mono text-gray-600">{sinc.id}</td>
+                          <td className="px-3 py-2 text-gray-600 whitespace-nowrap">
+                            {formatarDataExibicao(sinc.dataInicio)} à {formatarDataExibicao(sinc.dataFim)}
+                          </td>
+                          <td className="px-3 py-2 font-mono text-gray-600">
+                            {sinc.codigoAssociado || 'Todos'}
+                          </td>
+                          <td className="px-3 py-2 text-center font-medium">{sinc.totalAssociados}</td>
+                          <td className="px-3 py-2 text-center">{sinc.totalRegistros}</td>
+                          <td className="px-3 py-2 text-gray-500 text-xs whitespace-nowrap">
+                            {formatarDataHora(sinc.dataSincronizacao)}
+                          </td>
+                          <td className="px-3 py-2">
+                            <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
+                              sinc.status === 'CONCLUIDO' ? 'bg-green-100 text-green-800' :
+                              sinc.status === 'CANCELADO' ? 'bg-red-100 text-red-800' :
+                              'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {sinc.status || 'CONCLUIDO'}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            {sinc.status !== 'CANCELADO' && (
+                              <PermissionGuard requiredPermissions={['NOTIFICACAO_CREATE']}>
+                                <button
+                                  onClick={() => openConfirmDesfazer(sinc)}
+                                  disabled={desfazendo}
+                                  className="px-2 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200 disabled:opacity-50 transition-colors text-xs flex items-center gap-1 mx-auto"
+                                >
+                                  {desfazendo ? (
+                                    <>
+                                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600"></div>
+                                    </>
+                                  ) : (
+                                    '🗑️ Desfazer'
+                                  )}
+                                </button>
+                              </PermissionGuard>
+                            )}
+                            {sinc.status === 'CANCELADO' && (
+                              <span className="text-xs text-gray-400">Cancelado</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                
+                {historicoTotalPaginas > 1 && (
+                  <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-t bg-gray-50">
+                    <div className="text-xs text-gray-500">
+                      Mostrando {historicoIndexPrimeiro + 1} - {Math.min(historicoIndexUltimo, historicoTotal)} de {historicoTotal}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1">
+                      <button
+                        onClick={() => setHistoricoPagina(1)}
+                        disabled={historicoPagina === 1}
+                        className="px-2 py-1 border rounded disabled:opacity-50 hover:bg-gray-100 text-xs"
+                      >
+                        ⏮️
+                      </button>
+                      <button
+                        onClick={() => setHistoricoPagina(p => Math.max(1, p - 1))}
+                        disabled={historicoPagina === 1}
+                        className="px-2 py-1 border rounded disabled:opacity-50 hover:bg-gray-100 text-xs"
+                      >
+                        ◀
+                      </button>
+                      <span className="px-2 py-1 text-xs text-gray-600">
+                        {historicoPagina} / {historicoTotalPaginas}
+                      </span>
+                      <button
+                        onClick={() => setHistoricoPagina(p => Math.min(historicoTotalPaginas, p + 1))}
+                        disabled={historicoPagina === historicoTotalPaginas}
+                        className="px-2 py-1 border rounded disabled:opacity-50 hover:bg-gray-100 text-xs"
+                      >
+                        ▶
+                      </button>
+                      <button
+                        onClick={() => setHistoricoPagina(historicoTotalPaginas)}
+                        disabled={historicoPagina === historicoTotalPaginas}
+                        className="px-2 py-1 border rounded disabled:opacity-50 hover:bg-gray-100 text-xs"
+                      >
+                        ⏭️
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         {/* 🔥 STATUS DE SINCRONIZAÇÃO */}
         {sincronizacaoRealizada && (

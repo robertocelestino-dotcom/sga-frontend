@@ -135,6 +135,14 @@ export const reguaFaturamentoService = {
   },
 
   /**
+   * 🔥 LISTA RÉGUAS - ALIAS PARA listar (COMPATIBILIDADE)
+   * Este método é chamado pela ConferenciaFaturamento.tsx
+   */
+  async listarReguas(page: number = 0, size: number = 100): Promise<PaginatedResponse<ReguaFaturamento>> {
+    return this.listar({ page, size });
+  },
+
+  /**
    * 🔥 LISTA TODAS AS RÉGUAS ATIVAS
    */
   async listarAtivos(): Promise<ReguaFaturamento[]> {
@@ -151,6 +159,13 @@ export const reguaFaturamentoService = {
         return [];
       }
     }
+  },
+
+  /**
+   * 🔥 LISTA RÉGUAS ATIVAS - ALIAS PARA listarAtivos (COMPATIBILIDADE)
+   */
+  async listarReguasAtivas(): Promise<ReguaFaturamento[]> {
+    return this.listarAtivos();
   },
 
   /**

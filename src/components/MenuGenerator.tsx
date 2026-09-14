@@ -39,7 +39,8 @@ const IconMap: Record<string, string> = {
     'Sliders': '🎛️',
     'PlusCircle': '➕',
     'Circle': '⬤',
-    'ChevronDown': '▼'
+    'ChevronDown': '▼',
+    'ClipboardCheck': '📋✅'  // 🔥 NOVO ÍCONE PARA CONFERÊNCIA
 };
 
 const getIcon = (iconName: string): string => {
@@ -49,6 +50,17 @@ const getIcon = (iconName: string): string => {
 export const MenuGenerator = () => {
     const { buildMenuTree } = useAuthStore();
     const menuTree = buildMenuTree();
+
+    console.log('🔍 MENU DEBUG:', {
+        user,
+        role: user?.role,
+        perfil: user?.perfil,
+        hasPermission: typeof hasPermission,
+        menuTreeLength: menuTree?.length,
+        menuTreeSample: menuTree?.[0]
+    });
+
+    
     const location = useLocation();
     const [expandedMenus, setExpandedMenus] = useState<Set<number>>(new Set());
 
@@ -137,9 +149,44 @@ export const MenuGenerator = () => {
         });
     };
 
-    if (!menuTree || menuTree.length === 0) {
+    // 🔥 FILTRAR MENUS BASEADO NAS PERMISSÕES DO USUÁRIO
+    const filterMenuByPermissions = (items: any[]): any[] => {
+        const { hasPermission, user } = useAuthStore();
+        
+        // SUPER_ADMIN e ADMIN sempre veem todos os menus
+        const isSuperAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'ROLE_SUPER_ADMIN';
+        const isAdmin = user?.role === 'ADMIN' || user?.role === 'ROLE_ADMIN';
+        
+        if (isSuperAdmin || isAdmin) {
+            return items;
+        }
+
+        return items
+            .map(item => {
+                // Se o item tem permissão e o usuário não tem, ignorar
+                if (item.permissao && !hasPermission(item.permissao)) {
+                    return null;
+                }
+                
+                // Se tem submenus, filtrar recursivamente
+                if (item.subMenus && item.subMenus.length > 0) {
+                    const filteredChildren = filterMenuByPermissions(item.subMenus);
+                    if (filteredChildren.length === 0) {
+                        return null;
+                    }
+                    return { ...item, subMenus: filteredChildren };
+                }
+                
+                return item;
+            })
+            .filter(item => item !== null);
+    };
+
+    const filteredMenuTree = filterMenuByPermissions(menuTree);
+
+    if (!filteredMenuTree || filteredMenuTree.length === 0) {
         return <div className="menu-empty">Nenhum menu disponível</div>;
     }
 
-    return <nav className="menu-container">{renderMenu(menuTree)}</nav>;
+    return <nav className="menu-container">{renderMenu(filteredMenuTree)}</nav>;
 };
