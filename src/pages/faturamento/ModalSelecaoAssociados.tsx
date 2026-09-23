@@ -1,45 +1,38 @@
 // src/components/faturamento/ModalSelecaoAssociados.tsx
+// 🚨 VERSÃO 2.0 — Filtro de associados com nota no período
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import Modal from '../ui/Modal';
+import React, { useState, useEffect, useCallback } from 'react';
+import api from '../../services/api';
 import { useMessage } from '../../providers/MessageProvider';
 import Loading from '../Loading';
-import { reguaFaturamentoService } from '../../services/reguaFaturamentoService';
 
-// 🔥 HOOK useDebounce
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+console.log('🚨🚨🚨 ModalSelecaoAssociados CARREGADO — VERSÃO 2.0 🚨🚨🚨');
 
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
+interface AssociadoResumo {
+  id: number;
+  nomeRazao: string;
+  cnpjCpf: string;
+  codigoSpc?: string;
+  status: string;
+  planoId?: number;
+  planoTitulo?: string;
+  vendedorNome?: string;
 }
 
 interface ReguaFaturamento {
   id: number;
   nome: string;
   descricao: string;
+  ativa: boolean;
   diaEmissao: number;
-  diaVencimento: number;
-  ativo: boolean;
 }
 
-interface AssociadoResumo {
-  id: number;
-  nomeRazao: string;
-  cnpjCpf?: string;
-  cidade?: string;
-  uf?: string;
-  status?: string;
-  codigoSpc?: string;
+interface ModalSelecaoAssociadosProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: (associadosIds: number[], config: ProcessamentoConfig) => void;
+  onSimulate?: (associadosIds: number[], config: ProcessamentoConfig) => void;
+  titulo?: string;
 }
 
 interface ProcessamentoConfig {
@@ -50,758 +43,676 @@ interface ProcessamentoConfig {
   integrarRM: boolean;
 }
 
-interface ModalSelecaoAssociadosProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: (associadosIds: number[], config: ProcessamentoConfig) => void;
-  onSimulate?: (associadosIds: number[], config: ProcessamentoConfig) => void;
-}
+const PAGE_SIZE = 15;
 
-// 🔥 CONSTANTES
-const ITENS_POR_PAGINA = 20;
-const MAX_SELECAO = 5000;
+// Nome exato da régua de faturamento consolidado (ajuste conforme seu banco)
+const REGUA_CONSOLIDADO_NOME = "Faturamento Consolidado";
 
 const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
   isOpen,
   onClose,
   onConfirm,
-  onSimulate
+  onSimulate,
+  titulo = 'Selecionar Associados para Faturamento'
 }) => {
   const { showToast } = useMessage();
   
-  // ============================================
-  // ESTADOS PRINCIPAIS
-  // ============================================
+  // ============================================================
+  // ESTADOS
+  // ============================================================
   
-  // Réguas
-  const [reguas, setReguas] = useState<ReguaFaturamento[]>([]);
-  const [reguaSelecionada, setReguaSelecionada] = useState<number | undefined>(undefined);
-  const [carregandoReguas, setCarregandoReguas] = useState(false);
-  
-  // Associados
   const [associados, setAssociados] = useState<AssociadoResumo[]>([]);
-  const [associadosSelecionados, setAssociadosSelecionados] = useState<Set<number>>(new Set());
+  const [reguas, setReguas] = useState<ReguaFaturamento[]>([]);
+  const [loading, setLoading] = useState(false);
   const [carregandoAssociados, setCarregandoAssociados] = useState(false);
   
-  // Paginação
-  const [paginaAtual, setPaginaAtual] = useState(1);
-  const [totalAssociados, setTotalAssociados] = useState(0);
-  const [totalPaginas, setTotalPaginas] = useState(0);
-  
-  // 🔥 FILTROS
+  // Filtros
   const [filtroNome, setFiltroNome] = useState('');
-  const [filtroCnpj, setFiltroCnpj] = useState('');
-  const [filtroStatus, setFiltroStatus] = useState<string>('A');
+  const [filtroCnpjCpf, setFiltroCnpjCpf] = useState('');
+  const [reguaSelecionadaId, setReguaSelecionadaId] = useState<number | undefined>(undefined);
+  const [reguaSelecionadaNome, setReguaSelecionadaNome] = useState<string>('');
   
-  // 🔥 Debounce para filtros
-  const nomeDebounced = useDebounce(filtroNome, 500);
-  const cnpjDebounced = useDebounce(filtroCnpj, 500);
+  // Seleção
+  const [associadosSelecionados, setAssociadosSelecionados] = useState<Set<number>>(new Set());
+  const [selecionarTodos, setSelecionarTodos] = useState(false);
+  const [todosIdsAssociados, setTodosIdsAssociados] = useState<number[]>([]);
   
-  // Configurações de processamento
-  const [mesReferencia, setMesReferencia] = useState<number>(new Date().getMonth() + 1);
-  const [anoReferencia, setAnoReferencia] = useState<number>(new Date().getFullYear());
-  const [gerarNotas, setGerarNotas] = useState<boolean>(true);
-  const [integrarRM, setIntegrarRM] = useState<boolean>(false);
+  // Configuração do processamento
+  const [configProcessamento, setConfigProcessamento] = useState<ProcessamentoConfig>({
+    mesReferencia: new Date().getMonth() + 1,
+    anoReferencia: new Date().getFullYear(),
+    gerarNotas: true,
+    integrarRM: false,
+    reguaId: undefined
+  });
   
-  // Estados de UI
-  const [modoSimulacao, setModoSimulacao] = useState(false);
-  const [processando, setProcessando] = useState(false);
-
-  // ============================================
-  // MEMO: Mês Anterior
-  // ============================================
+  // Paginação
+  const [pagina, setPagina] = useState(0);
+  const [totalPaginas, setTotalPaginas] = useState(0);
+  const [totalItens, setTotalItens] = useState(0);
   
-  const mesAnterior = useMemo(() => {
-    const data = new Date();
-    data.setMonth(data.getMonth() - 1);
-    return { mes: data.getMonth() + 1, ano: data.getFullYear() };
-  }, []);
-
-  // ============================================
+  // 🔥 NOVO: Quantidade de associados sem nota (excluídos pelo filtro)
+  const [totalSemNota, setTotalSemNota] = useState(0);
+  
+  // ============================================================
+  // HELPERS
+  // ============================================================
+  
+  // Verificar se a régua selecionada é a de faturamento consolidado
+  const isReguaConsolidado = useCallback(() => {
+    return reguaSelecionadaNome === REGUA_CONSOLIDADO_NOME;
+  }, [reguaSelecionadaNome]);
+  
+  // ============================================================
   // CARREGAR RÉGUAS
-  // ============================================
+  // ============================================================
   
   const carregarReguas = useCallback(async () => {
-    setCarregandoReguas(true);
+    setLoading(true);
     try {
-      const response = await reguaFaturamentoService.listarAtivos();
-      setReguas(response || []);
-      console.log(`📋 ${response?.length || 0} réguas carregadas`);
-    } catch (error: any) {
-      console.error('❌ Erro ao carregar réguas:', error);
+      const response = await api.get('/regua-faturamento/ativas');
+      setReguas(response.data);
+      
+      if (response.data.length > 0 && !reguaSelecionadaId) {
+        setReguaSelecionadaId(response.data[0].id);
+        setReguaSelecionadaNome(response.data[0].nome);
+        setConfigProcessamento(prev => ({ ...prev, reguaId: response.data[0].id }));
+      }
+    } catch (error) {
+      console.error('Erro ao carregar réguas:', error);
       showToast('Erro ao carregar réguas de faturamento', 'error');
     } finally {
-      setCarregandoReguas(false);
+      setLoading(false);
     }
-  }, [showToast]);
-
-  // ============================================
-  // 🔥 CARREGAR ASSOCIADOS - USANDO O SERVICE
-  // ============================================
+  }, [reguaSelecionadaId, showToast]);
   
-  const carregarAssociadosPorRegua = useCallback(async () => {
-    if (!reguaSelecionada) {
-      console.log('⚠️ Nenhuma régua selecionada');
-      return;
-    }
-
-    console.log(`🔍 Buscando associados CONSOLIDADOS (com nota) - Régua: ${reguaSelecionada}, Página: ${paginaAtual}`);
-    console.log(`   Filtros: Nome="${nomeDebounced}", CNPJ="${cnpjDebounced}", Status="${filtroStatus}"`);
-    
-    setCarregandoAssociados(true);
-    
-    try {
-      // 🔥 USANDO O SERVICE - NUNCA CHAMA /todos-ids
-      const response = await reguaFaturamentoService.listarAssociadosPorRegua(reguaSelecionada, {
-        page: paginaAtual - 1,
-        size: ITENS_POR_PAGINA,
-        nome: nomeDebounced.trim() || undefined,
-        cnpjCpf: cnpjDebounced.trim().replace(/[^0-9]/g, '') || undefined,
-        status: filtroStatus !== 'TODOS' ? filtroStatus : undefined
-      });
-      
-      console.log('📥 RESPOSTA DO SERVICE:', {
-        contentLength: response.content?.length || 0,
-        totalElements: response.totalElements,
-        totalPages: response.totalPages,
-        page: response.number,
-        size: response.size
-      });
-      
-      const content = response.content || [];
-      const totalElements = response.totalElements || 0;
-      const totalPages = response.totalPages || 0;
-      
-      // 🔥 ATUALIZAR TOTAL COM O VALOR CORRETO
-      console.log(`✅ Atualizando totalAssociados de ${totalAssociados} para ${totalElements}`);
-      setTotalAssociados(totalElements);
-      setTotalPaginas(totalPages);
-      
-      const associadosFormatados = content.map((item: any) => ({
-        id: item.id,
-        codigoSpc: item.codigoSpc || '-',
-        nomeRazao: item.nomeRazao || '-',
-        cnpjCpf: item.cnpjCpf || '-',
-        cidade: item.cidade || '',
-        uf: item.uf || '',
-        status: item.status === 'A' ? 'ATIVO' : 
-                item.status === 'I' ? 'INATIVO' :
-                item.status === 'S' ? 'SUSPENSO' : 'ATIVO'
-      }));
-      
-      setAssociados(associadosFormatados);
-      
-      // 🔥 ATUALIZAR SELEÇÃO - Remover IDs que não estão mais na lista
-      const idsAtuais = new Set(associadosFormatados.map(a => a.id));
-      setAssociadosSelecionados(prev => {
-        const novosSelecionados = new Set(prev);
-        for (const id of novosSelecionados) {
-          if (!idsAtuais.has(id)) {
-            novosSelecionados.delete(id);
-          }
-        }
-        return novosSelecionados;
-      });
-      
-    } catch (error: any) {
-      console.error('❌ Erro ao carregar associados:', error);
-      showToast('Erro ao carregar associados da régua', 'error');
+  // ============================================================
+  // 🔥 CARREGAR ASSOCIADOS — VERSÃO 2.0
+  // ============================================================
+  
+  const carregarAssociados = useCallback(async () => {
+    if (!reguaSelecionadaId) {
       setAssociados([]);
-      setTotalAssociados(0);
+      setTotalItens(0);
       setTotalPaginas(0);
-    } finally {
-      setCarregandoAssociados(false);
-    }
-  }, [reguaSelecionada, paginaAtual, nomeDebounced, cnpjDebounced, filtroStatus, totalAssociados, showToast]);
-
-  // ============================================
-  // 🔥 SELECIONAR TODOS - USANDO O MÉTODO CORRETO
-  // ============================================
-  
-  const handleSelecionarTodos = useCallback(async () => {
-    if (!reguaSelecionada) {
-      showToast('⚠️ Selecione uma régua primeiro', 'warning');
+      setTodosIdsAssociados([]);
+      setTotalSemNota(0);
       return;
     }
-
-    console.log(`📊 totalAssociados atual: ${totalAssociados}`);
     
-    if (totalAssociados === 0) {
-      showToast('⚠️ Nenhum associado com nota de débito encontrado', 'warning');
-      return;
-    }
-
-    if (totalAssociados > MAX_SELECAO) {
-      showToast(`⚠️ Muitos associados (${totalAssociados}). Máximo de ${MAX_SELECAO} por vez.`, 'warning');
-      return;
-    }
-
     setCarregandoAssociados(true);
     
     try {
-      console.log(`📥 Buscando TODOS os IDs CONSOLIDADOS (com nota) da régua ${reguaSelecionada}...`);
+      const isConsolidado = reguaSelecionadaNome === REGUA_CONSOLIDADO_NOME;
       
-      // 🔥 USAR O MÉTODO CORRETO - listarTodosIdsConsolidados
-      // AGORA RETORNA APENAS 2443 IDs (não 3071)
-      const allIds = await reguaFaturamentoService.listarTodosIdsConsolidados(reguaSelecionada);
+      console.log('🔍 [CARREGAR] Iniciando:', {
+        reguaSelecionadaId,
+        reguaSelecionadaNome,
+        isConsolidado,
+        pagina,
+        filtroNome,
+        filtroCnpjCpf,
+        mes: configProcessamento.mesReferencia,
+        ano: configProcessamento.anoReferencia
+      });
       
-      console.log(`✅ Total de IDs carregados: ${allIds.length} (esperado: ${totalAssociados})`);
+      let response;
+      let idsResponse;
       
-      // 🔥 Verificar se todos já estão selecionados
-      const todosJaSelecionados = allIds.every(id => associadosSelecionados.has(id));
-      
-      if (todosJaSelecionados) {
-        setAssociadosSelecionados(new Set());
-        showToast(`✅ ${allIds.length} associados desmarcados`, 'info');
+      // ============================================================
+      // 🔥 REGRA CONSOLIDADO (comportamento original mantido)
+      // ============================================================
+      if (isConsolidado) {
+        console.log('📌 [CARREGAR] Régua CONSOLIDADO selecionada — usando endpoint original');
+        
+        const params = new URLSearchParams();
+        params.append('page', pagina.toString());
+        params.append('size', PAGE_SIZE.toString());
+        if (filtroNome) params.append('nome', filtroNome);
+        if (filtroCnpjCpf) params.append('cnpjCpf', filtroCnpjCpf);
+        
+        response = await api.get(`/regua-faturamento/${reguaSelecionadaId}/associados-consolidado/paginado`, {
+          params: {
+            page: pagina,
+            size: PAGE_SIZE,
+            nome: filtroNome || undefined,
+            cnpjCpf: filtroCnpjCpf || undefined
+          }
+        });
+        
+        idsResponse = await api.get(`/regua-faturamento/${reguaSelecionadaId}/associados-consolidado/todos-ids`);
+        
+        setTotalSemNota(0);
+        
+        console.log('📊 [CARREGAR] Consolidado retornou:', {
+          pagina: response.data.content.length,
+          totalIds: idsResponse.data?.length || 0
+        });
+        
       } else {
-        setAssociadosSelecionados(new Set(allIds));
-        showToast(`✅ ${allIds.length} associados selecionados`, 'success');
+        // ============================================================
+        // 🔥 REGRA NORMAL — FILTRAR ASSOCIADOS COM NOTA NO PERÍODO
+        // ============================================================
+        console.log('🔥 [CARREGAR] Régua NORMAL — aplicando filtro por nota');
+        
+        // Calcular período (dia 1 ao último dia do mês)
+        const { mesReferencia, anoReferencia } = configProcessamento;
+        const dataInicio = `${anoReferencia}-${String(mesReferencia).padStart(2, '0')}-01`;
+        const ultimoDia = new Date(anoReferencia, mesReferencia, 0).getDate();
+        const dataFim = `${anoReferencia}-${String(mesReferencia).padStart(2, '0')}-${String(ultimoDia).padStart(2, '0')}`;
+        
+        console.log('🔥 [CARREGAR] Período calculado:', { dataInicio, dataFim });
+        
+        // 🔥 CHAMAR NOVO ENDPOINT que filtra por nota
+        const responseFiltro = await api.get('/faturamento/associados-da-regua', {
+          params: {
+            reguaId: reguaSelecionadaId,
+            dataInicio,
+            dataFim,
+            somenteComNota: true
+          }
+        });
+        
+        console.log('🔥 [CARREGAR] Resposta do backend:', {
+          total: responseFiltro.data.total,
+          totalSemNota: responseFiltro.data.totalSemNota,
+          tempoMs: responseFiltro.data.tempoMs,
+          primeiros3: responseFiltro.data.associados?.slice(0, 3)?.map((a: any) => ({
+            id: a.id,
+            nome: a.nomeRazao
+          }))
+        });
+        
+        // Lista completa
+        let listaCompleta = responseFiltro.data.associados || [];
+        const totalSemNotaCalculado = responseFiltro.data.totalSemNota || 0;
+        
+        console.log(`📊 [CARREGAR] ${listaCompleta.length} associados com nota`);
+        
+        // Aplicar filtros locais (nome, cnpj)
+        if (filtroNome) {
+          const nomeLower = filtroNome.toLowerCase();
+          listaCompleta = listaCompleta.filter((a: any) => 
+            a.nomeRazao?.toLowerCase().includes(nomeLower)
+          );
+        }
+        if (filtroCnpjCpf) {
+          listaCompleta = listaCompleta.filter((a: any) => 
+            a.cnpjCpf?.includes(filtroCnpjCpf)
+          );
+        }
+        
+        // Todos os IDs (lista filtrada completa, SEM paginação)
+        const todosIds = listaCompleta.map((a: any) => a.id);
+        
+        // Paginação local
+        const totalElements = listaCompleta.length;
+        const totalPages = Math.max(1, Math.ceil(totalElements / PAGE_SIZE));
+        const inicio = pagina * PAGE_SIZE;
+        const fim = inicio + PAGE_SIZE;
+        const paginaAtual = listaCompleta.slice(inicio, fim);
+        
+        console.log('🔥 [CARREGAR] Paginação local:', {
+          totalElements,
+          totalPages,
+          paginaAtual: paginaAtual.length,
+          todosIds: todosIds.length
+        });
+        
+        // Montar response no formato esperado
+        response = {
+          data: {
+            content: paginaAtual,
+            totalPages,
+            totalElements
+          }
+        };
+        
+        idsResponse = {
+          data: todosIds
+        };
+        
+        setTotalSemNota(totalSemNotaCalculado);
       }
       
+      // ============================================================
+      // ATUALIZAR ESTADOS
+      // ============================================================
+      
+      setAssociados(response.data.content);
+      setTotalPaginas(response.data.totalPages);
+      setTotalItens(response.data.totalElements);
+      
+      const idsFinal = idsResponse.data || [];
+      setTodosIdsAssociados(idsFinal);
+      
+      console.log('✅ [CARREGAR] Estados atualizados:', {
+        associados: response.data.content.length,
+        totalPaginas: response.data.totalPages,
+        totalItens: response.data.totalElements,
+        todosIdsAssociados: idsFinal.length
+      });
+      
     } catch (error) {
-      console.error('❌ Erro ao selecionar todos:', error);
-      showToast('❌ Erro ao carregar todos os associados', 'error');
+      console.error('❌ [CARREGAR] Erro:', error);
+      showToast('Erro ao carregar lista de associados', 'error');
+      
+      // Limpar estados em caso de erro
+      setAssociados([]);
+      setTotalPaginas(0);
+      setTotalItens(0);
+      setTodosIdsAssociados([]);
+      setTotalSemNota(0);
     } finally {
       setCarregandoAssociados(false);
     }
-  }, [reguaSelecionada, totalAssociados, associadosSelecionados, showToast]);
-
-  // ============================================
-  // EFEITOS
-  // ============================================
+  }, [pagina, filtroNome, filtroCnpjCpf, reguaSelecionadaId, reguaSelecionadaNome, showToast, configProcessamento]);
   
-  // 🔥 Abrir modal
+  // ============================================================
+  // EFEITOS
+  // ============================================================
+  
+  // Efeito 1: Carregar réguas ao abrir
   useEffect(() => {
     if (isOpen) {
-      console.log('📂 Modal aberto');
       carregarReguas();
-      
-      // Resetar estados
-      setReguaSelecionada(undefined);
-      setAssociados([]);
-      setAssociadosSelecionados(new Set());
-      setFiltroNome('');
-      setFiltroCnpj('');
-      setFiltroStatus('A');
-      setPaginaAtual(1);
-      setTotalAssociados(0);
-      setTotalPaginas(0);
-      setMesReferencia(mesAnterior.mes);
-      setAnoReferencia(mesAnterior.ano);
-      setGerarNotas(true);
-      setIntegrarRM(false);
     }
-  }, [isOpen, carregarReguas, mesAnterior]);
-
-  // 🔥 Carregar quando régua mudar
-  useEffect(() => {
-    if (reguaSelecionada) {
-      setPaginaAtual(1);
-      carregarAssociadosPorRegua();
-    }
-  }, [reguaSelecionada]);
-
-  // 🔥 Recarregar quando filtros mudarem (com debounce)
-  useEffect(() => {
-    if (reguaSelecionada) {
-      if (paginaAtual !== 1) {
-        setPaginaAtual(1);
-      } else {
-        carregarAssociadosPorRegua();
-      }
-    }
-  }, [nomeDebounced, cnpjDebounced, filtroStatus]);
-
-  // 🔥 Recarregar quando página mudar
-  useEffect(() => {
-    if (reguaSelecionada && paginaAtual > 0) {
-      carregarAssociadosPorRegua();
-    }
-  }, [paginaAtual]);
-
-  // ============================================
-  // HANDLERS DE SELEÇÃO
-  // ============================================
+  }, [isOpen, carregarReguas]);
   
-  const toggleAssociado = useCallback((id: number) => {
-    setAssociadosSelecionados(prev => {
-      const novos = new Set(prev);
-      if (novos.has(id)) {
-        novos.delete(id);
-      } else {
-        novos.add(id);
-      }
-      return novos;
-    });
-  }, []);
-
-  const handleSelecionarPagina = useCallback(() => {
-    const idsPagina = associados.map(a => a.id);
-    const todosSelecionados = idsPagina.every(id => associadosSelecionados.has(id));
-    
-    setAssociadosSelecionados(prev => {
-      const novos = new Set(prev);
-      if (todosSelecionados) {
-        idsPagina.forEach(id => novos.delete(id));
-      } else {
-        idsPagina.forEach(id => novos.add(id));
-      }
-      return novos;
-    });
-  }, [associados, associadosSelecionados]);
-
-  const handleLimparSelecao = useCallback(() => {
+  // Efeito 2: Reset de paginação quando muda régua ou período
+  useEffect(() => {
+    if (isOpen && reguaSelecionadaId) {
+      setPagina(0);
+    }
+  }, [isOpen, reguaSelecionadaId, configProcessamento.mesReferencia, configProcessamento.anoReferencia]);
+  
+  // Efeito 3: Carregar associados quando muda régua, página ou período
+  useEffect(() => {
+    if (isOpen && reguaSelecionadaId) {
+      carregarAssociados();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, reguaSelecionadaId, pagina, configProcessamento.mesReferencia, configProcessamento.anoReferencia]);
+  
+  // Efeito 4: Reset de seleção quando muda régua
+  useEffect(() => {
     setAssociadosSelecionados(new Set());
-  }, []);
-
-  const limparFiltros = useCallback(() => {
+    setSelecionarTodos(false);
+  }, [reguaSelecionadaId]);
+  
+  // ============================================================
+  // AÇÕES
+  // ============================================================
+  
+  const toggleSelecionarAssociado = (id: number) => {
+    const novosSelecionados = new Set(associadosSelecionados);
+    if (novosSelecionados.has(id)) {
+      novosSelecionados.delete(id);
+    } else {
+      novosSelecionados.add(id);
+    }
+    setAssociadosSelecionados(novosSelecionados);
+    const todosDaPaginaSelecionados = associados.length > 0 && 
+      associados.every(a => novosSelecionados.has(a.id));
+    setSelecionarTodos(todosDaPaginaSelecionados);
+  };
+  
+  const toggleSelecionarTodos = () => {
+    if (selecionarTodos) {
+      setAssociadosSelecionados(new Set());
+      setSelecionarTodos(false);
+    } else {
+      const novosSelecionados = new Set(todosIdsAssociados);
+      setAssociadosSelecionados(novosSelecionados);
+      setSelecionarTodos(true);
+      console.log(`✅ Selecionados ${novosSelecionados.size} associados`);
+    }
+  };
+  
+  const limparFiltros = () => {
     setFiltroNome('');
-    setFiltroCnpj('');
-    setFiltroStatus('A');
-    setPaginaAtual(1);
-  }, []);
-
-  // ============================================
-  // HANDLERS DE EXECUÇÃO
-  // ============================================
+    setFiltroCnpjCpf('');
+    setPagina(0);
+  };
   
-  const handleExecutar = useCallback(async (simular: boolean) => {
-    const ids = Array.from(associadosSelecionados);
-    
-    if (!reguaSelecionada) {
-      showToast('⚠️ Selecione uma régua de faturamento', 'warning');
+  const aplicarFiltros = () => {
+    setPagina(0);
+    carregarAssociados();
+  };
+  
+  const handleConfirm = () => {
+    if (associadosSelecionados.size === 0) {
+      showToast('Selecione pelo menos um associado para processar', 'warning');
       return;
     }
-    
-    if (ids.length === 0) {
-      showToast('⚠️ Selecione pelo menos um associado', 'warning');
+    onConfirm(Array.from(associadosSelecionados), configProcessamento);
+  };
+  
+  const handleSimulate = () => {
+    if (associadosSelecionados.size === 0) {
+      showToast('Selecione pelo menos um associado para simular', 'warning');
       return;
     }
-
-    if (ids.length > MAX_SELECAO) {
-      showToast(`⚠️ Máximo de ${MAX_SELECAO} associados por vez.`, 'warning');
-      return;
+    if (onSimulate) {
+      onSimulate(Array.from(associadosSelecionados), configProcessamento);
     }
-
-    setProcessando(true);
-    setModoSimulacao(simular);
-
-    try {
-      const config: ProcessamentoConfig = {
-        reguaId: reguaSelecionada,
-        mesReferencia,
-        anoReferencia,
-        gerarNotas: !simular ? gerarNotas : false,
-        integrarRM: !simular ? integrarRM : false
-      };
-
-      console.log(`📤 ${simular ? '🔍 Simulando' : '🚀 Processando'} ${ids.length} associados...`);
-
-      if (simular && onSimulate) {
-        await onSimulate(ids, config);
-      } else {
-        await onConfirm(ids, config);
-      }
-      
-      onClose();
-      
-    } catch (error) {
-      console.error('❌ Erro ao executar:', error);
-      showToast(`❌ Erro ao ${simular ? 'simular' : 'processar'} faturamento`, 'error');
-    } finally {
-      setProcessando(false);
+  };
+  
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'A': return 'bg-green-100 text-green-800';
+      case 'I': return 'bg-red-100 text-red-800';
+      case 'S': return 'bg-yellow-100 text-yellow-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
-  }, [associadosSelecionados, reguaSelecionada, mesReferencia, anoReferencia, gerarNotas, integrarRM, onConfirm, onSimulate, showToast, onClose]);
-
-  // ============================================
-  // RENDER
-  // ============================================
+  };
   
-  const meses = [
-    { value: 1, label: 'Janeiro' }, { value: 2, label: 'Fevereiro' },
-    { value: 3, label: 'Março' }, { value: 4, label: 'Abril' },
-    { value: 5, label: 'Maio' }, { value: 6, label: 'Junho' },
-    { value: 7, label: 'Julho' }, { value: 8, label: 'Agosto' },
-    { value: 9, label: 'Setembro' }, { value: 10, label: 'Outubro' },
-    { value: 11, label: 'Novembro' }, { value: 12, label: 'Dezembro' }
-  ];
+  const getStatusTexto = (status: string) => {
+    switch (status) {
+      case 'A': return 'Ativo';
+      case 'I': return 'Inativo';
+      case 'S': return 'Suspenso';
+      default: return status;
+    }
+  };
   
-  const anos = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
-  
-  const statusOptions = [
-    { value: 'A', label: 'Ativos' },
-    { value: 'I', label: 'Inativos' },
-    { value: 'S', label: 'Suspensos' },
-    { value: 'TODOS', label: 'Todos' }
-  ];
-
   if (!isOpen) return null;
-
+  
+  // ============================================================
+  // RENDER
+  // ============================================================
+  
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Processar Faturamento" size="xl">
-      <div className="space-y-6">
-        {/* ========================================== */}
-        {/* SEÇÃO 1: CONFIGURAÇÕES GERAIS */}
-        {/* ========================================== */}
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen px-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={onClose} />
         
-        <div className="border-b pb-4">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">⚙️ Configurações do Processamento</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Régua de Faturamento *</label>
-              <select
-                value={reguaSelecionada || ''}
-                onChange={(e) => {
-                  const value = Number(e.target.value);
-                  console.log(`📌 Régua selecionada: ${value}`);
-                  setReguaSelecionada(value);
-                  setPaginaAtual(1);
-                  setAssociados([]);
-                  setAssociadosSelecionados(new Set());
-                  setTotalAssociados(0);
-                  setTotalPaginas(0);
-                }}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                disabled={carregandoReguas}
-              >
-                <option value="">Selecione uma régua...</option>
-                {reguas.map(regua => (
-                  <option key={regua.id} value={regua.id}>
-                    {regua.nome} - Vencimento: dia {regua.diaVencimento}
-                    {!regua.ativo && ' (Inativa)'}
-                  </option>
-                ))}
-              </select>
-              {carregandoReguas && <Loading size="small" />}
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Mês de Referência *</label>
-              <select
-                value={mesReferencia}
-                onChange={(e) => setMesReferencia(Number(e.target.value))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-              >
-                {meses.map(mes => <option key={mes.value} value={mes.value}>{mes.label}</option>)}
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Ano de Referência *</label>
-              <select
-                value={anoReferencia}
-                onChange={(e) => setAnoReferencia(Number(e.target.value))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-              >
-                {anos.map(ano => <option key={ano} value={ano}>{ano}</option>)}
-              </select>
-            </div>
-            
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Opções</label>
-              <label className="flex items-center gap-2">
-                <input 
-                  type="checkbox" 
-                  checked={gerarNotas} 
-                  onChange={(e) => setGerarNotas(e.target.checked)} 
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-sm text-gray-700">Gerar notas de débito</span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input 
-                  type="checkbox" 
-                  checked={integrarRM} 
-                  onChange={(e) => setIntegrarRM(e.target.checked)} 
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-sm text-gray-700">Integrar com RM</span>
-              </label>
-            </div>
+        <div className="relative bg-white rounded-xl shadow-xl w-full max-w-7xl max-h-[90vh] overflow-hidden">
+          {/* Header */}
+          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+            <h2 className="text-xl font-semibold text-gray-800">{titulo}</h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
           </div>
-        </div>
-        
-        {/* ========================================== */}
-        {/* SEÇÃO 2: SELEÇÃO DE ASSOCIADOS */}
-        {/* ========================================== */}
-        
-        {reguaSelecionada && (
-          <div>
-            {/* 🔥 RESUMO DA SELEÇÃO - TOTAL CORRETO */}
-            <div className="flex flex-wrap items-center justify-between gap-2 mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-blue-700">
-                  ✅ {associadosSelecionados.size} de {totalAssociados} associado(s) selecionado(s)
-                </span>
-                {associadosSelecionados.size > 0 && (
-                  <button
-                    onClick={handleLimparSelecao}
-                    className="text-xs text-red-600 hover:text-red-800 hover:underline"
+          
+          {/* Body */}
+          <div className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 140px)' }}>
+            {/* Configurações do Processamento */}
+            <div className="bg-gray-50 p-4 rounded-lg mb-6">
+              <h3 className="font-semibold text-gray-700 mb-3">⚙️ Configurações do Processamento</h3>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mês Referência</label>
+                  <select
+                    value={configProcessamento.mesReferencia}
+                    onChange={(e) => setConfigProcessamento({ ...configProcessamento, mesReferencia: parseInt(e.target.value) })}
+                    className="w-full p-2 border rounded-lg"
                   >
-                    Limpar seleção
-                  </button>
-                )}
-                <span className="text-xs text-gray-400">
-                  (Total com nota: {totalAssociados})
-                </span>
-              </div>
-              
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={handleSelecionarPagina}
-                  disabled={associados.length === 0 || carregandoAssociados}
-                  className="px-3 py-1.5 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {associados.length > 0 && associados.some(a => !associadosSelecionados.has(a.id))
-                    ? `✓ Selecionar Página (${associados.length})`
-                    : `✕ Desmarcar Página (${associados.length})`}
-                </button>
+                    {['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
+                      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'].map((mes, idx) => (
+                      <option key={idx} value={idx + 1}>{mes}</option>
+                    ))}
+                  </select>
+                </div>
                 
-                <button
-                  onClick={handleSelecionarTodos}
-                  disabled={carregandoAssociados || totalAssociados === 0}
-                  className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {carregandoAssociados ? 'Carregando...' : `📌 Selecionar Todos (${totalAssociados})`}
-                </button>
-              </div>
-            </div>
-            
-            {/* 🔥 FILTROS */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="🔍 Nome/Razão Social..."
-                  value={filtroNome}
-                  onChange={(e) => { 
-                    setFiltroNome(e.target.value);
-                    setPaginaAtual(1);
-                  }}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                {filtroNome && (
-                  <button 
-                    onClick={() => setFiltroNome('')} 
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-              
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="🔍 CNPJ/CPF..."
-                  value={filtroCnpj}
-                  onChange={(e) => {
-                    setFiltroCnpj(e.target.value.replace(/[^0-9./-]/g, ''));
-                    setPaginaAtual(1);
-                  }}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                {filtroCnpj && (
-                  <button 
-                    onClick={() => setFiltroCnpj('')} 
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-              
-              <div>
-                <select
-                  value={filtroStatus}
-                  onChange={(e) => {
-                    setFiltroStatus(e.target.value);
-                    setPaginaAtual(1);
-                  }}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  {statusOptions.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ano Referência</label>
+                  <input
+                    type="number"
+                    value={configProcessamento.anoReferencia}
+                    onChange={(e) => setConfigProcessamento({ ...configProcessamento, anoReferencia: parseInt(e.target.value) })}
+                    className="w-full p-2 border rounded-lg"
+                    min={2020}
+                    max={2030}
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Régua de Faturamento</label>
+                  {loading ? (
+                    <Loading size="small" />
+                  ) : (
+                    <select
+                      value={reguaSelecionadaId || ''}
+                      onChange={(e) => {
+                        const novaReguaId = e.target.value ? parseInt(e.target.value) : undefined;
+                        const novaRegua = reguas.find(r => r.id === novaReguaId);
+                        setReguaSelecionadaId(novaReguaId);
+                        setReguaSelecionadaNome(novaRegua?.nome || '');
+                        setConfigProcessamento({ ...configProcessamento, reguaId: novaReguaId });
+                      }}
+                      className="w-full p-2 border rounded-lg"
+                    >
+                      <option value="">Selecione uma régua</option>
+                      {reguas.map(regua => (
+                        <option key={regua.id} value={regua.id}>
+                          {regua.nome} (Dia {regua.diaEmissao}) {!regua.ativa && '(Inativa)'}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+                
+                <div className="flex items-end gap-3">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={configProcessamento.gerarNotas}
+                      onChange={(e) => setConfigProcessamento({ ...configProcessamento, gerarNotas: e.target.checked })}
+                      className="rounded"
+                    />
+                    <span className="text-sm text-gray-700">Gerar Notas</span>
+                  </label>
+                  
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={configProcessamento.integrarRM}
+                      onChange={(e) => setConfigProcessamento({ ...configProcessamento, integrarRM: e.target.checked })}
+                      className="rounded"
+                    />
+                    <span className="text-sm text-gray-700">Integrar RM</span>
+                  </label>
+                </div>
               </div>
               
-              {(filtroNome || filtroCnpj || filtroStatus !== 'A') && (
-                <button 
-                  onClick={limparFiltros} 
-                  className="px-3 py-2 text-sm text-red-600 border border-red-300 rounded-lg hover:bg-red-50 transition-colors"
-                >
-                  🗑️ Limpar Filtros
-                </button>
+              {/* 🔥 INDICADOR VISUAL PARA RÉGUA CONSOLIDADA */}
+              {isReguaConsolidado() && (
+                <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 flex items-center gap-2">
+                  <span>📋</span>
+                  <span>
+                    <strong>Faturamento Consolidado</strong> - Serão exibidos apenas associados que possuem notas no último arquivo consolidado importado (busca automática)
+                  </span>
+                </div>
+              )}
+              
+              {/* 🔥 NOVO: Aviso de associados sem nota (exceto régua consolidada) */}
+              {!isReguaConsolidado() && reguaSelecionadaId && totalSemNota > 0 && (
+                <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700 flex items-center gap-2">
+                  <span>⚠️</span>
+                  <span>
+                    <strong>{totalSemNota}</strong> associado(s) da régua foram excluídos 
+                    por não possuírem nota de débito no período selecionado.
+                  </span>
+                </div>
               )}
             </div>
             
-            {/* 🔥 TABELA DE ASSOCIADOS */}
-            {carregandoAssociados ? (
-              <div className="text-center py-8">
-                <Loading size="medium" />
-                <p className="text-gray-500 mt-2">Carregando associados...</p>
-              </div>
-            ) : totalAssociados === 0 ? (
-              <div className="text-center py-8 bg-gray-50 rounded-lg">
-                <p className="text-gray-500">Nenhum associado com nota de débito encontrado</p>
-                <p className="text-sm text-gray-400 mt-1">
-                  {reguaSelecionada && (filtroNome || filtroCnpj || filtroStatus !== 'A')
-                    ? 'Nenhum associado encontrado com os filtros aplicados' 
-                    : 'Nenhum associado com nota de débito vinculado a esta régua'}
-                </p>
-                {(filtroNome || filtroCnpj || filtroStatus !== 'A') && (
-                  <button onClick={limparFiltros} className="mt-2 text-blue-600 hover:text-blue-800">
-                    Limpar filtros
+            {/* Filtros */}
+            {reguaSelecionadaId && (
+              <div className="bg-white p-4 rounded-lg border mb-6">
+                <h3 className="font-semibold text-gray-700 mb-3">🔍 Filtros</h3>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <input
+                    type="text"
+                    placeholder="Nome/Razão Social"
+                    value={filtroNome}
+                    onChange={(e) => setFiltroNome(e.target.value)}
+                    className="p-2 border rounded-lg"
+                  />
+                  <input
+                    type="text"
+                    placeholder="CNPJ/CPF"
+                    value={filtroCnpjCpf}
+                    onChange={(e) => setFiltroCnpjCpf(e.target.value)}
+                    className="p-2 border rounded-lg"
+                  />
+                  <button onClick={aplicarFiltros} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                    Buscar
                   </button>
-                )}
+                  <button onClick={limparFiltros} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                    Limpar
+                  </button>
+                </div>
               </div>
-            ) : (
+            )}
+            
+            {/* Mensagem quando não há régua */}
+            {!reguaSelecionadaId && (
+              <div className="text-center py-8 text-gray-500">
+                <div className="text-5xl mb-4">📏</div>
+                <p>Selecione uma régua de faturamento para carregar os associados</p>
+              </div>
+            )}
+            
+            {/* Tabela de Associados */}
+            {reguaSelecionadaId && (
               <>
-                <div className="border rounded-lg overflow-hidden">
-                  <div className="max-h-96 overflow-y-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50 sticky top-0 z-10">
-                        <tr>
-                          <th className="w-12 px-4 py-3">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left">
+                          <div className="flex items-center gap-2">
                             <input
                               type="checkbox"
-                              checked={associados.length > 0 && associados.every(a => associadosSelecionados.has(a.id))}
-                              onChange={handleSelecionarPagina}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              checked={selecionarTodos && todosIdsAssociados.length > 0}
+                              onChange={toggleSelecionarTodos}
+                              className="rounded"
+                              disabled={carregandoAssociados}
                             />
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código SPC</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome/Razão Social</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CNPJ/CPF</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cidade/UF</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Situação</th>
+                            <span className="text-xs text-gray-500">
+                              {todosIdsAssociados.length > 0 && `(${associadosSelecionados.size} de ${todosIdsAssociados.length})`}
+                            </span>
+                          </div>
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome/Razão</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">CNPJ/CPF</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Plano</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vendedor</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {carregandoAssociados ? (
+                        <tr>
+                          <td colSpan={7} className="px-4 py-8 text-center">
+                            <Loading size="small" />
+                            <span className="ml-2 text-gray-500">Carregando associados...</span>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {associados.map((associado) => {
-                          const isSelected = associadosSelecionados.has(associado.id);
-                          return (
-                            <tr 
-                              key={associado.id} 
-                              className={`hover:bg-gray-50 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50' : ''}`}
-                              onClick={() => toggleAssociado(associado.id)}
-                            >
-                              <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  onChange={() => toggleAssociado(associado.id)}
-                                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                />
-                              </td>
-                              <td className="px-4 py-3 text-sm font-mono font-medium text-blue-600">
-                                {associado.codigoSpc || '-'}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-gray-900">
-                                {associado.nomeRazao}
-                              </td>
-                              <td className="px-4 py-3 text-sm font-mono text-gray-500">
-                                {associado.cnpjCpf || '-'}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-gray-500">
-                                {associado.cidade && associado.uf ? `${associado.cidade}/${associado.uf}` : '-'}
-                              </td>
-                              <td className="px-4 py-3">
-                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                  associado.status === 'ATIVO' 
-                                    ? 'bg-green-100 text-green-800' 
-                                    : associado.status === 'INATIVO'
-                                    ? 'bg-red-100 text-red-800'
-                                    : 'bg-yellow-100 text-yellow-800'
-                                }`}>
-                                  {associado.status || 'ATIVO'}
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                      ) : associados.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                            {isReguaConsolidado() 
+                              ? 'Nenhum associado encontrado no último arquivo consolidado importado'
+                              : 'Nenhum associado com nota encontrado para esta régua no período selecionado'}
+                          </td>
+                        </tr>
+                      ) : (
+                        associados.map((associado) => (
+                          <tr key={associado.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3">
+                              <input
+                                type="checkbox"
+                                checked={associadosSelecionados.has(associado.id)}
+                                onChange={() => toggleSelecionarAssociado(associado.id)}
+                                className="rounded"
+                              />
+                            </td>
+                            <td className="px-4 py-3 text-sm font-mono text-blue-600">
+                              {associado.codigoSpc || associado.id}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-900 font-medium">{associado.nomeRazao}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{associado.cnpjCpf}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{associado.planoTitulo || '-'}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(associado.status)}`}>
+                                {getStatusTexto(associado.status)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{associado.vendedorNome || '-'}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
                 
-                {/* 🔥 PAGINAÇÃO */}
+                {/* Paginação */}
                 {totalPaginas > 1 && (
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-4 border-t mt-4">
-                    <div className="text-sm text-gray-500">
-                      Mostrando {associados.length > 0 ? ((paginaAtual - 1) * ITENS_POR_PAGINA) + 1 : 0} - {Math.min(paginaAtual * ITENS_POR_PAGINA, totalAssociados)} de {totalAssociados} associados
-                    </div>
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => setPaginaAtual(p => Math.max(1, p - 1))} 
-                        disabled={paginaAtual === 1 || carregandoAssociados} 
-                        className="px-3 py-1 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
-                      >
-                        ◀ Anterior
-                      </button>
-                      <span className="px-3 py-1 text-gray-600 text-sm">
-                        Página {paginaAtual} de {totalPaginas}
-                      </span>
-                      <button 
-                        onClick={() => setPaginaAtual(p => Math.min(totalPaginas, p + 1))} 
-                        disabled={paginaAtual === totalPaginas || carregandoAssociados} 
-                        className="px-3 py-1 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
-                      >
-                        Próxima ▶
-                      </button>
-                    </div>
+                  <div className="flex justify-center gap-2 mt-4">
+                    <button
+                      onClick={() => setPagina(p => Math.max(0, p - 1))}
+                      disabled={pagina === 0 || carregandoAssociados}
+                      className="px-3 py-1 border rounded-lg disabled:opacity-50 hover:bg-gray-50"
+                    >
+                      Anterior
+                    </button>
+                    <span className="px-3 py-1 text-gray-600">
+                      Página {pagina + 1} de {totalPaginas} ({totalItens} associados)
+                    </span>
+                    <button
+                      onClick={() => setPagina(p => Math.min(totalPaginas - 1, p + 1))}
+                      disabled={pagina === totalPaginas - 1 || carregandoAssociados}
+                      className="px-3 py-1 border rounded-lg disabled:opacity-50 hover:bg-gray-50"
+                    >
+                      Próxima
+                    </button>
                   </div>
                 )}
               </>
             )}
           </div>
-        )}
-        
-        {/* ========================================== */}
-        {/* BOTÕES DE AÇÃO */}
-        {/* ========================================== */}
-        
-        <div className="flex flex-wrap justify-end gap-3 pt-4 border-t">
-          <button 
-            onClick={onClose} 
-            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            Cancelar
-          </button>
           
-          {onSimulate && associadosSelecionados.size > 0 && reguaSelecionada && (
-            <button 
-              onClick={() => handleExecutar(true)} 
-              disabled={processando}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {processando && modoSimulacao ? 'Simulando...' : '🔍 Simular'}
-            </button>
-          )}
-          
-          <button 
-            onClick={() => handleExecutar(false)} 
-            disabled={!reguaSelecionada || associadosSelecionados.size === 0 || processando} 
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {processando && !modoSimulacao ? 'Processando...' : '🚀 Processar Faturamento'}
-          </button>
-        </div>
-        
-        {/* ========================================== */}
-        {/* RODAPÉ INFORMATIVO */}
-        {/* ========================================== */}
-        
-        {reguaSelecionada && (
-          <div className="text-xs text-gray-400 border-t pt-3 mt-2">
-            ℹ️ Exibindo apenas associados com nota de débito para o período selecionado.
-            {associadosSelecionados.size > 0 && ` • ${associadosSelecionados.size} selecionados de ${totalAssociados}.`}
+          {/* Footer */}
+          <div className="px-6 py-4 border-t border-gray-200 flex justify-between items-center bg-gray-50">
+            <div className="text-sm text-gray-500">
+              {associadosSelecionados.size} de {todosIdsAssociados.length} associado(s) selecionado(s)
+              {!isReguaConsolidado() && totalSemNota > 0 && (
+                <span className="ml-2 text-amber-600">
+                  ({totalSemNota} sem nota excluído{totalSemNota > 1 ? 's' : ''})
+                </span>
+              )}
+              {isReguaConsolidado() && todosIdsAssociados.length === 0 && (
+                <span className="ml-2 text-yellow-600"> (Nenhum associado com notas no último consolidado)</span>
+              )}
+            </div>
+            <div className="flex gap-3">
+              {onSimulate && (
+                <button
+                  onClick={handleSimulate}
+                  disabled={associadosSelecionados.size === 0 || !reguaSelecionadaId}
+                  className="px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 disabled:opacity-50"
+                >
+                  Simular
+                </button>
+              )}
+              <button onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirm}
+                disabled={associadosSelecionados.size === 0 || !reguaSelecionadaId}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              >
+                Processar Faturamento
+              </button>
+            </div>
           </div>
-        )}
+        </div>
       </div>
-    </Modal>
+    </div>
   );
 };
 

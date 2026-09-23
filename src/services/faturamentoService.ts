@@ -503,6 +503,60 @@ class FaturamentoService {
     const response = await api.post('/rm-api/testar-conexao', config);
     return response.data;
   }
+
+  // ============================================================
+  // 🔥 ASSOCIADOS DA RÉGUA (COM FILTRO DE NOTA)
+  // ============================================================
+
+  /**
+   * Busca associados de uma régua, opcionalmente filtrando pelos que têm nota.
+   * 
+   * @param reguaId        ID da régua
+   * @param dataInicio     Data início do período (formato: YYYY-MM-DD)
+   * @param dataFim        Data fim do período (formato: YYYY-MM-DD)
+   * @param somenteComNota Se true, filtra apenas associados com nota
+   */
+  async buscarAssociadosDaRegua(
+    reguaId: number,
+    dataInicio?: string,
+    dataFim?: string,
+    somenteComNota: boolean = true
+  ): Promise<{
+    associados: Array<{
+      id: number;
+      codigoSpc?: string;
+      codigoRm?: string;
+      nomeRazao: string;
+      nomeFantasia?: string;
+      cnpjCpf?: string;
+      status: string;
+    }>;
+    total: number;
+    totalSemNota: number;
+    somenteComNota: boolean;
+    tempoMs: number;
+  }> {
+    const params: any = {
+      reguaId,
+      somenteComNota
+    };
+    
+    if (dataInicio) params.dataInicio = dataInicio;
+    if (dataFim) params.dataFim = dataFim;
+    
+    console.log('📤 Buscando associados da régua:', params);
+    
+    const response = await api.get('/faturamento/associados-da-regua', { params });
+    
+    console.log('📥 Associados retornados:', {
+      total: response.data.total,
+      totalSemNota: response.data.totalSemNota,
+      tempoMs: response.data.tempoMs
+    });
+    
+    return response.data;
+  }
+
 }
 
 export default new FaturamentoService();

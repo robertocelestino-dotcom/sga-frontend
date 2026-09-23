@@ -1,6 +1,6 @@
 // src/pages/faturamento/ConferenciaFaturamento.tsx
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMessage } from '../../providers/MessageProvider';
 import BreadCrumb from '../../components/BreadCrumb';
@@ -29,7 +29,7 @@ const ConferenciaFaturamento: React.FC = () => {
     const [codigoSpc, setCodigoSpc] = useState('');
     const [statusFiltro, setStatusFiltro] = useState('');
 
-    // Lista de régias
+    // Lista de réguas
     const [reguas, setReguas] = useState<any[]>([]);
 
     // Dados
@@ -48,6 +48,10 @@ const ConferenciaFaturamento: React.FC = () => {
     const [detalhesFatura, setDetalhesFatura] = useState<any>(null);
     const [carregandoDetalhes, setCarregandoDetalhes] = useState(false);
 
+    // 🔥 Seleção de faturas
+    const [selecionadas, setSelecionadas] = useState<Set<number>>(new Set());
+    const [selecionarTodos, setSelecionarTodos] = useState(false);
+
     // ============================================================
     // FORMATADORES
     // ============================================================
@@ -57,12 +61,6 @@ const ConferenciaFaturamento: React.FC = () => {
         const mes = String(data.getMonth() + 1).padStart(2, '0');
         const ano = data.getFullYear();
         return `${ano}-${mes}-${dia}`;
-    };
-
-    const formatarDataExibicao = (data: string): string => {
-        if (!data) return '-';
-        const partes = data.split('-');
-        return `${partes[2]}/${partes[1]}/${partes[0]}`;
     };
 
     const formatarMoeda = (valor: number): string => {
@@ -81,7 +79,7 @@ const ConferenciaFaturamento: React.FC = () => {
             const response = await reguaFaturamentoService.listarReguas(0, 100);
             setReguas(response.content || []);
         } catch (error) {
-            console.error('❌ Erro ao carregar régias:', error);
+            console.error('❌ Erro ao carregar réguas:', error);
         }
     };
 
@@ -121,7 +119,7 @@ const ConferenciaFaturamento: React.FC = () => {
     };
 
     // ============================================================
-    // 🔥 CARREGAR RESUMO (backend - todos os registros filtrados)
+    // CARREGAR RESUMO
     // ============================================================
 
     const carregarResumo = async () => {
@@ -135,7 +133,7 @@ const ConferenciaFaturamento: React.FC = () => {
                 statusFiltro || undefined
             );
             setResumo(response);
-            console.log('📊 Resumo carregado do backend:', response);
+            console.log('📊 Resumo carregado:', response);
         } catch (error) {
             console.error('❌ Erro ao carregar resumo:', error);
         } finally {
@@ -151,15 +149,23 @@ const ConferenciaFaturamento: React.FC = () => {
         carregarReguas();
     }, []);
 
+    // 🔥 Recarrega quando muda filtros ou página
     useEffect(() => {
         if (dataInicio && dataFim) {
             buscarDados();
             carregarResumo();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [reguaId, dataInicio, dataFim, pagina, statusFiltro]);
 
+    // 🔥 Limpar seleção quando os dados mudarem
+    useEffect(() => {
+        setSelecionadas(new Set());
+        setSelecionarTodos(false);
+    }, [dados]);
+
     // ============================================================
-    // HANDLERS
+    // HANDLERS DE FILTRO
     // ============================================================
 
     const handleBuscar = () => {
@@ -178,33 +184,53 @@ const ConferenciaFaturamento: React.FC = () => {
         setPagina(0);
     };
 
-    // Ver detalhes da fatura
-    const handleVerDetalhes = async (fatura: ConferenciaFaturamentoDTO) => {
-        setFaturaSelecionada(fatura);
-        setModalDetalheAberto(true);
-        setCarregandoDetalhes(true);
-        setDetalhesFatura(null);
+    // ============================================================
+    // HANDLERS DE SELEÇÃO
+    // ============================================================
 
-        try {
-            const detalhes = await conferenciaFaturamentoService.detalharConferencia(fatura.faturaId);
-            setDetalhesFatura(detalhes);
-            console.log('📊 Detalhes da fatura:', detalhes);
-        } catch (error) {
-            console.error('❌ Erro ao carregar detalhes:', error);
-            showToast('⚠️ Erro ao carregar detalhes da fatura', 'error');
-        } finally {
-            setCarregandoDetalhes(false);
+    const toggleSelecionarFatura = (faturaId: number) => {
+        const novas = new Set(selecionadas);
+        if (novas.has(faturaId)) {
+            novas.delete(faturaId);
+        } else {
+            novas.add(faturaId);
+        }
+        setSelecionadas(novas);
+        const todosDaPagina = dados.length > 0 && dados.every(d => novas.has(d.faturaId));
+        setSelecionarTodos(todosDaPagina);
+    };
+
+    const toggleSelecionarTodos = () => {
+        if (selecionarTodos) {
+            const novas = new Set(selecionadas);
+            dados.forEach(d => novas.delete(d.faturaId));
+            setSelecionadas(novas);
+            setSelecionarTodos(false);
+        } else {
+            const novas = new Set(selecionadas);
+            dados.forEach(d => novas.add(d.faturaId));
+            setSelecionadas(novas);
+            setSelecionarTodos(true);
         }
     };
 
-    // Exportar CSV
+    const limparSelecao = () => {
+        setSelecionadas(new Set());
+        setSelecionarTodos(false);
+    };
+
+    // ============================================================
+    // HANDLERS DE EXPORTAÇÃO
+    // ============================================================
+
     const handleExportarCSV = async () => {
         try {
             const blob = await conferenciaFaturamentoService.exportarCSV(
                 reguaId,
                 formatarData(dataInicio),
                 formatarData(dataFim),
-                codigoSpc || undefined
+                codigoSpc || undefined,
+                statusFiltro || undefined
             );
             const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
@@ -218,6 +244,53 @@ const ConferenciaFaturamento: React.FC = () => {
         } catch (error) {
             console.error('❌ Erro ao exportar CSV:', error);
             showToast('⚠️ Erro ao exportar CSV', 'error');
+        }
+    };
+
+    const handleExportarSelecionados = async () => {
+        if (selecionadas.size === 0) {
+            showToast('⚠️ Selecione pelo menos uma fatura para exportar', 'warning');
+            return;
+        }
+        try {
+            const ids = Array.from(selecionadas);
+            console.log('📤 Exportando', ids.length, 'faturas selecionadas');
+
+            const blob = await conferenciaFaturamentoService.exportarCSVSelecionados(ids);
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `conferencia_selecionadas_${new Date().toISOString().slice(0, 10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+            showToast(`✅ ${ids.length} fatura(s) exportada(s) com sucesso!`, 'success');
+        } catch (error) {
+            console.error('❌ Erro ao exportar selecionadas:', error);
+            showToast('⚠️ Erro ao exportar faturas selecionadas', 'error');
+        }
+    };
+
+    // ============================================================
+    // HANDLER DE DETALHES
+    // ============================================================
+
+    const handleVerDetalhes = async (fatura: ConferenciaFaturamentoDTO) => {
+        setFaturaSelecionada(fatura);
+        setModalDetalheAberto(true);
+        setCarregandoDetalhes(true);
+        setDetalhesFatura(null);
+
+        try {
+            const detalhes = await conferenciaFaturamentoService.detalharConferencia(fatura.faturaId);
+            setDetalhesFatura(detalhes);
+            console.log('📊 Detalhes:', detalhes);
+        } catch (error) {
+            console.error('❌ Erro ao carregar detalhes:', error);
+            showToast('⚠️ Erro ao carregar detalhes da fatura', 'error');
+        } finally {
+            setCarregandoDetalhes(false);
         }
     };
 
@@ -262,8 +335,31 @@ const ConferenciaFaturamento: React.FC = () => {
                             }`}
                         >
                             <span>📥</span>
-                            Exportar CSV
+                            Exportar Todos
                         </button>
+
+                        <button
+                            onClick={handleExportarSelecionados}
+                            disabled={loading || selecionadas.size === 0}
+                            className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${
+                                loading || selecionadas.size === 0
+                                    ? 'bg-gray-300 cursor-not-allowed'
+                                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                            }`}
+                        >
+                            <span>📤</span>
+                            Exportar Selecionados ({selecionadas.size})
+                        </button>
+
+                        {selecionadas.size > 0 && (
+                            <button
+                                onClick={limparSelecao}
+                                className="px-4 py-2 rounded-lg flex items-center gap-2 bg-gray-200 hover:bg-gray-300 text-gray-700 transition-colors"
+                            >
+                                <span>🧹</span>
+                                Limpar
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -366,7 +462,7 @@ const ConferenciaFaturamento: React.FC = () => {
                     </div>
                 </div>
 
-                {/* 🔥 RESUMO DO BACKEND - Baseado em TODOS os registros filtrados */}
+                {/* RESUMO */}
                 {resumo && !carregandoResumo && (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                         <div className="bg-blue-50 p-3 rounded-lg text-center border border-blue-200">
@@ -407,6 +503,17 @@ const ConferenciaFaturamento: React.FC = () => {
                             <table className="min-w-full divide-y divide-gray-200">
                                 <thead className="bg-gray-50">
                                     <tr>
+                                        {/* 🔥 Checkbox "Selecionar Todos" */}
+                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase w-10">
+                                            <input
+                                                type="checkbox"
+                                                checked={selecionarTodos}
+                                                onChange={toggleSelecionarTodos}
+                                                className="rounded cursor-pointer"
+                                                disabled={dados.length === 0}
+                                                title="Selecionar todos da página"
+                                            />
+                                        </th>
                                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Associado</th>
                                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Código SPC</th>
                                         <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Nota Débito</th>
@@ -419,7 +526,21 @@ const ConferenciaFaturamento: React.FC = () => {
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 bg-white">
                                     {dados.map((item) => (
-                                        <tr key={item.faturaId} className="hover:bg-gray-50 transition-colors">
+                                        <tr
+                                            key={item.faturaId}
+                                            className={`hover:bg-gray-50 transition-colors ${
+                                                selecionadas.has(item.faturaId) ? 'bg-blue-50' : ''
+                                            }`}
+                                        >
+                                            {/* 🔥 Checkbox individual */}
+                                            <td className="px-3 py-2">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selecionadas.has(item.faturaId)}
+                                                    onChange={() => toggleSelecionarFatura(item.faturaId)}
+                                                    className="rounded cursor-pointer"
+                                                />
+                                            </td>
                                             <td className="px-3 py-2 text-sm text-gray-600 max-w-xs truncate" title={item.nomeRazao}>
                                                 {item.nomeRazao}
                                             </td>
@@ -507,7 +628,7 @@ const ConferenciaFaturamento: React.FC = () => {
                 )}
             </div>
 
-            {/* 🔥 MODAL DE DETALHES - IMPLEMENTADO */}
+            {/* MODAL DE DETALHES */}
             {modalDetalheAberto && faturaSelecionada && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden">
@@ -534,7 +655,6 @@ const ConferenciaFaturamento: React.FC = () => {
                                 </div>
                             ) : detalhesFatura ? (
                                 <>
-                                    {/* Dados da Fatura */}
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                                         <div>
                                             <span className="text-xs text-gray-500">Código SPC</span>
@@ -558,7 +678,6 @@ const ConferenciaFaturamento: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    {/* Comparação de Itens */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
                                             <h3 className="text-sm font-semibold text-gray-700 mb-2">📋 Itens da Nota Débito</h3>
@@ -616,7 +735,6 @@ const ConferenciaFaturamento: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    {/* Resumo da comparação */}
                                     <div className="mt-4 p-3 bg-gray-50 rounded-lg">
                                         <p className="text-sm text-gray-600">
                                             <span className="font-semibold">Status:</span> {getStatusBadge(detalhesFatura.statusConferencia)}

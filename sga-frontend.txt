@@ -14,7 +14,7 @@
 03/09/2026  15:49                83 postcss.config.js
 03/09/2026  15:49    <DIR>          public
 03/09/2026  15:49               535 README.md
-10/09/2026  10:03                 0 sga-frontend.txt
+17/09/2026  13:39                 0 sga-frontend.txt
 03/09/2026  15:49    <DIR>          src
 03/09/2026  15:49               191 tailwind.config.js
 03/09/2026  15:49               760 tsconfig.app.json
@@ -23,7 +23,42 @@
 03/09/2026  15:49               376 vite.config.ts
               13 arquivo(s)        240.640 bytes
 
-Pasta de E:\Users\roberto\Documents\Desenvolvimento\Web\sga-stable\sga-frontend\public
+ Pasta de E:\Users\roberto\Documents\Desenvolvimento\Web\sga-stable\sga-frontend\.git
+
+03/09/2026  15:50    <DIR>          ..
+15/09/2026  15:45             1.128 COMMIT_EDITMSG
+14/09/2026  14:28               314 config
+03/09/2026  15:49                73 description
+03/09/2026  15:49                21 HEAD
+03/09/2026  15:49    <DIR>          hooks
+15/09/2026  15:45            17.356 index
+03/09/2026  15:49    <DIR>          info
+03/09/2026  15:49    <DIR>          logs
+15/09/2026  15:45    <DIR>          objects
+03/09/2026  15:49               112 packed-refs
+03/09/2026  15:49    <DIR>          refs
+               6 arquivo(s)         19.004 bytes
+
+ Pasta de E:\Users\roberto\Documents\Desenvolvimento\Web\sga-stable\sga-frontend\.git\hooks
+
+03/09/2026  15:49    <DIR>          .
+03/09/2026  15:49               478 applypatch-msg.sample
+03/09/2026  15:49               896 commit-msg.sample
+03/09/2026  15:49             4.655 fsmonitor-watchman.sample
+03/09/2026  15:49               189 post-update.sample
+03/09/2026  15:49               424 pre-applypatch.sample
+03/09/2026  15:49             1.643 pre-commit.sample
+03/09/2026  15:49               416 pre-merge-commit.sample
+03/09/2026  15:49             1.374 pre-push.sample
+03/09/2026  15:49             4.898 pre-rebase.sample
+03/09/2026  15:49               544 pre-receive.sample
+03/09/2026  15:49             1.492 prepare-commit-msg.sample
+03/09/2026  15:49             2.783 push-to-checkout.sample
+03/09/2026  15:49             3.650 update.sample
+              13 arquivo(s)         23.442 bytes
+
+
+ Pasta de E:\Users\roberto\Documents\Desenvolvimento\Web\sga-stable\sga-frontend\public
 
 03/09/2026  15:49    <DIR>          .
 03/09/2026  15:50    <DIR>          ..
@@ -35,7 +70,7 @@ Pasta de E:\Users\roberto\Documents\Desenvolvimento\Web\sga-stable\sga-frontend\
 03/09/2026  15:49    <DIR>          .
 03/09/2026  15:50    <DIR>          ..
 03/09/2026  15:49               227 App.css
-09/09/2026  15:17            26.846 App.tsx
+10/09/2026  11:49            27.100 App.tsx
 03/09/2026  15:49    <DIR>          assets
 03/09/2026  15:49    <DIR>          components
 03/09/2026  15:49    <DIR>          config
@@ -51,7 +86,7 @@ Pasta de E:\Users\roberto\Documents\Desenvolvimento\Web\sga-stable\sga-frontend\
 09/09/2026  15:08    <DIR>          types
 03/09/2026  15:49    <DIR>          ui
 03/09/2026  15:49    <DIR>          utils
-               4 arquivo(s)         27.705 bytes
+               4 arquivo(s)         27.959 bytes
 
  Pasta de E:\Users\roberto\Documents\Desenvolvimento\Web\sga-stable\sga-frontend\src\assets
 
@@ -74,7 +109,7 @@ Pasta de E:\Users\roberto\Documents\Desenvolvimento\Web\sga-stable\sga-frontend\
 03/09/2026  15:49    <DIR>          importacao
 03/09/2026  15:49    <DIR>          layout
 03/09/2026  15:49               339 Loading.tsx
-09/09/2026  15:40             6.914 MenuGenerator.tsx
+10/09/2026  10:56             7.173 MenuGenerator.tsx
 03/09/2026  15:49             9.600 ModalConfigurarFaturamento.tsx
 03/09/2026  15:49            15.560 ModalConfigurarProduto.tsx
 03/09/2026  15:49            12.518 ModalSelecaoFranquia.tsx
@@ -82,12 +117,12 @@ Pasta de E:\Users\roberto\Documents\Desenvolvimento\Web\sga-stable\sga-frontend\
 03/09/2026  15:49            11.243 ModalSelecaoProdutoConsulta.tsx
 03/09/2026  15:49             2.892 NotaModal.jsx
 03/09/2026  15:49             5.009 NotasGrid.jsx
-03/09/2026  15:49             1.439 PermissionGuard.tsx
+10/09/2026  11:47             3.620 PermissionGuard.tsx
 03/09/2026  15:49             1.085 RouteGuard.tsx
 03/09/2026  15:49    <DIR>          ui
 03/09/2026  15:49            16.528 VendedorDuplaSelecao.tsx
 03/09/2026  15:49             2.914 VendedorSelecaoPorTipo.tsx
-              18 arquivo(s)        125.340 bytes
+              18 arquivo(s)        127.780 bytes
 
  Pasta de E:\Users\roberto\Documents\Desenvolvimento\Web\sga-stable\sga-frontend\src\components\associado
 
@@ -173,7 +208,7 @@ Pasta de E:\Users\roberto\Documents\Desenvolvimento\Web\sga-stable\sga-frontend\
 03/09/2026  15:49    <DIR>          ..
 03/09/2026  15:49    <DIR>          admin
 03/09/2026  15:49            39.307 AssociadoDetalhes.tsx
-03/09/2026  15:49           163.358 AssociadoForm.tsx
+15/09/2026  14:03           118.816 AssociadoForm.tsx
 03/09/2026  15:49            36.680 Associados.tsx
 03/09/2026  15:49             2.203 AtualizacaoAssociados.tsx
 03/09/2026  15:49               592 Beneficios.tsx
@@ -209,7 +244,7 @@ Pasta de E:\Users\roberto\Documents\Desenvolvimento\Web\sga-stable\sga-frontend\
 03/09/2026  15:49            19.436 Vendedores.tsx
 03/09/2026  15:49            31.144 VerificacaoDashboard.tsx
 03/09/2026  15:49             2.424 VerificacaoImportacao.tsx
-              36 arquivo(s)        689.805 bytes
+              36 arquivo(s)        645.263 bytes
 
  Pasta de E:\Users\roberto\Documents\Desenvolvimento\Web\sga-stable\sga-frontend\src\pages\admin
 
@@ -276,9 +311,9 @@ Pasta de E:\Users\roberto\Documents\Desenvolvimento\Web\sga-stable\sga-frontend\
 03/09/2026  15:49             7.248 sistemaLogService.ts
 03/09/2026  15:49             1.942 tipoEnvioService.ts
 03/09/2026  15:49             2.070 usuarioService.ts
-03/09/2026  15:49             3.431 vendedorService.ts
+15/09/2026  14:10             6.212 vendedorService.ts
 03/09/2026  15:49             2.490 vendedorTipoService.ts
-              29 arquivo(s)        179.024 bytes
+              29 arquivo(s)        181.805 bytes
 
  Pasta de E:\Users\roberto\Documents\Desenvolvimento\Web\sga-stable\sga-frontend\src\stores
 
@@ -334,5 +369,5 @@ Pasta de E:\Users\roberto\Documents\Desenvolvimento\Web\sga-stable\sga-frontend\
                3 arquivo(s)         12.246 bytes
 
      Total de Arquivos na Lista:
-           72902 arquivo(s)    360.209.304 bytes
-            7918 pasta(s)   24.241.201.152 bytes dispon¡veis
+           72932 arquivo(s)    360.248.227 bytes
+            7984 pasta(s)   22.949.957.632 bytes dispon¡veis

@@ -1,9 +1,12 @@
 // src/components/faturamento/ModalSelecaoAssociados.tsx
+// 🚨 VERSÃO 2.0 — Filtro de associados com nota no período
 
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api';
 import { useMessage } from '../../providers/MessageProvider';
 import Loading from '../Loading';
+
+console.log('🚨🚨🚨 ModalSelecaoAssociados CARREGADO — VERSÃO 2.0 🚨🚨🚨');
 
 interface AssociadoResumo {
   id: number;
@@ -85,6 +88,9 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
   const [totalPaginas, setTotalPaginas] = useState(0);
   const [totalItens, setTotalItens] = useState(0);
   
+  // 🔥 NOVO: Quantidade de associados sem nota
+  const [totalSemNota, setTotalSemNota] = useState(0);
+  
   // Verificar se a régua selecionada é a de faturamento consolidado
   const isReguaConsolidado = useCallback(() => {
     return reguaSelecionadaNome === REGUA_CONSOLIDADO_NOME;
@@ -110,32 +116,37 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
     }
   }, [reguaSelecionadaId, showToast]);
   
-  // Carregar associados (com suporte a régua consolidada)
+  // Carregar associados (com filtro por nota)
   const carregarAssociados = useCallback(async () => {
     if (!reguaSelecionadaId) {
       setAssociados([]);
       setTotalItens(0);
       setTotalPaginas(0);
       setTodosIdsAssociados([]);
+      setTotalSemNota(0);
       return;
     }
     
     setCarregandoAssociados(true);
     try {
-      const params = new URLSearchParams();
-      params.append('page', pagina.toString());
-      params.append('size', PAGE_SIZE.toString());
-      if (filtroNome) params.append('nome', filtroNome);
-      if (filtroCnpjCpf) params.append('cnpjCpf', filtroCnpjCpf);
+      const isConsolidado = reguaSelecionadaNome === REGUA_CONSOLIDADO_NOME;
+      
+      console.log('🔍 [CARREGAR] Iniciando:', {
+        reguaSelecionadaId,
+        reguaSelecionadaNome,
+        isConsolidado,
+        pagina,
+        mes: configProcessamento.mesReferencia,
+        ano: configProcessamento.anoReferencia
+      });
       
       let response;
       let idsResponse;
       
-      // 🔥 VERIFICA SE É RÉGUA CONSOLIDADA
-      if (isReguaConsolidado()) {
-        console.log('📌 Régua Consolidada selecionada - filtrando apenas associados com notas no último consolidado');
+      if (isConsolidado) {
+        // 🔥 RÉGUA CONSOLIDADO - comportamento original
+        console.log('📌 [CARREGAR] Régua CONSOLIDADO');
         
-        // 🔥 CORRIGIDO: Removido os parâmetros mes e ano (busca automática no backend)
         response = await api.get(`/regua-faturamento/${reguaSelecionadaId}/associados-consolidado/paginado`, {
           params: {
             page: pagina,
@@ -145,31 +156,107 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
           }
         });
         
-        // 🔥 CORRIGIDO: Removido os parâmetros mes e ano
         idsResponse = await api.get(`/regua-faturamento/${reguaSelecionadaId}/associados-consolidado/todos-ids`);
         
-        console.log('📊 IDs retornados do consolidado:', idsResponse.data?.length || 0);
-      } else {
-        // Busca normal (todos associados da régua)
-        response = await api.get(`/regua-faturamento/${reguaSelecionadaId}/associados/paginado?${params}`);
+        setTotalSemNota(0);
         
-        idsResponse = await api.get(`/regua-faturamento/${reguaSelecionadaId}/associados/todos-ids`);
+      } else {
+        // 🔥 RÉGUA NORMAL - filtro por nota
+        console.log('🔥 [CARREGAR] Régua NORMAL — filtrando por nota');
+        
+        const { mesReferencia, anoReferencia } = configProcessamento;
+        const dataInicio = `${anoReferencia}-${String(mesReferencia).padStart(2, '0')}-01`;
+        const ultimoDia = new Date(anoReferencia, mesReferencia, 0).getDate();
+        const dataFim = `${anoReferencia}-${String(mesReferencia).padStart(2, '0')}-${String(ultimoDia).padStart(2, '0')}`;
+        
+        console.log('🔥 [CARREGAR] Período:', { dataInicio, dataFim });
+        
+        const responseFiltro = await api.get('/faturamento/associados-da-regua', {
+          params: {
+            reguaId: reguaSelecionadaId,
+            dataInicio,
+            dataFim,
+            somenteComNota: true
+          }
+        });
+        
+        console.log('🔥 [CARREGAR] Resposta backend:', {
+          total: responseFiltro.data.total,
+          totalSemNota: responseFiltro.data.totalSemNota,
+          tempoMs: responseFiltro.data.tempoMs
+        });
+        
+        let listaCompleta = responseFiltro.data.associados || [];
+        const totalSemNotaCalculado = responseFiltro.data.totalSemNota || 0;
+        
+        // Filtros locais
+        if (filtroNome) {
+          const nomeLower = filtroNome.toLowerCase();
+          listaCompleta = listaCompleta.filter((a: any) => 
+            a.nomeRazao?.toLowerCase().includes(nomeLower)
+          );
+        }
+        if (filtroCnpjCpf) {
+          listaCompleta = listaCompleta.filter((a: any) => 
+            a.cnpjCpf?.includes(filtroCnpjCpf)
+          );
+        }
+        
+        const todosIds = listaCompleta.map((a: any) => a.id);
+        
+        // Paginação local
+        const totalElements = listaCompleta.length;
+        const totalPages = Math.max(1, Math.ceil(totalElements / PAGE_SIZE));
+        const inicio = pagina * PAGE_SIZE;
+        const fim = inicio + PAGE_SIZE;
+        const paginaAtual = listaCompleta.slice(inicio, fim);
+        
+        console.log('🔥 [CARREGAR] Paginação local:', {
+          totalElements,
+          totalPages,
+          paginaAtual: paginaAtual.length,
+          todosIds: todosIds.length
+        });
+        
+        response = {
+          data: {
+            content: paginaAtual,
+            totalPages,
+            totalElements
+          }
+        };
+        
+        idsResponse = { data: todosIds };
+        
+        setTotalSemNota(totalSemNotaCalculado);
       }
       
       setAssociados(response.data.content);
       setTotalPaginas(response.data.totalPages);
       setTotalItens(response.data.totalElements);
-      setTodosIdsAssociados(idsResponse.data || []);
       
-      console.log(`✅ Carregados ${response.data.content.length} associados (total: ${idsResponse.data?.length || 0})`);
+      const idsFinal = idsResponse.data || [];
+      setTodosIdsAssociados(idsFinal);
+      
+      console.log('✅ [CARREGAR] Estados atualizados:', {
+        associados: response.data.content.length,
+        totalPaginas: response.data.totalPages,
+        totalItens: response.data.totalElements,
+        todosIdsAssociados: idsFinal.length
+      });
       
     } catch (error) {
-      console.error('Erro ao carregar associados:', error);
+      console.error('❌ [CARREGAR] Erro:', error);
       showToast('Erro ao carregar lista de associados', 'error');
+      setAssociados([]);
+      setTotalPaginas(0);
+      setTotalItens(0);
+      setTodosIdsAssociados([]);
+      setTotalSemNota(0);
     } finally {
       setCarregandoAssociados(false);
     }
-  }, [pagina, filtroNome, filtroCnpjCpf, reguaSelecionadaId, isReguaConsolidado, showToast]);
+  }, [pagina, filtroNome, filtroCnpjCpf, reguaSelecionadaId, reguaSelecionadaNome, showToast, configProcessamento]);
   
   // Efeitos
   useEffect(() => {
@@ -180,12 +267,18 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
   
   useEffect(() => {
     if (isOpen && reguaSelecionadaId) {
-      carregarAssociados();
+      setPagina(0);
     }
-  }, [isOpen, reguaSelecionadaId, pagina, carregarAssociados]);
+  }, [isOpen, reguaSelecionadaId, configProcessamento.mesReferencia, configProcessamento.anoReferencia]);
   
   useEffect(() => {
-    setPagina(0);
+    if (isOpen && reguaSelecionadaId) {
+      carregarAssociados();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, reguaSelecionadaId, pagina, configProcessamento.mesReferencia, configProcessamento.anoReferencia]);
+  
+  useEffect(() => {
     setAssociadosSelecionados(new Set());
     setSelecionarTodos(false);
   }, [reguaSelecionadaId]);
@@ -363,12 +456,23 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
                 </div>
               </div>
               
-              {/* 🔥 INDICADOR VISUAL PARA RÉGUA CONSOLIDADA */}
+              {/* INDICADOR VISUAL PARA RÉGUA CONSOLIDADA */}
               {isReguaConsolidado() && (
                 <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 flex items-center gap-2">
                   <span>📋</span>
                   <span>
                     <strong>Faturamento Consolidado</strong> - Serão exibidos apenas associados que possuem notas no último arquivo consolidado importado (busca automática)
+                  </span>
+                </div>
+              )}
+              
+              {/* NOVO: Aviso de associados sem nota */}
+              {!isReguaConsolidado() && reguaSelecionadaId && totalSemNota > 0 && (
+                <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700 flex items-center gap-2">
+                  <span>⚠️</span>
+                  <span>
+                    <strong>{totalSemNota}</strong> associado(s) da régua foram excluídos 
+                    por não possuírem nota de débito no período selecionado.
                   </span>
                 </div>
               )}
@@ -453,7 +557,7 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
                           <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
                             {isReguaConsolidado() 
                               ? 'Nenhum associado encontrado no último arquivo consolidado importado'
-                              : 'Nenhum associado encontrado para esta régua'}
+                              : 'Nenhum associado com nota encontrado para esta régua no período selecionado'}
                           </td>
                         </tr>
                       ) : (
@@ -516,6 +620,11 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
           <div className="px-6 py-4 border-t border-gray-200 flex justify-between items-center bg-gray-50">
             <div className="text-sm text-gray-500">
               {associadosSelecionados.size} de {todosIdsAssociados.length} associado(s) selecionado(s)
+              {!isReguaConsolidado() && totalSemNota > 0 && (
+                <span className="ml-2 text-amber-600">
+                  ({totalSemNota} sem nota excluído{totalSemNota > 1 ? 's' : ''})
+                </span>
+              )}
               {isReguaConsolidado() && todosIdsAssociados.length === 0 && (
                 <span className="ml-2 text-yellow-600"> (Nenhum associado com notas no último consolidado)</span>
               )}
