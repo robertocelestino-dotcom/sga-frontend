@@ -327,8 +327,11 @@ const ImportacaoSPC: React.FC = () => {
       };
 
       setProcessamentoDetalhes(detalhes);
-      setSuccess(`Arquivo ${tipoInfo.nome} importado com sucesso!`);
-      showSuccess(`Arquivo ${tipoInfo.nome} importado com sucesso!`);
+      //setSuccess(`Arquivo ${tipoInfo.nome} importado com sucesso!`);
+      //showSuccess(`Arquivo ${tipoInfo.nome} importado com sucesso!`);
+
+      setSuccess(`Arquivo importado com sucesso!`);
+      showSuccess(`Arquivo importado com sucesso!`);
 
       if (detalhes.id) {
         const idStr = String(detalhes.id);
@@ -579,20 +582,6 @@ const ImportacaoSPC: React.FC = () => {
             </div>
           )}
 
-          {/* Verificação Associados */}
-          {verificacaoAssociados && (
-            <div className={`p-6 rounded-xl shadow bg-white border ${verificacaoAssociados.diferenca === 0 ? "border-green-300" : "border-yellow-300"}`}>
-              <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <span>👥</span> Verificação de Associados
-              </h3>
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <StatBox label="Arquivo" value={verificacaoAssociados.quantidadeArquivo} />
-                <StatBox label="Banco" value={verificacaoAssociados.quantidadeBanco} />
-                <StatBox label="Diferença" value={verificacaoAssociados.diferenca} 
-                  color={verificacaoAssociados.diferenca === 0 ? "text-gray-600" : "text-red-600"} />
-              </div>
-            </div>
-          )}
         </div>
 
         {/* COLUNA 2 — PAINEL LATERAL */}

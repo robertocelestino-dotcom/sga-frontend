@@ -9,7 +9,7 @@ import Loading from '../../components/Loading';
 import Modal from '../../components/ui/Modal';
 import ConfirmModal from '../../components/ui/ConfirmModal';
 import { useMessage } from '../../providers/MessageProvider';
-import api from '../../services/api'; // 🔥 ADICIONAR ESTA LINHA
+import api from '../../services/api';
 
 const periodos = [
   { value: 'PRIMEIRO', label: 'Primeiro Período (Dias 1-2)' },
@@ -33,6 +33,12 @@ const icones = [
   { value: '🏦', label: 'Banco' },
   { value: '📈', label: 'Crescimento' },
   { value: '⚡', label: 'Rápido' }
+];
+
+const tiposProcessamento = [
+  { value: 'NORMAL', label: 'Normal' },
+  { value: 'EXTEMPORANEO', label: 'Extemporâneo' },
+  { value: 'AMBOS', label: 'Ambos' }
 ];
 
 // Interface para o DTO de associado da régua
@@ -194,25 +200,17 @@ const ModalTiposArquivo: React.FC<{
 };
 
 // ============================================================
-// LISTA DE ASSOCIADOS DA RÉGUA
+// LISTA DE ASSOCIADOS DA RÉGUA (SOMENTE LEITURA COM SCROLL)
 // ============================================================
 
 const ListaAssociadosRegua: React.FC<{
   reguaId: number;
   associados: AssociadoReguaDTO[];
   loading: boolean;
-  onRemover: (associadoId: number) => void;
-  onRefresh: () => void;
-}> = ({ reguaId, associados, loading, onRemover, onRefresh }) => {
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [showConfirmRemoverTodosModal, setShowConfirmRemoverTodosModal] = useState(false);
-  const [associadoParaRemover, setAssociadoParaRemover] = useState<number | null>(null);
-  
+}> = ({ reguaId, associados, loading }) => {
   const [paginaAtual, setPaginaAtual] = useState(1);
-  const [itensPorPagina] = useState(7);
+  const [itensPorPagina] = useState(15);
   const [filtroPesquisa, setFiltroPesquisa] = useState('');
-  const [associadosSelecionados, setAssociadosSelecionados] = useState<Set<number>>(new Set());
-  const [selecionarTodos, setSelecionarTodos] = useState(false);
 
   const getCodigoSpc = (assoc: AssociadoReguaDTO): string => {
     if (assoc.codigoSpc) return assoc.codigoSpc;
@@ -241,71 +239,9 @@ const ListaAssociadosRegua: React.FC<{
   const fim = inicio + itensPorPagina;
   const associadosPaginados = associadosFiltrados.slice(inicio, fim);
 
-  const handleSelecionarTodos = () => {
-    if (selecionarTodos) {
-      setAssociadosSelecionados(new Set());
-    } else {
-      const novosSelecionados = new Set<number>();
-      associadosPaginados.forEach(a => novosSelecionados.add(a.associadoId));
-      setAssociadosSelecionados(novosSelecionados);
-    }
-    setSelecionarTodos(!selecionarTodos);
-  };
-
-  const toggleSelecionarAssociado = (associadoId: number) => {
-    const novosSelecionados = new Set(associadosSelecionados);
-    if (novosSelecionados.has(associadoId)) {
-      novosSelecionados.delete(associadoId);
-    } else {
-      novosSelecionados.add(associadoId);
-    }
-    setAssociadosSelecionados(novosSelecionados);
-    setSelecionarTodos(novosSelecionados.size === associadosPaginados.length && associadosPaginados.length > 0);
-  };
-
-  const handleRemoverSelecionados = () => {
-    if (associadosSelecionados.size === 0) return;
-    setShowConfirmRemoverTodosModal(true);
-  };
-
-  const handleConfirmRemoverTodos = () => {
-    const ids = Array.from(associadosSelecionados);
-    ids.forEach(id => onRemover(id));
-    setAssociadosSelecionados(new Set());
-    setSelecionarTodos(false);
-    setShowConfirmRemoverTodosModal(false);
-  };
-
   const limparFiltro = () => {
     setFiltroPesquisa('');
     setPaginaAtual(1);
-  };
-
-  const handleRemoverClick = (associadoId: number) => {
-    setAssociadoParaRemover(associadoId);
-    setShowConfirmModal(true);
-  };
-
-  const handleConfirmRemover = () => {
-    if (associadoParaRemover) {
-      onRemover(associadoParaRemover);
-      setShowConfirmModal(false);
-      setAssociadoParaRemover(null);
-      if (associadosSelecionados.has(associadoParaRemover)) {
-        const novosSelecionados = new Set(associadosSelecionados);
-        novosSelecionados.delete(associadoParaRemover);
-        setAssociadosSelecionados(novosSelecionados);
-      }
-    }
-  };
-
-  const formatarData = (dataStr?: string) => {
-    if (!dataStr) return '-';
-    try {
-      return new Date(dataStr).toLocaleDateString('pt-BR');
-    } catch {
-      return dataStr;
-    }
   };
 
   if (loading) {
@@ -317,98 +253,84 @@ const ListaAssociadosRegua: React.FC<{
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3">
-        <div className="flex gap-2">
-          <div className="flex-1 relative">
-            <input
-              type="text"
-              placeholder="🔍 Pesquisar por Código SPC ou Nome..."
-              value={filtroPesquisa}
-              onChange={(e) => {
-                setFiltroPesquisa(e.target.value);
-                setPaginaAtual(1);
-              }}
-              className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-            {filtroPesquisa && (
-              <button
-                onClick={limparFiltro}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-          {associadosSelecionados.size > 0 && (
-            <button
-              onClick={handleRemoverSelecionados}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2"
-            >
-              🗑️ Remover {associadosSelecionados.size}
-            </button>
-          )}
-        </div>
+    <div className="space-y-3">
+      {/* 🔍 Filtro de pesquisa */}
+      <div className="relative">
+        <input
+          type="text"
+          placeholder="🔍 Buscar por Código SPC ou Nome..."
+          value={filtroPesquisa}
+          onChange={(e) => {
+            setFiltroPesquisa(e.target.value);
+            setPaginaAtual(1);
+          }}
+          className="w-full px-3 py-2 pr-8 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        />
         {filtroPesquisa && (
-          <div className="text-sm text-gray-500">
-            Encontrados {associadosFiltrados.length} resultado(s)
-          </div>
+          <button
+            onClick={limparFiltro}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
+      {/* 📊 Contador */}
+      <div className="flex justify-between items-center text-xs text-gray-500">
+        <span>
+          {filtroPesquisa
+            ? `${associadosFiltrados.length} de ${associados.length} encontrados`
+            : `Total: ${associados.length} associado(s)`}
+        </span>
+        {associadosFiltrados.length > 0 && (
+          <span>
+            Mostrando {inicio + 1}-{Math.min(fim, associadosFiltrados.length)}
+          </span>
         )}
       </div>
 
       {associadosFiltrados.length === 0 ? (
         <div className="text-center py-8 bg-gray-50 rounded-lg">
-          <p className="text-gray-500">Nenhum associado vinculado a esta régua</p>
-          <p className="text-sm text-gray-400 mt-1">Clique em "Adicionar Associados" para vincular</p>
+          <p className="text-gray-500 text-sm">
+            {filtroPesquisa
+              ? `Nenhum associado encontrado com "${filtroPesquisa}"`
+              : 'Nenhum associado vinculado a esta régua'}
+          </p>
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+          {/* 🔥 LISTA COM SCROLL VERTICAL */}
+          <div className="border border-gray-200 rounded-lg max-h-[500px] overflow-y-auto">
+            <table className="min-w-full">
+              <thead className="bg-gray-50 sticky top-0 z-10">
                 <tr>
-                  <th className="w-10 px-4 py-3">
-                    <input
-                      type="checkbox"
-                      checked={selecionarTodos && associadosPaginados.length > 0}
-                      onChange={handleSelecionarTodos}
-                      className="h-4 w-4 text-blue-600 rounded"
-                    />
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Código SPC
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Código SPC</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome/Razão Social</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data Início</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ações</th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Nome/Razão Social
+                  </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 bg-white">
+              <tbody className="bg-white divide-y divide-gray-100">
                 {associadosPaginados.map((assoc) => (
-                  <tr key={assoc.associadoId} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={associadosSelecionados.has(assoc.associadoId)}
-                        onChange={() => toggleSelecionarAssociado(assoc.associadoId)}
-                        className="h-4 w-4 text-blue-600 rounded"
-                      />
+                  <tr
+                    key={assoc.associadoId}
+                    className="hover:bg-blue-50 transition-colors"
+                  >
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <span className="font-mono text-xs font-medium text-blue-600">
+                        {getCodigoSpc(assoc)}
+                      </span>
                     </td>
-                    <td className="px-4 py-3 font-mono text-sm font-medium text-blue-600">
-                      {getCodigoSpc(assoc)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-sm text-gray-900">{getNomeRazao(assoc)}</div>
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      {formatarData(assoc.dataInicio)}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <button
-                        onClick={() => handleRemoverClick(assoc.associadoId)}
-                        className="text-red-600 hover:text-red-800 transition-colors p-1 rounded hover:bg-red-50"
-                        title="Remover associado da régua"
+                    <td className="px-3 py-2">
+                      <div
+                        className="text-sm text-gray-800 truncate max-w-[200px]"
+                        title={getNomeRazao(assoc)}
                       >
-                        🗑️
-                      </button>
+                        {getNomeRazao(assoc)}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -416,56 +338,57 @@ const ListaAssociadosRegua: React.FC<{
             </table>
           </div>
 
+          {/* 📄 Paginação */}
           {totalPaginas > 1 && (
-            <div className="flex justify-between items-center pt-4 border-t border-gray-200">
-              <div className="text-sm text-gray-500">
-                Mostrando {inicio + 1} - {Math.min(fim, associadosFiltrados.length)} de {associadosFiltrados.length} associados
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setPaginaAtual(p => Math.max(1, p - 1))}
-                  disabled={paginaAtual === 1}
-                  className="px-3 py-1 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
-                >
-                  ◀ Anterior
-                </button>
-                <span className="px-3 py-1 text-gray-600">
-                  Página {paginaAtual} de {totalPaginas}
-                </span>
-                <button
-                  onClick={() => setPaginaAtual(p => Math.min(totalPaginas, p + 1))}
-                  disabled={paginaAtual === totalPaginas}
-                  className="px-3 py-1 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
-                >
-                  Próxima ▶
-                </button>
-              </div>
+            <div className="flex justify-between items-center pt-2 border-t border-gray-200 gap-1">
+              {/* Primeiro */}
+              <button
+                onClick={() => setPaginaAtual(1)}
+                disabled={paginaAtual === 1}
+                className="px-2 py-1 text-xs border border-gray-300 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                title="Primeira página"
+              >
+                ⏮️
+              </button>
+              
+              {/* Anterior */}
+              <button
+                onClick={() => setPaginaAtual(p => Math.max(1, p - 1))}
+                disabled={paginaAtual === 1}
+                className="px-2 py-1 text-xs border border-gray-300 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                title="Página anterior"
+              >
+                ◀
+              </button>
+              
+              {/* Indicador */}
+              <span className="text-xs text-gray-600 whitespace-nowrap px-1">
+                {paginaAtual} / {totalPaginas}
+              </span>
+              
+              {/* Próxima */}
+              <button
+                onClick={() => setPaginaAtual(p => Math.min(totalPaginas, p + 1))}
+                disabled={paginaAtual === totalPaginas}
+                className="px-2 py-1 text-xs border border-gray-300 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                title="Próxima página"
+              >
+                ▶
+              </button>
+              
+              {/* Último */}
+              <button
+                onClick={() => setPaginaAtual(totalPaginas)}
+                disabled={paginaAtual === totalPaginas}
+                className="px-2 py-1 text-xs border border-gray-300 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                title="Última página"
+              >
+                ⏭️
+              </button>
             </div>
           )}
         </>
       )}
-
-      <ConfirmModal
-        isOpen={showConfirmModal}
-        onClose={() => setShowConfirmModal(false)}
-        onConfirm={handleConfirmRemover}
-        title="Confirmar Remoção"
-        message="Tem certeza que deseja remover este associado da régua? Ele será migrado para a régua padrão (dia 26)."
-        confirmText="Sim, Remover"
-        cancelText="Cancelar"
-        type="danger"
-      />
-
-      <ConfirmModal
-        isOpen={showConfirmRemoverTodosModal}
-        onClose={() => setShowConfirmRemoverTodosModal(false)}
-        onConfirm={handleConfirmRemoverTodos}
-        title="Confirmar Remoção em Massa"
-        message={`Tem certeza que deseja remover ${associadosSelecionados.size} associado(s) da régua?`}
-        confirmText="Sim, Remover Todos"
-        cancelText="Cancelar"
-        type="danger"
-      />
     </div>
   );
 };
@@ -769,10 +692,13 @@ const ReguaFaturamentoForm: React.FC = () => {
   
   const [loading, setLoading] = useState(false);
   const [loadingAssociados, setLoadingAssociados] = useState(false);
+  const [reguasDisponiveis, setReguasDisponiveis] = useState<ReguaFaturamento[]>([]);
+  
   const [formData, setFormData] = useState<ReguaFaturamento>({
     nome: '',
     descricao: '',
     diaEmissao: 1,
+    diaVencimento: 10,
     periodo: 'TERCEIRO',
     sequencia: 3,
     tipoArquivo: 'CONSOLIDACAO',
@@ -781,6 +707,12 @@ const ReguaFaturamentoForm: React.FC = () => {
     ativo: true,
     cor: 'blue',
     icone: '📅',
+    permiteMigracao: true,
+    reguaDestinoMigracaoId: undefined,
+    tipoProcessamento: 'NORMAL',
+    aplicarFranquia: true,
+    aplicarFaturamentoMinimo: false,
+    aplicarCancelamentos: true,
     tiposArquivo: [{ id: 1, tipo: 'CONSOLIDACAO', ordem: 1 }]
   });
   
@@ -794,13 +726,22 @@ const ReguaFaturamentoForm: React.FC = () => {
       carregarRegua();
       carregarAssociadosVinculados();
     }
+    carregarReguasDisponiveis();
   }, [id]);
   
   const carregarRegua = async () => {
     try {
       setLoading(true);
       const data = await reguaFaturamentoService.buscarPorId(parseInt(id!));
-      setFormData(data);
+      if (data) {
+        setFormData({
+          ...data,
+          aplicarFranquia: data.aplicarFranquia !== false,
+          aplicarFaturamentoMinimo: data.aplicarFaturamentoMinimo === true,
+          aplicarCancelamentos: data.aplicarCancelamentos !== false,
+          tipoProcessamento: data.tipoProcessamento || 'NORMAL'
+        });
+      }
     } catch (error) {
       console.error('Erro ao carregar régua:', error);
       showToast('Erro ao carregar dados da régua', 'error');
@@ -810,7 +751,16 @@ const ReguaFaturamentoForm: React.FC = () => {
     }
   };
   
-  // 🔥 FUNÇÃO CORRIGIDA - carregarAssociadosVinculados
+  const carregarReguasDisponiveis = async () => {
+    try {
+      const reguas = await reguaFaturamentoService.listarAtivos();
+      const reguasFiltradas = reguas.filter(r => r.id !== parseInt(id || '0'));
+      setReguasDisponiveis(reguasFiltradas);
+    } catch (error) {
+      console.error('Erro ao carregar réguas disponíveis:', error);
+    }
+  };
+  
   const carregarAssociadosVinculados = async () => {
     if (!id) {
       setAssociadosVinculados([]);
@@ -820,32 +770,21 @@ const ReguaFaturamentoForm: React.FC = () => {
     
     try {
       setLoadingAssociados(true);
-      console.log(`🔍 Carregando TODOS os associados vinculados para a régua ID: ${id}`);
+      console.log(`🔍 Carregando associados vinculados para a régua ID: ${id}`);
       
-      // 🔥 USAR O SERVICE QUE AGORA BUSCA TODOS
-      //const associados = await reguaFaturamentoService.listarAssociadosPorRegua(parseInt(id));
-      const associados = await api.get(`/regua-faturamento/${id}/associados`);
+      const response = await api.get(`/regua-faturamento/${id}/associados`);
+      let associadosData = response.data;
       
-      console.log('📥 Associados carregados:', associados);
-      console.log('📥 Quantidade:', associados.length);
-      
-      // 🔥 GARANTIR QUE É UM ARRAY
-      let associadosData = associados;
       if (!Array.isArray(associadosData)) {
-        console.warn('⚠️ Resposta não é um array, tentando extrair');
         if (associadosData && typeof associadosData === 'object') {
-          const possibleKeys = ['content', 'itens', 'data', 'list', 'associados', 'registros', 'resultado'];
-          let foundArray = null;
+          const possibleKeys = ['content', 'itens', 'data', 'list', 'associados'];
           for (const key of possibleKeys) {
             if (associadosData[key] && Array.isArray(associadosData[key])) {
-              foundArray = associadosData[key];
-              console.log(`✅ Encontrado array na propriedade "${key}" com ${foundArray.length} itens`);
+              associadosData = associadosData[key];
               break;
             }
           }
-          if (foundArray) {
-            associadosData = foundArray;
-          } else {
+          if (!Array.isArray(associadosData)) {
             associadosData = [];
           }
         } else {
@@ -853,7 +792,6 @@ const ReguaFaturamentoForm: React.FC = () => {
         }
       }
       
-      // 🔥 MAPEAR OS DADOS
       const associadosFormatados: AssociadoReguaDTO[] = associadosData.map((a: any) => ({
         associadoId: a.associadoId || a.id || 0,
         codigoSpc: a.codigoSpc || a.associadoCodigoSpc || a.codigoSocio || '-',
@@ -864,8 +802,6 @@ const ReguaFaturamentoForm: React.FC = () => {
         dataInicio: a.dataInicio || new Date().toISOString().split('T')[0]
       }));
       
-      console.log(`✅ ${associadosFormatados.length} associados vinculados carregados`);
-      
       setAssociadosVinculados(associadosFormatados);
       setAssociadosIdsVinculados(associadosFormatados.map(a => a.associadoId));
       
@@ -873,7 +809,6 @@ const ReguaFaturamentoForm: React.FC = () => {
       console.error('❌ Erro ao carregar associados vinculados:', error);
       setAssociadosVinculados([]);
       setAssociadosIdsVinculados([]);
-      showToast('Erro ao carregar associados da régua', 'error');
     } finally {
       setLoadingAssociados(false);
     }
@@ -887,25 +822,38 @@ const ReguaFaturamentoForm: React.FC = () => {
       setFormData(prev => ({ ...prev, [name]: target.checked }));
     } else if (name === 'diaEmissao') {
       const dia = parseInt(value);
-      setFormData(prev => ({ ...prev, [name]: dia }));
-      
-      if (dia === 1 || dia === 2) {
-        setFormData(prev => ({ ...prev, periodo: 'PRIMEIRO', sequencia: 1 }));
-      } else if (dia === 16) {
-        setFormData(prev => ({ ...prev, periodo: 'SEGUNDO', sequencia: 2 }));
-      } else if (dia === 26) {
-        setFormData(prev => ({ ...prev, periodo: 'TERCEIRO', sequencia: 3 }));
-      }
+      setFormData(prev => {
+        const novo: ReguaFaturamento = { ...prev, [name]: dia };
+        
+        if (dia === 1 || dia === 2) {
+          novo.periodo = 'PRIMEIRO';
+          novo.sequencia = 1;
+        } else if (dia === 16) {
+          novo.periodo = 'SEGUNDO';
+          novo.sequencia = 2;
+        } else if (dia === 26) {
+          novo.periodo = 'TERCEIRO';
+          novo.sequencia = 3;
+        }
+        
+        return novo;
+      });
+    } else if (name === 'diaVencimento') {
+      setFormData(prev => ({ ...prev, [name]: parseInt(value) || null }));
+    } else if (name === 'reguaDestinoMigracaoId') {
+      setFormData(prev => ({ ...prev, [name]: value ? parseInt(value) : undefined }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
   };
   
   const handleSalvarTiposArquivo = (tipos: TipoArquivoRegua[]) => {
-    setFormData(prev => ({ ...prev, tiposArquivo: tipos }));
-    if (tipos.length > 0) {
-      setFormData(prev => ({ ...prev, tipoArquivo: tipos[0].tipo, ordemImportacao: tipos[0].ordem }));
-    }
+    setFormData(prev => ({ 
+      ...prev, 
+      tiposArquivo: tipos,
+      tipoArquivo: tipos.length > 0 ? tipos[0].tipo as any : prev.tipoArquivo,
+      ordemImportacao: tipos.length > 0 ? tipos[0].ordem : prev.ordemImportacao
+    }));
     showToast('Tipos de arquivo configurados com sucesso!', 'success');
   };
   
@@ -924,17 +872,6 @@ const ReguaFaturamentoForm: React.FC = () => {
     } catch (error) {
       console.error('Erro ao adicionar associados:', error);
       showToast('Erro ao adicionar associados', 'error');
-    }
-  };
-  
-  const handleRemoverAssociado = async (associadoId: number) => {
-    try {
-      await reguaFaturamentoService.removerAssociadoDaRegua(associadoId);
-      showToast('Associado removido da régua com sucesso!', 'success');
-      carregarAssociadosVinculados();
-    } catch (error) {
-      console.error('Erro ao remover associado:', error);
-      showToast('Erro ao remover associado', 'error');
     }
   };
   
@@ -984,121 +921,292 @@ const ReguaFaturamentoForm: React.FC = () => {
                 {isEditMode ? 'Editar Régua de Faturamento' : 'Nova Régua de Faturamento'}
               </h1>
               <p className="text-gray-600 mt-1">
-                Configure os períodos de faturamento e os tipos de arquivo
+                Configure os períodos de faturamento, regras e tipos de arquivo
               </p>
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nome da Régua *</label>
-                  <input
-                    type="text"
-                    name="nome"
-                    value={formData.nome}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Ex: Primeiro Período - Consolidação"
-                  />
-                </div>
-                
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
-                  <textarea
-                    name="descricao"
-                    value={formData.descricao || ''}
-                    onChange={handleChange}
-                    rows={3}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Descreva o propósito desta régua..."
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Dia de Emissão *</label>
-                  <select
-                    name="diaEmissao"
-                    value={formData.diaEmissao}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value={1}>1º dia do mês</option>
-                    <option value={2}>2º dia do mês</option>
-                    <option value={16}>16º dia do mês</option>
-                    <option value={26}>26º dia do mês (Padrão)</option>
-                  </select>
-                  <p className="text-xs text-gray-500 mt-1">O período será definido automaticamente baseado no dia</p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Período</label>
-                  <input
-                    type="text"
-                    value={periodos.find(p => p.value === formData.periodo)?.label || ''}
-                    disabled
-                    className="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-600"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tipos de Arquivo *</label>
-                  <div className="flex gap-2">
-                    <div className="flex-1 px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-600">
-                      {totalTipos} tipo(s) de arquivo configurado(s)
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setModalTiposAberto(true)}
-                      className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-                    >
-                      Configurar
-                    </button>
+              
+              {/* SEÇÃO 1: IDENTIFICAÇÃO */}
+              <div className="border-b pb-6">
+                <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                  📋 Identificação
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nome da Régua *</label>
+                    <input
+                      type="text"
+                      name="nome"
+                      value={formData.nome}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Ex: Primeiro Período - Consolidação"
+                    />
                   </div>
-                  {totalTipos > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {formData.tiposArquivo?.sort((a,b) => a.ordem - b.ordem).map(tipo => (
-                        <span key={tipo.id} className="inline-flex items-center px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                          {tipo.ordem}º - {
-                            tipo.tipo === 'CONSOLIDACAO' ? 'Consolidação' :
-                            tipo.tipo === 'PREVIA_CORRENTE' ? 'Prévia Corrente' : 'Prévia Anterior'
-                          }
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Cor do Badge</label>
-                  <select
-                    name="cor"
-                    value={formData.cor}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    {cores.map(cor => (
-                      <option key={cor.value} value={cor.value}>{cor.label}</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ícone</label>
-                  <select
-                    name="icone"
-                    value={formData.icone}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    {icones.map(icone => (
-                      <option key={icone.value} value={icone.value}>{icone.label} {icone.value}</option>
-                    ))}
-                  </select>
+                  
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                    <textarea
+                      name="descricao"
+                      value={formData.descricao || ''}
+                      onChange={handleChange}
+                      rows={3}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Descreva o propósito desta régua..."
+                    />
+                  </div>
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-gray-200">
+              {/* SEÇÃO 2: PERÍODO E DATAS */}
+              <div className="border-b pb-6">
+                <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                  📅 Período e Datas
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Dia de Emissão *</label>
+                    <select
+                      name="diaEmissao"
+                      value={formData.diaEmissao}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value={1}>1º dia do mês</option>
+                      <option value={2}>2º dia do mês</option>
+                      <option value={16}>16º dia do mês</option>
+                      <option value={26}>26º dia do mês (Padrão)</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Dia de Vencimento</label>
+                    <select
+                      name="diaVencimento"
+                      value={formData.diaVencimento || ''}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Não definido</option>
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map(dia => (
+                        <option key={dia} value={dia}>Dia {dia}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Período (auto)</label>
+                    <input
+                      type="text"
+                      value={periodos.find(p => p.value === formData.periodo)?.label || ''}
+                      disabled
+                      className="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-600"
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              {/* SEÇÃO 3: REGRAS APLICADAS */}
+              <div className="border-b pb-6">
+                <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                  🎯 Regras Aplicadas no Faturamento
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <label className="flex items-start gap-3 p-4 bg-purple-50 rounded-lg border border-purple-200 cursor-pointer hover:bg-purple-100 transition-colors">
+                    <input
+                      type="checkbox"
+                      name="aplicarFranquia"
+                      checked={formData.aplicarFranquia !== false}
+                      onChange={handleChange}
+                      className="mt-1 h-5 w-5 text-purple-600 rounded focus:ring-purple-500"
+                    />
+                    <div>
+                      <div className="font-medium text-purple-900">🎯 Aplicar Franquia</div>
+                      <div className="text-xs text-purple-700 mt-1">
+                        Aplica a regra de franquia (remove excedentes)
+                      </div>
+                    </div>
+                  </label>
+                  
+                  <label className="flex items-start gap-3 p-4 bg-orange-50 rounded-lg border border-orange-200 cursor-pointer hover:bg-orange-100 transition-colors">
+                    <input
+                      type="checkbox"
+                      name="aplicarFaturamentoMinimo"
+                      checked={formData.aplicarFaturamentoMinimo === true}
+                      onChange={handleChange}
+                      className="mt-1 h-5 w-5 text-orange-600 rounded focus:ring-orange-500"
+                    />
+                    <div>
+                      <div className="font-medium text-orange-900">💰 Aplicar Faturamento Mínimo</div>
+                      <div className="text-xs text-orange-700 mt-1">
+                        Complementa até o valor mínimo do associado
+                      </div>
+                    </div>
+                  </label>
+                  
+                  <label className="flex items-start gap-3 p-4 bg-red-50 rounded-lg border border-red-200 cursor-pointer hover:bg-red-100 transition-colors">
+                    <input
+                      type="checkbox"
+                      name="aplicarCancelamentos"
+                      checked={formData.aplicarCancelamentos !== false}
+                      onChange={handleChange}
+                      className="mt-1 h-5 w-5 text-red-600 rounded focus:ring-red-500"
+                    />
+                    <div>
+                      <div className="font-medium text-red-900">🗑️ Aplicar Cancelamentos</div>
+                      <div className="text-xs text-red-700 mt-1">
+                        Remove itens cancelados do período
+                      </div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+              
+              {/* SEÇÃO 4: TIPOS DE ARQUIVO */}
+              <div className="border-b pb-6">
+                <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                  📂 Tipos de Arquivo
+                </h3>
+                <div className="flex gap-2">
+                  <div className="flex-1 px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-600">
+                    {totalTipos} tipo(s) de arquivo configurado(s)
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setModalTiposAberto(true)}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                  >
+                    Configurar
+                  </button>
+                </div>
+                {totalTipos > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {formData.tiposArquivo?.sort((a,b) => a.ordem - b.ordem).map(tipo => (
+                      <span key={tipo.id} className="inline-flex items-center px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                        {tipo.ordem}º - {
+                          tipo.tipo === 'CONSOLIDACAO' ? 'Consolidação' :
+                          tipo.tipo === 'PREVIA_CORRENTE' ? 'Prévia Corrente' : 'Prévia Anterior'
+                        }
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {/* SEÇÃO 5: MIGRAÇÃO */}
+              <div className="border-b pb-6">
+                <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                  🔄 Migração de Associados
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <label className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200 cursor-pointer hover:bg-blue-100 transition-colors">
+                    <input
+                      type="checkbox"
+                      name="permiteMigracao"
+                      checked={formData.permiteMigracao !== false}
+                      onChange={handleChange}
+                      className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+                    />
+                    <div>
+                      <div className="font-medium text-blue-900">Permite Migração</div>
+                      <div className="text-xs text-blue-700 mt-1">
+                        Associados podem ser movidos desta régua
+                      </div>
+                    </div>
+                  </label>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Régua Destino Padrão
+                    </label>
+                    <select
+                      name="reguaDestinoMigracaoId"
+                      value={formData.reguaDestinoMigracaoId || ''}
+                      onChange={handleChange}
+                      disabled={formData.permiteMigracao === false}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                    >
+                      <option value="">Nenhuma (usar padrão)</option>
+                      {reguasDisponiveis.map(r => (
+                        <option key={r.id} value={r.id}>
+                          {r.nome} {r.ehPadrao ? '(Padrão)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Régua sugerida ao migrar associados desta régua
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* SEÇÃO 6: PROCESSAMENTO */}
+              <div className="border-b pb-6">
+                <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                  ⚙️ Processamento
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tipo de Processamento
+                    </label>
+                    <select
+                      name="tipoProcessamento"
+                      value={formData.tipoProcessamento || 'NORMAL'}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                      {tiposProcessamento.map(tp => (
+                        <option key={tp.value} value={tp.value}>{tp.label}</option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Define como o faturamento é processado
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* SEÇÃO 7: APARÊNCIA */}
+              <div className="border-b pb-6">
+                <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                  🎨 Aparência
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Cor do Badge</label>
+                    <select
+                      name="cor"
+                      value={formData.cor}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                      {cores.map(cor => (
+                        <option key={cor.value} value={cor.value}>{cor.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Ícone</label>
+                    <select
+                      name="icone"
+                      value={formData.icone}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                      {icones.map(icone => (
+                        <option key={icone.value} value={icone.value}>{icone.label} {icone.value}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+              
+              {/* SEÇÃO 8: STATUS */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
                 <div className="flex items-center gap-3">
                   <input
                     type="checkbox"
@@ -1118,7 +1226,7 @@ const ReguaFaturamentoForm: React.FC = () => {
                     onChange={handleChange}
                     className="h-4 w-4 text-yellow-600 rounded focus:ring-yellow-500"
                   />
-                  <label className="text-sm text-gray-700">Marcar como Régua Padrão</label>
+                  <label className="text-sm text-gray-700">Régua Padrão</label>
                 </div>
                 
                 {isEditMode && (
@@ -1171,8 +1279,6 @@ const ReguaFaturamentoForm: React.FC = () => {
                 reguaId={parseInt(id!)}
                 associados={associadosVinculados}
                 loading={loadingAssociados}
-                onRemover={handleRemoverAssociado}
-                onRefresh={carregarAssociadosVinculados}
               />
             </div>
           </div>

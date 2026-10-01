@@ -324,18 +324,7 @@ const AssociadoDetalhes: React.FC = () => {
         
         {/* ========== BOTÕES ADICIONAIS ========== */}
         <div className="mb-6 flex flex-wrap justify-between items-center gap-4">
-          <div className="flex gap-3">
-            {/* 🔥 CONSUMO DE FRANQUIA - PERMISSION GUARD */}
-            <PermissionGuard requiredPermissions={['ASSOCIADO_VIEW']}>
-              <Link
-                to={`/associados/${id}/consumo-franquia`}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2 transition-colors"
-              >
-                <span>📊</span>
-                Ver Consumo de Franquias
-              </Link>
-            </PermissionGuard>
-          </div>
+          
           
           {/* 🔥 HISTÓRICO DE MIGRAÇÕES - PERMISSION GUARD */}
           <PermissionGuard requiredPermissions={['ASSOCIADO_VIEW']}>

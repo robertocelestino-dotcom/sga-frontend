@@ -20,13 +20,28 @@ export interface ReguaFaturamento {
   ativo: boolean;
   cor?: string;
   icone?: string;
+  // 🔥 NOVOS CAMPOS
   permiteMigracao?: boolean;
   reguaDestinoMigracaoId?: number;
   tipoProcessamento?: string;
+  aplicarFranquia?: boolean;
+  aplicarFaturamentoMinimo?: boolean;
+  aplicarCancelamentos?: boolean;
+  // Auditoria
   criadoEm?: string;
   atualizadoEm?: string;
   criadoPor?: string;
   atualizadoPor?: string;
+  // Tipos de arquivo
+  tiposArquivo?: TipoArquivoRegua[];
+  // 🔥 Contagem (vem do endpoint /com-contagem)
+  totalAssociados?: number;
+}
+
+export interface TipoArquivoRegua {
+  id?: number;
+  tipo: string;
+  ordem: number;
 }
 
 export interface AssociadoRegua {
@@ -58,10 +73,6 @@ export interface PaginatedResponse<T> {
 // SERVICE
 // ============================================================
 
-/**
- * 🔥 SERVICE DE RÉGUAS DE FATURAMENTO
- * Exportado como const para ser importado como { reguaFaturamentoService }
- */
 export const reguaFaturamentoService = {
   
   // ============================================================
@@ -69,7 +80,7 @@ export const reguaFaturamentoService = {
   // ============================================================
 
   /**
-   * 🔥 LISTA RÉGUAS COM PAGINAÇÃO (COM FALLBACK)
+   * 🔥 LISTA RÉGUAS COM PAGINAÇÃO
    */
   async listar(params: {
     page: number;
@@ -104,46 +115,44 @@ export const reguaFaturamentoService = {
       
       return response.data;
     } catch (error) {
-      console.warn('⚠️ Erro no listar com paginação, tentando fallback:', error);
-      
+      console.error('❌ Erro ao listar réguas:', error);
+      return {
+        content: [],
+        totalPages: 0,
+        totalElements: 0,
+        size: 0,
+        number: 0,
+        first: true,
+        last: true,
+        empty: true
+      };
+    }
+  },
+
+  /**
+   * 🔥 NOVO: LISTA RÉGUAS COM CONTAGEM DE ASSOCIADOS
+   * Usa o endpoint /com-contagem
+   */
+  async listarComContagem(): Promise<ReguaFaturamento[]> {
+    try {
+      console.log('📡 Listando réguas com contagem de associados');
+      const response = await api.get('/regua-faturamento/com-contagem');
+      const reguas = response.data || [];
+      console.log(`✅ ${reguas.length} réguas carregadas com contagem`);
+      return reguas;
+    } catch (error) {
+      console.error('❌ Erro ao listar réguas com contagem:', error);
+      // Fallback: listar ativas sem contagem
       try {
-        const ativas = await this.listarAtivos();
-        return {
-          content: ativas,
-          totalPages: 1,
-          totalElements: ativas.length,
-          size: ativas.length,
-          number: 0,
-          first: true,
-          last: true,
-          empty: ativas.length === 0
-        };
+        return await this.listarAtivos();
       } catch (fallbackError) {
-        console.error('❌ Fallback também falhou:', fallbackError);
-        return {
-          content: [],
-          totalPages: 0,
-          totalElements: 0,
-          size: 0,
-          number: 0,
-          first: true,
-          last: true,
-          empty: true
-        };
+        return [];
       }
     }
   },
 
   /**
-   * 🔥 LISTA RÉGUAS - ALIAS PARA listar (COMPATIBILIDADE)
-   * Este método é chamado pela ConferenciaFaturamento.tsx
-   */
-  async listarReguas(page: number = 0, size: number = 100): Promise<PaginatedResponse<ReguaFaturamento>> {
-    return this.listar({ page, size });
-  },
-
-  /**
-   * 🔥 LISTA TODAS AS RÉGUAS ATIVAS
+   * 🔥 LISTA RÉGUAS ATIVAS
    */
   async listarAtivos(): Promise<ReguaFaturamento[]> {
     try {
@@ -162,7 +171,7 @@ export const reguaFaturamentoService = {
   },
 
   /**
-   * 🔥 LISTA RÉGUAS ATIVAS - ALIAS PARA listarAtivos (COMPATIBILIDADE)
+   * Alias para listarAtivos
    */
   async listarReguasAtivas(): Promise<ReguaFaturamento[]> {
     return this.listarAtivos();
@@ -221,9 +230,6 @@ export const reguaFaturamentoService = {
   // ASSOCIADOS NA RÉGUA
   // ============================================================
   
-  /**
-   * 🔥 Lista associados COM NOTA DE DÉBITO (consolidado)
-   */
   async listarAssociadosPorRegua(reguaId: number, params?: {
     page?: number;
     size?: number;
@@ -256,72 +262,45 @@ export const reguaFaturamentoService = {
     }
   },
 
-  /**
-   * 🔥 Busca TODOS os IDs dos associados COM NOTA DE DÉBITO
-   */
   async listarTodosIdsConsolidados(reguaId: number): Promise<number[]> {
-    console.log(`📥 Buscando TODOS os IDs CONSOLIDADOS (com nota) da régua ${reguaId}`);
-    
     try {
       const response = await api.get(`/regua-faturamento/${reguaId}/associados-consolidado/todos-ids`);
-      const ids = response.data || [];
-      console.log(`✅ Retornados ${ids.length} IDs consolidados`);
-      return ids;
+      return response.data || [];
     } catch (error) {
       console.error(`❌ Erro ao buscar IDs consolidados da régua ${reguaId}:`, error);
       return [];
     }
   },
 
-  /**
-   * ⚠️ DEPRECIADO - Não usar! Retorna TODOS os associados (incluindo sem nota)
-   */
   async listarTodosIds(reguaId: number): Promise<number[]> {
-    console.warn('⚠️ listarTodosIds está DEPRECIADO! Use listarTodosIdsConsolidados');
-    
     try {
       const response = await api.get(`/regua-faturamento/${reguaId}/associados/todos-ids`);
       return response.data || [];
     } catch (error) {
-      console.error(`❌ Erro ao buscar todos os IDs da régua ${reguaId}:`, error);
       return [];
     }
   },
 
-  /**
-   * 🔥 Conta associados com nota da régua
-   */
   async contarAssociadosPorRegua(reguaId: number): Promise<number> {
     try {
       const response = await api.get(`/regua-faturamento/${reguaId}/associados-consolidado/paginado`, {
-        params: {
-          page: 0,
-          size: 1
-        }
+        params: { page: 0, size: 1 }
       });
       return response.data?.totalElements || 0;
     } catch (error) {
-      console.error(`❌ Erro ao contar associados da régua ${reguaId}:`, error);
       return 0;
     }
   },
 
-  /**
-   * Busca a régua ativa de um associado
-   */
   async buscarReguaAtivaDoAssociado(associadoId: number): Promise<any> {
     try {
       const response = await api.get(`/regua-faturamento/associado/ativo/${associadoId}`);
       return response.data || null;
     } catch (error) {
-      console.error(`❌ Erro ao buscar régua ativa do associado ${associadoId}:`, error);
       return null;
     }
   },
 
-  /**
-   * Adiciona um associado a uma régua
-   */
   async adicionarAssociadoARegua(reguaId: number, associadoId: number, dataInicio: string): Promise<any> {
     const response = await api.post(`/regua-faturamento/${reguaId}/associados/${associadoId}`, null, {
       params: { dataInicio }
@@ -329,22 +308,13 @@ export const reguaFaturamentoService = {
     return response.data;
   },
 
-  /**
-   * Migra um associado para outra régua (LEGADO - USAR O NOVO SERVICE)
-   * @deprecated Use migracaoReguaService.migrarAssociado()
-   */
   async migrarAssociado(associadoId: number, reguaDestinoId: number, dataMigracao: string, motivo?: string): Promise<any> {
-    console.warn('⚠️ migrarAssociado está DEPRECIADO! Use migracaoReguaService.migrarAssociado()');
-    
     const response = await api.put(`/regua-faturamento/associados/${associadoId}/migrar/${reguaDestinoId}`, null, {
       params: { dataMigracao, motivo }
     });
     return response.data;
   },
 
-  /**
-   * Remove um associado da régua atual
-   */
   async removerAssociadoDaRegua(associadoId: number): Promise<void> {
     await api.delete(`/regua-faturamento/associados/${associadoId}`);
   },
@@ -353,9 +323,6 @@ export const reguaFaturamentoService = {
   // MÉTODOS AUXILIARES
   // ============================================================
 
-  /**
-   * 🔥 Obtém a lista de réguas para dropdown
-   */
   async getReguasParaDropdown(): Promise<{ value: number; label: string }[]> {
     try {
       const reguas = await this.listarAtivos();
@@ -364,14 +331,10 @@ export const reguaFaturamentoService = {
         label: r.nome
       }));
     } catch (error) {
-      console.error('❌ Erro ao buscar réguas para dropdown:', error);
       return [];
     }
   },
 
-  /**
-   * 🔥 Obtém o nome da régua pelo ID
-   */
   async getNomeRegua(id: number): Promise<string> {
     try {
       const regua = await this.buscarPorId(id);
@@ -381,24 +344,14 @@ export const reguaFaturamentoService = {
     }
   },
 
-  /**
-   * 🔥 Verifica se uma régua é extemporânea (IDs 7 e 8)
-   */
   isExtemporanea(regua: ReguaFaturamento): boolean {
     return regua.id === 7 || regua.id === 8;
   },
 
-  /**
-   * 🔥 Verifica se uma régua permite migração
-   */
   permiteMigracao(regua: ReguaFaturamento): boolean {
     return regua.permiteMigracao !== false;
   }
 };
-
-// ============================================================
-// EXPORTAÇÃO DEFAULT
-// ============================================================
 
 export default reguaFaturamentoService;
 

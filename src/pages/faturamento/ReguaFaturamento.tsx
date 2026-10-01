@@ -2,10 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-//import { reguaFaturamentoService, ReguaFaturamento } from '../../services/reguaFaturamentoService';
 import { reguaFaturamentoService, ReguaFaturamento } from '../../services/reguaFaturamentoService';
-
 import { useMessage } from '../../providers/MessageProvider';
 import BreadCrumb from '../../components/BreadCrumb';
 import Loading from '../../components/Loading';
@@ -17,52 +14,23 @@ const ReguaFaturamentoPage: React.FC = () => {
   
   const [reguas, setReguas] = useState<ReguaFaturamento[]>([]);
   const [loading, setLoading] = useState(false);
-  const [pagina, setPagina] = useState(0);
-  const [totalPaginas, setTotalPaginas] = useState(0);
-  const [totalItens, setTotalItens] = useState(0);
+  const [erroCarregamento, setErroCarregamento] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [reguaParaExcluir, setReguaParaExcluir] = useState<ReguaFaturamento | null>(null);
-  const [erroCarregamento, setErroCarregamento] = useState<string | null>(null);
   
-  const pageSize = 10;
-  
+  // 🔥 Carregar réguas COM CONTAGEM
   const carregarReguas = useCallback(async () => {
     setLoading(true);
     setErroCarregamento(null);
     try {
-      console.log('📡 Carregando réguas - página:', pagina);
+      console.log('📡 Carregando réguas com contagem de associados');
       
-      // 🔥 TENTAR O ENDPOINT COM PAGINAÇÃO
-      let response;
-      try {
-        response = await reguaFaturamentoService.listar(pagina, pageSize, 'sequencia', 'asc');
-      } catch (error: any) {
-        console.warn('⚠️ Erro no listar com paginação, tentando fallback:', error.message);
-        // 🔥 FALLBACK: Tentar o endpoint sem paginação
-        const data = await reguaFaturamentoService.listarAtivas();
-        // Converter para o formato esperado
-        response = {
-          content: data,
-          totalPages: 1,
-          totalElements: data.length,
-          size: data.length,
-          number: 0
-        };
-      }
+      // 🔥 USAR O NOVO MÉTODO
+      const data = await reguaFaturamentoService.listarComContagem();
       
-      if (response && response.content) {
-        setReguas(response.content);
-        setTotalPaginas(response.totalPages || 1);
-        setTotalItens(response.totalElements || response.content.length);
-      } else if (Array.isArray(response)) {
-        setReguas(response);
-        setTotalPaginas(1);
-        setTotalItens(response.length);
-      } else {
-        setReguas([]);
-        setTotalPaginas(0);
-        setTotalItens(0);
-      }
+      setReguas(data);
+      console.log(`✅ ${data.length} réguas carregadas`);
+      
     } catch (error: any) {
       console.error('❌ Erro ao carregar réguas:', error);
       setErroCarregamento(error.message || 'Erro ao carregar réguas');
@@ -71,7 +39,7 @@ const ReguaFaturamentoPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [pagina, showToast]);
+  }, [showToast]);
   
   useEffect(() => {
     carregarReguas();
@@ -187,121 +155,128 @@ const ReguaFaturamentoPage: React.FC = () => {
             </button>
           </div>
         ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Período</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dia Emissão</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo Arquivo</th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Padrão</th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ações</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 bg-white">
-                  {reguas.map((regua) => (
-                    <tr key={regua.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl">{regua.icone || getIconePorPeriodo(regua.periodo)}</span>
-                          <div>
-                            <div className="font-medium text-gray-900">{regua.nome}</div>
-                            {regua.descricao && (
-                              <div className="text-xs text-gray-500 truncate max-w-xs">{regua.descricao}</div>
-                            )}
-                          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Período</th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Dia Emissão</th>
+                  {/* 🔥 NOVA COLUNA: ASSOCIADOS */}
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Associados</th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Regras</th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Padrão</th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 bg-white">
+                {reguas.map((regua) => (
+                  <tr key={regua.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{regua.icone || getIconePorPeriodo(regua.periodo)}</span>
+                        <div>
+                          <div className="font-medium text-gray-900">{regua.nome}</div>
+                          {regua.descricao && (
+                            <div className="text-xs text-gray-500 truncate max-w-xs">{regua.descricao}</div>
+                          )}
                         </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex px-2 py-1 text-xs rounded-full bg-${getCorPorPeriodo(regua.periodo)}-100 text-${getCorPorPeriodo(regua.periodo)}-800`}>
-                          {getPeriodoLabel(regua.periodo, regua.diaEmissao)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        Dia {regua.diaEmissao}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="inline-flex px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded-full">
-                          {regua.tipoArquivo === 'CONSOLIDACAO' ? 'Consolidação' : 
-                           regua.tipoArquivo === 'PREVIA_CORRENTE' ? 'Prévia Corrente' : 'Prévia Anterior'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex px-2 py-1 text-xs rounded-full ${getStatusColor(regua.ativo)}`}>
-                          {regua.ativo ? 'Ativo' : 'Inativo'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {regua.ehPadrao ? (
-                          <span className="inline-flex px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
-                            ⭐ Padrão
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
+                        {getPeriodoLabel(regua.periodo, regua.diaEmissao)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center text-sm text-gray-600">
+                      Dia {regua.diaEmissao}
+                    </td>
+                    {/* 🔥 NOVA COLUNA: ASSOCIADOS */}
+                    <td className="px-4 py-3 text-center">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 rounded-full border border-blue-200">
+                        👥 {regua.totalAssociados || 0}
+                      </span>
+                    </td>
+                    {/* 🔥 NOVA COLUNA: REGRAS */}
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex justify-center gap-1 flex-wrap">
+                        {regua.aplicarFranquia && (
+                          <span className="inline-flex px-2 py-0.5 text-xs bg-purple-100 text-purple-800 rounded" title="Aplicar Franquia">
+                            🎯 Franquia
                           </span>
-                        ) : (
-                          <span className="text-gray-400">-</span>
                         )}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <div className="flex justify-center gap-2">
-                          <button
-                            onClick={() => handleVerDetalhes(regua.id)}
-                            className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
-                            title="Detalhes"
-                          >
-                            👁️
-                          </button>
-                          <button
-                            onClick={() => handleEditar(regua.id)}
-                            className="p-1.5 text-green-600 hover:text-green-800 hover:bg-green-50 rounded transition-colors"
-                            title="Editar"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => handleExcluirClick(regua)}
-                            disabled={regua.ehPadrao}
-                            className={`p-1.5 rounded transition-colors ${
-                              regua.ehPadrao 
-                                ? 'text-gray-400 cursor-not-allowed' 
-                                : 'text-red-600 hover:text-red-800 hover:bg-red-50'
-                            }`}
-                            title={regua.ehPadrao ? 'Não é possível excluir a régua padrão' : 'Excluir'}
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                        {regua.aplicarFaturamentoMinimo && (
+                          <span className="inline-flex px-2 py-0.5 text-xs bg-orange-100 text-orange-800 rounded" title="Aplicar Faturamento Mínimo">
+                            💰 Mínimo
+                          </span>
+                        )}
+                        {regua.aplicarCancelamentos && (
+                          <span className="inline-flex px-2 py-0.5 text-xs bg-red-100 text-red-800 rounded" title="Aplicar Cancelamentos">
+                            🗑️ Cancel.
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`inline-flex px-2 py-1 text-xs rounded-full ${getStatusColor(regua.ativo)}`}>
+                        {regua.ativo ? 'Ativo' : 'Inativo'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {regua.ehPadrao ? (
+                        <span className="inline-flex px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
+                          ⭐ Padrão
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex justify-center gap-2">
+                        <button
+                          onClick={() => handleVerDetalhes(regua.id!)}
+                          className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                          title="Detalhes"
+                        >
+                          👁️
+                        </button>
+                        <button
+                          onClick={() => handleEditar(regua.id!)}
+                          className="p-1.5 text-green-600 hover:text-green-800 hover:bg-green-50 rounded transition-colors"
+                          title="Editar"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => handleExcluirClick(regua)}
+                          disabled={regua.ehPadrao}
+                          className={`p-1.5 rounded transition-colors ${
+                            regua.ehPadrao 
+                              ? 'text-gray-400 cursor-not-allowed' 
+                              : 'text-red-600 hover:text-red-800 hover:bg-red-50'
+                          }`}
+                          title={regua.ehPadrao ? 'Não é possível excluir a régua padrão' : 'Excluir'}
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
             
-            {/* Paginação */}
-            {totalPaginas > 1 && (
-              <div className="flex justify-center items-center gap-2 mt-6">
-                <button
-                  onClick={() => setPagina(p => Math.max(0, p - 1))}
-                  disabled={pagina === 0}
-                  className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
-                >
-                  ◀ Anterior
-                </button>
-                <span className="px-4 py-2 text-gray-600">
-                  Página {pagina + 1} de {totalPaginas}
-                </span>
-                <button
-                  onClick={() => setPagina(p => Math.min(totalPaginas - 1, p + 1))}
-                  disabled={pagina === totalPaginas - 1}
-                  className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
-                >
-                  Próxima ▶
-                </button>
-              </div>
-            )}
-          </>
+            {/* Resumo total */}
+            <div className="mt-4 pt-4 border-t border-gray-200 flex justify-between text-sm text-gray-600">
+              <span>
+                Total: <strong>{reguas.length}</strong> régua(s)
+              </span>
+              <span>
+                Total de associados: <strong>{reguas.reduce((sum, r) => sum + (r.totalAssociados || 0), 0)}</strong>
+              </span>
+            </div>
+          </div>
         )}
       </div>
       
