@@ -1,11 +1,11 @@
-// src/components/faturamento/ModalVisualizarXml.tsx
-
+// src/components/faturamento/ModalVisualizarXml.tsx - VERSÃO CDL
 import React, { useState, useMemo, useCallback } from 'react';
-import { 
-  FaCheck, FaTimes, FaExclamationTriangle, FaCopy, FaCheckCircle, 
-  FaFileCode, FaDownload, FaChevronRight, FaChevronDown, FaExpand, FaCompress
+import {
+  FaCheck, FaTimes, FaExclamationTriangle, FaCopy, FaCheckCircle,
+  FaFileCode, FaDownload, FaChevronRight, FaChevronDown, FaExpand, FaCompress,
 } from 'react-icons/fa';
-import { RmApiPreVisualizacaoItem, RmApiValidacao } from '../../types/rmApi.types';
+import { X } from 'lucide-react';
+import { RmApiPreVisualizacaoItem } from '../../types/rmApi.types';
 
 interface ModalVisualizarXmlProps {
   isOpen: boolean;
@@ -16,10 +16,6 @@ interface ModalVisualizarXmlProps {
   total: number;
 }
 
-// ============================================================
-// INTERFACES PARA NÓS DO XML
-// ============================================================
-
 interface XmlNode {
   type: 'element' | 'text';
   tag?: string;
@@ -28,10 +24,9 @@ interface XmlNode {
   text?: string;
 }
 
-// ============================================================
-// COMPONENTE PARA NÓ DO XML (TREE VIEW)
-// ============================================================
-
+/* ============================================================
+   Tree node
+   ============================================================ */
 const XmlTreeNode: React.FC<{
   node: XmlNode;
   level?: number;
@@ -39,7 +34,7 @@ const XmlTreeNode: React.FC<{
   onToggle: () => void;
 }> = ({ node, level = 0, isExpanded, onToggle }) => {
   const paddingLeft = level * 20 + 8;
-  
+
   if (node.type === 'text') {
     return (
       <div style={{ paddingLeft }} className="text-gray-400 text-xs font-mono py-0.5">
@@ -53,39 +48,37 @@ const XmlTreeNode: React.FC<{
 
   return (
     <div>
-      <div 
-        style={{ paddingLeft }} 
-        className="flex items-center gap-1 py-0.5 hover:bg-gray-800 rounded cursor-pointer"
+      <div
+        style={{ paddingLeft }}
+        className="flex items-center gap-1 py-0.5 hover:bg-cdl-navy-100/30 rounded cursor-pointer"
         onClick={onToggle}
       >
         {hasChildren ? (
-          isExpanded ? (
-            <FaChevronDown className="text-gray-500 text-xs" />
-          ) : (
-            <FaChevronRight className="text-gray-500 text-xs" />
-          )
+          isExpanded ? <FaChevronDown className="text-cdl-yellow-500 text-xs" />
+                     : <FaChevronRight className="text-cdl-yellow-500 text-xs" />
         ) : (
           <span className="w-3" />
         )}
-        <span className="text-blue-400 text-xs font-mono">&lt;{tagName}</span>
-        {node.attributes && Object.entries(node.attributes).map(([key, value]) => (
-          <span key={key} className="text-xs font-mono">
-            <span className="text-purple-400"> {key}</span>
-            <span className="text-gray-500">=</span>
-            <span className="text-green-400">"{value}"</span>
-          </span>
-        ))}
+        <span className="text-cdl-yellow-400 text-xs font-mono">&lt;{tagName}</span>
+        {node.attributes &&
+          Object.entries(node.attributes).map(([key, value]) => (
+            <span key={key} className="text-xs font-mono">
+              <span className="text-cdl-navy-300"> {key}</span>
+              <span className="text-gray-500">=</span>
+              <span className="text-cdl-green-400">"{value}"</span>
+            </span>
+          ))}
         {hasChildren ? (
-          <span className="text-blue-400 text-xs font-mono">&gt;</span>
+          <span className="text-cdl-yellow-400 text-xs font-mono">&gt;</span>
         ) : (
-          <span className="text-blue-400 text-xs font-mono"> /&gt;</span>
+          <span className="text-cdl-yellow-400 text-xs font-mono"> /&gt;</span>
         )}
       </div>
-      
+
       {hasChildren && isExpanded && (
         <div>
           {node.children!.map((child, index) => (
-            <XmlTreeNode 
+            <XmlTreeNode
               key={index}
               node={child}
               level={level + 1}
@@ -93,7 +86,7 @@ const XmlTreeNode: React.FC<{
               onToggle={onToggle}
             />
           ))}
-          <div style={{ paddingLeft }} className="text-blue-400 text-xs font-mono py-0.5">
+          <div style={{ paddingLeft }} className="text-cdl-yellow-400 text-xs font-mono py-0.5">
             &lt;/{tagName}&gt;
           </div>
         </div>
@@ -102,10 +95,9 @@ const XmlTreeNode: React.FC<{
   );
 };
 
-// ============================================================
-// FUNÇÃO PARA PARSER XML (FORA DO COMPONENTE)
-// ============================================================
-
+/* ============================================================
+   Parser
+   ============================================================ */
 const parseXmlToTree = (xml: string): XmlNode[] => {
   try {
     let xmlLimpo = xml;
@@ -115,11 +107,9 @@ const parseXmlToTree = (xml: string): XmlNode[] => {
 
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(xmlLimpo, 'text/xml');
-    
+
     const parserError = xmlDoc.querySelector('parsererror');
-    if (parserError) {
-      return [{ type: 'text', text: xmlLimpo }];
-    }
+    if (parserError) return [{ type: 'text', text: xmlLimpo }];
 
     const parseNode = (node: Node): XmlNode | null => {
       if (node.nodeType === Node.TEXT_NODE) {
@@ -127,7 +117,6 @@ const parseXmlToTree = (xml: string): XmlNode[] => {
         if (text.trim().length === 0) return null;
         return { type: 'text', text: text.trim() };
       }
-
       if (node.nodeType === Node.ELEMENT_NODE) {
         const element = node as Element;
         const attributes: Record<string, string> = {};
@@ -135,23 +124,18 @@ const parseXmlToTree = (xml: string): XmlNode[] => {
           const attr = element.attributes[i];
           attributes[attr.name] = attr.value;
         }
-
         const children: XmlNode[] = [];
         for (let i = 0; i < element.childNodes.length; i++) {
           const childNode = parseNode(element.childNodes[i]);
-          if (childNode) {
-            children.push(childNode);
-          }
+          if (childNode) children.push(childNode);
         }
-
         return {
           type: 'element',
           tag: element.tagName,
           attributes,
-          children: children.length > 0 ? children : undefined
+          children: children.length > 0 ? children : undefined,
         };
       }
-
       return null;
     };
 
@@ -160,26 +144,24 @@ const parseXmlToTree = (xml: string): XmlNode[] => {
 
     const parsed = parseNode(root);
     return parsed ? [parsed] : [{ type: 'text', text: xmlLimpo }];
-
   } catch (e) {
     return [{ type: 'text', text: xml }];
   }
 };
 
-// ============================================================
-// FUNÇÕES AUXILIARES (FORA DO COMPONENTE)
-// ============================================================
-
+/* ============================================================
+   Helpers de status (CDL)
+   ============================================================ */
 const getStatusColor = (valido: boolean, temErros: boolean) => {
-  if (temErros) return 'border-red-500 bg-red-50';
-  if (valido) return 'border-green-500 bg-green-50';
-  return 'border-yellow-500 bg-yellow-50';
+  if (temErros) return 'border-cdl-danger-300 bg-cdl-danger-50';
+  if (valido) return 'border-cdl-green-300 bg-cdl-green-50';
+  return 'border-cdl-yellow-300 bg-cdl-yellow-50';
 };
 
 const getStatusIcon = (valido: boolean, temErros: boolean) => {
-  if (temErros) return <FaTimes className="text-red-500" />;
-  if (valido) return <FaCheck className="text-green-500" />;
-  return <FaExclamationTriangle className="text-yellow-500" />;
+  if (temErros) return <FaTimes className="text-cdl-danger-500" />;
+  if (valido) return <FaCheck className="text-cdl-green-500" />;
+  return <FaExclamationTriangle className="text-cdl-yellow-500" />;
 };
 
 const getStatusText = (valido: boolean, temErros: boolean) => {
@@ -188,41 +170,28 @@ const getStatusText = (valido: boolean, temErros: boolean) => {
   return '⚠️ Atenção';
 };
 
-// ============================================================
-// COMPONENTE PRINCIPAL
-// ============================================================
-
+/* ============================================================
+   Componente principal
+   ============================================================ */
 const ModalVisualizarXml: React.FC<ModalVisualizarXmlProps> = ({
   isOpen,
   onClose,
   onConfirm,
   detalhes,
   processando,
-  total
+  total,
 }) => {
-  // ============================================================
-  // TODOS OS HOOKS NO TOPO (ORDEM FIXA)
-  // ============================================================
-
   const [itemSelecionado, setItemSelecionado] = useState<RmApiPreVisualizacaoItem | null>(
-    () => detalhes.length > 0 ? detalhes[0] : null
+    () => (detalhes.length > 0 ? detalhes[0] : null)
   );
   const [abaAtiva, setAbaAtiva] = useState<'validacao' | 'xml'>('validacao');
   const [isExpanded, setIsExpanded] = useState(true);
   const [copiado, setCopiado] = useState(false);
 
-  // ============================================================
-  // MEMOS (DEPOIS DOS HOOKS DE ESTADO)
-  // ============================================================
-
   const treeData = useMemo(() => {
     if (!itemSelecionado) return [];
     return parseXmlToTree(itemSelecionado.xml);
   }, [itemSelecionado]);
-
-  // ============================================================
-  // CALLBACKS (DEPOIS DOS MEMOS)
-  // ============================================================
 
   const handleCopiarXml = useCallback(() => {
     if (itemSelecionado) {
@@ -246,44 +215,43 @@ const ModalVisualizarXml: React.FC<ModalVisualizarXmlProps> = ({
     }
   }, [itemSelecionado]);
 
-  const toggleExpand = useCallback(() => {
-    setIsExpanded(prev => !prev);
-  }, []);
-
-  // ============================================================
-  // RENDER (COM CHECAGEM DE isOpen)
-  // ============================================================
+  const toggleExpand = useCallback(() => setIsExpanded((prev) => !prev), []);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-6xl w-full max-h-[95vh] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={onClose} aria-hidden="true" />
+
+      <div className="relative w-full sm:max-w-6xl bg-white rounded-t-2xl sm:rounded-2xl
+                      shadow-[0_20px_60px_-15px_rgba(0,0,0,.35)] overflow-hidden
+                      max-h-[95vh] sm:max-h-[90vh] flex flex-col border-t-4 border-cdl-navy-700">
         {/* Header */}
-        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-white">
-          <div className="flex justify-between items-center">
-            <div>
-              <h3 className="text-xl font-bold text-gray-800">🔍 Pré-Visualização XML</h3>
-              <p className="text-sm text-gray-600 mt-1">
-                {total} fatura(s) para integração via API
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 flex justify-between items-center bg-cdl-navy-50 shrink-0">
+          <div>
+            <h2 className="text-base sm:text-xl font-semibold text-cdl-navy-700 flex items-center gap-2">
+              <span>🔍</span> Pré-Visualização XML
+            </h2>
+            <p className="text-xs text-cdl-navy-600 mt-0.5">
+              <strong>{total}</strong> fatura(s) para integração via API
+            </p>
           </div>
+          <button
+            onClick={onClose}
+            aria-label="Fechar"
+            className="rounded-lg p-1.5 text-gray-400 hover:bg-white hover:text-cdl-navy-700 transition-colors shrink-0"
+          >
+            <X size={20} />
+          </button>
         </div>
 
         {/* Body */}
-        <div className="flex flex-col md:flex-row h-[calc(95vh-200px)]">
+        <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
           {/* Lista de faturas */}
-          <div className="w-full md:w-64 border-r border-gray-200 p-4 overflow-y-auto">
-            <h4 className="text-sm font-semibold text-gray-700 mb-3">📋 Faturas</h4>
+          <div className="w-full md:w-72 border-r border-gray-200 p-4 overflow-y-auto bg-cdl-neutral-50 shrink-0">
+            <h4 className="text-sm font-semibold text-cdl-navy-700 mb-3 flex items-center gap-2">
+              <span>📋</span> Faturas
+            </h4>
             <div className="space-y-2">
               {detalhes.map((item) => {
                 const isSelected = itemSelecionado?.notaId === item.notaId;
@@ -291,20 +259,22 @@ const ModalVisualizarXml: React.FC<ModalVisualizarXmlProps> = ({
                   <button
                     key={item.notaId}
                     onClick={() => setItemSelecionado(item)}
-                    className={`w-full text-left p-3 rounded-lg border transition-all ${
+                    className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
                       isSelected
-                        ? 'border-indigo-500 bg-indigo-50'
-                        : 'border-gray-200 hover:bg-gray-50'
-                    } ${getStatusColor(item.validacao.valido, item.temErros)}`}
+                        ? 'border-cdl-navy-700 bg-cdl-navy-50 shadow-cdl'
+                        : 'border-gray-200 bg-white hover:bg-cdl-navy-50/40 hover:border-cdl-navy-200'
+                    }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium truncate">
+                      <span className="text-sm font-medium truncate text-cdl-navy-700">
                         {item.numeroFatura || `Fatura ${item.faturaId}`}
                       </span>
                       {getStatusIcon(item.validacao.valido, item.temErros)}
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">Nota: {item.notaId}</div>
-                    {item.temErros && <div className="text-xs text-red-600 mt-1">⚠️ Erros</div>}
+                    <div className="text-xs text-gray-500 mt-1 font-mono">Nota: {item.notaId}</div>
+                    {item.temErros && (
+                      <div className="text-xs text-cdl-danger-500 mt-1 font-medium">⚠️ Erros</div>
+                    )}
                   </button>
                 );
               })}
@@ -321,13 +291,13 @@ const ModalVisualizarXml: React.FC<ModalVisualizarXmlProps> = ({
                     onClick={() => setAbaAtiva('validacao')}
                     className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                       abaAtiva === 'validacao'
-                        ? 'border-indigo-500 text-indigo-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                        ? 'border-cdl-navy-700 text-cdl-navy-700'
+                        : 'border-transparent text-gray-500 hover:text-cdl-navy-700'
                     }`}
                   >
                     📊 Validação
                     {itemSelecionado.temErros && (
-                      <span className="ml-2 px-2 py-0.5 text-xs bg-red-100 text-red-600 rounded-full">
+                      <span className="ml-2 px-2 py-0.5 text-xs bg-cdl-danger-50 text-cdl-danger-500 rounded-full">
                         {itemSelecionado.validacao.erros?.length || 0}
                       </span>
                     )}
@@ -336,8 +306,8 @@ const ModalVisualizarXml: React.FC<ModalVisualizarXmlProps> = ({
                     onClick={() => setAbaAtiva('xml')}
                     className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                       abaAtiva === 'xml'
-                        ? 'border-indigo-500 text-indigo-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                        ? 'border-cdl-navy-700 text-cdl-navy-700'
+                        : 'border-transparent text-gray-500 hover:text-cdl-navy-700'
                     }`}
                   >
                     <FaFileCode className="inline mr-1" /> XML
@@ -348,18 +318,22 @@ const ModalVisualizarXml: React.FC<ModalVisualizarXmlProps> = ({
                 {abaAtiva === 'validacao' && (
                   <div className="space-y-4">
                     {/* Status geral */}
-                    <div className={`p-4 rounded-lg border ${getStatusColor(itemSelecionado.validacao.valido, itemSelecionado.temErros)}`}>
+                    <div className={`p-4 rounded-lg border-2 ${getStatusColor(itemSelecionado.validacao.valido, itemSelecionado.temErros)}`}>
                       <div className="flex items-center gap-2">
                         {getStatusIcon(itemSelecionado.validacao.valido, itemSelecionado.temErros)}
-                        <span className="font-semibold">{getStatusText(itemSelecionado.validacao.valido, itemSelecionado.temErros)}</span>
+                        <span className="font-semibold text-gray-900">
+                          {getStatusText(itemSelecionado.validacao.valido, itemSelecionado.temErros)}
+                        </span>
                       </div>
                     </div>
 
                     {/* Erros */}
                     {itemSelecionado.validacao.erros && itemSelecionado.validacao.erros.length > 0 && (
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                        <h5 className="text-sm font-semibold text-red-800 mb-2">❌ Erros ({itemSelecionado.validacao.erros.length}):</h5>
-                        <ul className="list-disc list-inside text-sm text-red-700 space-y-1">
+                      <div className="bg-cdl-danger-50 border border-cdl-danger-100 rounded-lg p-4">
+                        <h5 className="text-sm font-semibold text-cdl-danger-600 mb-2">
+                          ❌ Erros ({itemSelecionado.validacao.erros.length}):
+                        </h5>
+                        <ul className="list-disc list-inside text-sm text-cdl-danger-500 space-y-1">
                           {itemSelecionado.validacao.erros.map((erro, idx) => (
                             <li key={idx}>{erro}</li>
                           ))}
@@ -369,9 +343,11 @@ const ModalVisualizarXml: React.FC<ModalVisualizarXmlProps> = ({
 
                     {/* Avisos */}
                     {itemSelecionado.validacao.avisos && itemSelecionado.validacao.avisos.length > 0 && (
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                        <h5 className="text-sm font-semibold text-yellow-800 mb-2">⚠️ Avisos ({itemSelecionado.validacao.avisos.length}):</h5>
-                        <ul className="list-disc list-inside text-sm text-yellow-700 space-y-1">
+                      <div className="bg-cdl-yellow-50 border border-cdl-yellow-100 rounded-lg p-4">
+                        <h5 className="text-sm font-semibold text-cdl-yellow-700 mb-2">
+                          ⚠️ Avisos ({itemSelecionado.validacao.avisos.length}):
+                        </h5>
+                        <ul className="list-disc list-inside text-sm text-cdl-yellow-700 space-y-1">
                           {itemSelecionado.validacao.avisos.map((aviso, idx) => (
                             <li key={idx}>{aviso}</li>
                           ))}
@@ -381,28 +357,38 @@ const ModalVisualizarXml: React.FC<ModalVisualizarXmlProps> = ({
 
                     {/* Dados */}
                     {itemSelecionado.validacao.dados && (
-                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                        <h5 className="text-sm font-semibold text-gray-700 mb-3">📋 Dados da Fatura</h5>
+                      <div className="bg-cdl-navy-50 border border-cdl-navy-100 rounded-lg p-4">
+                        <h5 className="text-sm font-semibold text-cdl-navy-700 mb-3 flex items-center gap-2">
+                          <span>📋</span> Dados da Fatura
+                        </h5>
                         <div className="grid grid-cols-2 gap-3 text-sm">
-                          <div className="bg-white p-2 rounded border border-gray-100">
-                            <span className="text-gray-500">Associado:</span>
-                            <span className="ml-2 font-medium">{itemSelecionado.validacao.dados.associadoNome}</span>
+                          <div className="bg-white p-2.5 rounded border border-cdl-navy-100">
+                            <span className="text-cdl-navy-600 text-xs">Associado:</span>
+                            <span className="ml-2 font-medium text-cdl-navy-700">
+                              {itemSelecionado.validacao.dados.associadoNome}
+                            </span>
                           </div>
-                          <div className="bg-white p-2 rounded border border-gray-100">
-                            <span className="text-gray-500">Código SPC:</span>
-                            <span className="ml-2 font-mono">{itemSelecionado.validacao.dados.codigoSpc}</span>
+                          <div className="bg-white p-2.5 rounded border border-cdl-navy-100">
+                            <span className="text-cdl-navy-600 text-xs">Código SPC:</span>
+                            <span className="ml-2 font-mono text-cdl-navy-700">
+                              {itemSelecionado.validacao.dados.codigoSpc}
+                            </span>
                           </div>
-                          <div className="bg-white p-2 rounded border border-gray-100">
-                            <span className="text-gray-500">Data Emissão:</span>
-                            <span className="ml-2">{itemSelecionado.validacao.dados.dataEmissao}</span>
+                          <div className="bg-white p-2.5 rounded border border-cdl-navy-100">
+                            <span className="text-cdl-navy-600 text-xs">Data Emissão:</span>
+                            <span className="ml-2 text-cdl-navy-700">
+                              {itemSelecionado.validacao.dados.dataEmissao}
+                            </span>
                           </div>
-                          <div className="bg-white p-2 rounded border border-gray-100">
-                            <span className="text-gray-500">Data Vencimento:</span>
-                            <span className="ml-2">{itemSelecionado.validacao.dados.dataVencimento}</span>
+                          <div className="bg-white p-2.5 rounded border border-cdl-navy-100">
+                            <span className="text-cdl-navy-600 text-xs">Data Vencimento:</span>
+                            <span className="ml-2 text-cdl-navy-700">
+                              {itemSelecionado.validacao.dados.dataVencimento}
+                            </span>
                           </div>
-                          <div className="bg-white p-2 rounded border border-gray-100 col-span-2">
-                            <span className="text-gray-500">Valor Total:</span>
-                            <span className="ml-2 font-bold text-green-600">
+                          <div className="bg-white p-2.5 rounded border border-cdl-navy-100 col-span-2">
+                            <span className="text-cdl-navy-600 text-xs">Valor Total:</span>
+                            <span className="ml-2 font-bold text-cdl-green-700">
                               R$ {parseFloat(itemSelecionado.validacao.dados.valorTotal).toFixed(2)}
                             </span>
                           </div>
@@ -417,36 +403,38 @@ const ModalVisualizarXml: React.FC<ModalVisualizarXmlProps> = ({
                   <div>
                     <div className="flex justify-between items-center mb-2 flex-wrap gap-2">
                       <span className="text-sm text-gray-500">
-                        Tamanho: {itemSelecionado.xml.length} caracteres
+                        Tamanho: <span className="font-mono text-cdl-navy-700">{itemSelecionado.xml.length}</span> caracteres
                       </span>
                       <div className="flex gap-2 flex-wrap">
                         <button
                           onClick={toggleExpand}
-                          className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center gap-1 px-3 py-1 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
+                          className="text-sm text-cdl-navy-700 hover:text-cdl-navy-900 flex items-center gap-1
+                                     px-3 py-1.5 bg-cdl-navy-50 rounded-lg hover:bg-cdl-navy-100 transition-colors font-medium"
                         >
                           {isExpanded ? <FaCompress /> : <FaExpand />}
                           {isExpanded ? 'Colapsar' : 'Expandir'}
                         </button>
                         <button
                           onClick={handleCopiarXml}
-                          className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center gap-1 px-3 py-1 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
+                          className="text-sm text-cdl-navy-700 hover:text-cdl-navy-900 flex items-center gap-1
+                                     px-3 py-1.5 bg-cdl-navy-50 rounded-lg hover:bg-cdl-navy-100 transition-colors font-medium"
                         >
-                          {copiado ? <FaCheckCircle className="text-green-500" /> : <FaCopy />}
+                          {copiado ? <FaCheckCircle className="text-cdl-green-500" /> : <FaCopy />}
                           {copiado ? 'Copiado!' : 'Copiar'}
                         </button>
                         <button
                           onClick={handleBaixarXml}
-                          className="text-sm text-green-600 hover:text-green-800 flex items-center gap-1 px-3 py-1 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
+                          className="text-sm text-cdl-green-700 hover:text-cdl-green-800 flex items-center gap-1
+                                     px-3 py-1.5 bg-cdl-green-50 rounded-lg hover:bg-cdl-green-100 transition-colors font-medium"
                         >
                           <FaDownload /> Baixar
                         </button>
                       </div>
                     </div>
-                    
-                    {/* Tree View */}
-                    <div className="bg-gray-900 rounded-lg p-4 overflow-auto max-h-[500px]">
+
+                    <div className="bg-cdl-navy-900 rounded-lg p-4 overflow-auto max-h-[500px] border border-cdl-navy-700">
                       {treeData.map((node, index) => (
-                        <XmlTreeNode 
+                        <XmlTreeNode
                           key={index}
                           node={node}
                           isExpanded={isExpanded}
@@ -454,15 +442,15 @@ const ModalVisualizarXml: React.FC<ModalVisualizarXmlProps> = ({
                         />
                       ))}
                     </div>
-                    
-                    <div className="mt-2 text-xs text-gray-400">
+
+                    <div className="mt-2 text-xs text-gray-500 flex items-center gap-1">
                       💡 Clique nos nós para expandir/colapsar | Use "Copiar" para colar no SoapUI
                     </div>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="flex justify-center items-center h-full text-gray-500">
+              <div className="flex justify-center items-center h-full text-cdl-navy-600">
                 Selecione uma fatura para visualizar
               </div>
             )}
@@ -470,30 +458,31 @@ const ModalVisualizarXml: React.FC<ModalVisualizarXmlProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-between items-center">
-          <div className="text-sm text-gray-500">
-            {detalhes.filter(d => d.temErros).length} fatura(s) com erros
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 bg-cdl-neutral-50 flex justify-between items-center shrink-0">
+          <div className="text-sm text-cdl-danger-500 font-medium">
+            {detalhes.filter((d) => d.temErros).length} fatura(s) com erros
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
             <button
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+              className="px-4 py-2.5 border border-gray-300 text-cdl-navy-700 bg-white rounded-lg
+                         hover:bg-cdl-neutral-50 transition-colors font-medium"
             >
               Fechar
             </button>
             <button
               onClick={onConfirm}
-              disabled={processando || detalhes.some(d => d.temErros)}
-              className={`px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2`}
+              disabled={processando || detalhes.some((d) => d.temErros)}
+              className="px-6 py-2.5 bg-cdl-navy-700 text-white rounded-lg hover:bg-cdl-navy-800
+                         disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[.98]
+                         flex items-center justify-center gap-2 font-medium"
             >
               {processando ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span className="inline-block w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
                   Enviando...
                 </>
-              ) : (
-                '🚀 Enviar para RM'
-              )}
+              ) : '🚀 Enviar para RM'}
             </button>
           </div>
         </div>

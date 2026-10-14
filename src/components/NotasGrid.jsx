@@ -1,3 +1,5 @@
+// src/components/NotasGrid.jsx - VERSÃO CDL
+
 import React, { useEffect, useState } from "react";
 import NotaModal from "./NotaModal";
 
@@ -20,17 +22,13 @@ export default function NotasGrid({ importacaoId }) {
     setLoading(true);
     const q = new URLSearchParams({ page, size, filtro }).toString();
     fetch(`/api/notas/importacao/${importacaoId}?${q}`)
-      .then(r => r.json())
-      .then(data => {
-        setNotas(data.content ? data.content : data); // Page object or list
+      .then((r) => r.json())
+      .then((data) => {
+        setNotas(data.content ? data.content : data);
         setTotalPages(data.totalPages ?? 1);
       })
-      .catch(e => console.error(e))
+      .catch((e) => console.error(e))
       .finally(() => setLoading(false));
-  }
-
-  function visualizar(notaId) {
-    setSelectedNota(notaId);
   }
 
   function exportCsv(notaId) {
@@ -41,67 +39,159 @@ export default function NotasGrid({ importacaoId }) {
     window.open(`/api/notas/${notaId}/export/pdf`, "_blank");
   }
 
+  const formatarMoeda = (v) =>
+    (v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
   return (
-    <div className="bg-white rounded shadow p-4">
-      <div className="flex items-center justify-between mb-2">
+    <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+
+      {/* Header */}
+      <div className="p-4 border-b border-gray-200 bg-cdl-navy-50 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="font-semibold">Notas (Importação #{importacaoId})</h3>
-          <div className="text-sm text-gray-500">Filtrar / visualizar / exportar</div>
+          <h3 className="font-semibold text-cdl-navy-700 flex items-center gap-2">
+            📋 Notas da Importação <span className="font-mono">#{importacaoId}</span>
+          </h3>
+          <p className="text-xs text-gray-600 mt-0.5">
+            Filtrar, visualizar e exportar notas
+          </p>
         </div>
+
         <div className="flex items-center gap-2">
-          <input value={filtro} onChange={e => setFiltro(e.target.value)} placeholder="Filtro (nota, código, nome)" className="px-2 py-1 border rounded" />
-          <button onClick={() => { setPage(0); load(); }} className="px-3 py-1 bg-blue-600 text-white rounded">Aplicar</button>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+            <input
+              value={filtro}
+              onChange={(e) => setFiltro(e.target.value)}
+              placeholder="Filtro (nota, código, nome)"
+              className="pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm
+                focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600 transition-colors"
+            />
+          </div>
+          <button
+            onClick={() => {
+              setPage(0);
+              load();
+            }}
+            className="px-3 py-2 bg-cdl-navy-700 text-white rounded-md text-sm font-medium
+              hover:bg-cdl-navy-800 transition-all active:scale-[.98]"
+          >
+            🔍 Aplicar
+          </button>
         </div>
       </div>
 
-      {loading ? <div>Carregando...</div> : (
+      {/* Body */}
+      {loading ? (
+        <div className="p-12 text-center">
+          <div className="inline-flex items-center gap-3">
+            <div className="animate-spin rounded-full h-5 w-5 border-2 border-cdl-navy-100 border-t-cdl-navy-700" />
+            <span className="text-sm font-medium text-cdl-navy-700">Carregando notas...</span>
+          </div>
+        </div>
+      ) : (
         <>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-100">
+              <thead className="bg-cdl-navy-50">
                 <tr>
-                  <th className="p-2 text-left">Id Nota</th>
-                  <th className="p-2 text-left">Número</th>
-                  <th className="p-2 text-left">Código</th>
-                  <th className="p-2 text-left">Nome</th>
-                  <th className="p-2 text-right">Total Débitos</th>
-                  <th className="p-2 text-right">Total Créditos</th>
-                  <th className="p-2 text-right">Valor Faturado</th>
-                  <th className="p-2 text-center">Ações</th>
+                  {["ID", "Número", "Código", "Nome", "Total Débitos", "Total Créditos", "Valor Faturado", "Ações"].map((h) => (
+                    <th
+                      key={h}
+                      className={`px-4 py-3 text-xs font-semibold text-cdl-navy-700 uppercase tracking-wider
+                        ${["Total Débitos", "Total Créditos", "Valor Faturado"].includes(h) ? "text-right" : ""}
+                        ${h === "Ações" ? "text-center" : ""}
+                        ${["ID", "Número", "Código", "Nome"].includes(h) ? "text-left" : ""}`}
+                    >
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
-              <tbody>
-                {notas && notas.length>0 ? notas.map(n => (
-                  <tr key={n.id} className="border-b">
-                    <td className="p-2">{n.id}</td>
-                    <td className="p-2">{n.numeroNota}</td>
-                    <td className="p-2">{n.codigoSocio}</td>
-                    <td className="p-2">{n.nomeAssociado}</td>
-                    <td className="p-2 text-right">{(n.totalDebitos || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                    <td className="p-2 text-right">{(n.totalCreditos || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                    <td className="p-2 text-right font-semibold">{(n.valorFaturado || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                    <td className="p-2 text-center">
-                      <button onClick={() => visualizar(n.id)} className="px-2 py-1 bg-gray-200 rounded mr-2">Visualizar</button>
-                      <button onClick={() => exportCsv(n.id)} className="px-2 py-1 bg-green-600 text-white rounded mr-2">CSV</button>
-                      <button onClick={() => exportPdf(n.id)} className="px-2 py-1 bg-indigo-600 text-white rounded">PDF</button>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {notas && notas.length > 0 ? (
+                  notas.map((n) => (
+                    <tr key={n.id} className="hover:bg-cdl-navy-50/40 transition-colors">
+                      <td className="px-4 py-3 text-gray-500 font-mono text-xs">{n.id}</td>
+                      <td className="px-4 py-3 text-gray-900 font-mono text-xs">{n.numeroNota}</td>
+                      <td className="px-4 py-3 text-gray-900 font-mono text-xs">{n.codigoSocio}</td>
+                      <td className="px-4 py-3 text-gray-900">{n.nomeAssociado}</td>
+                      <td className="px-4 py-3 text-right text-gray-700">{formatarMoeda(n.totalDebitos)}</td>
+                      <td className="px-4 py-3 text-right text-gray-700">{formatarMoeda(n.totalCreditos)}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-cdl-navy-800">
+                        {formatarMoeda(n.valorFaturado)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1 justify-center">
+                          <button
+                            onClick={() => setSelectedNota(n.id)}
+                            className="p-1.5 text-cdl-navy-700 hover:bg-cdl-navy-50 rounded transition-colors"
+                            title="Visualizar"
+                          >
+                            👁️
+                          </button>
+                          <button
+                            onClick={() => exportCsv(n.id)}
+                            className="p-1.5 text-cdl-green-700 hover:bg-cdl-green-50 rounded transition-colors"
+                            title="Exportar CSV"
+                          >
+                            📊
+                          </button>
+                          <button
+                            onClick={() => exportPdf(n.id)}
+                            className="p-1.5 text-cdl-navy-600 hover:bg-cdl-navy-50 rounded transition-colors"
+                            title="Exportar PDF"
+                          >
+                            📄
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={8} className="px-4 py-12 text-center">
+                      <div className="text-4xl mb-2">📭</div>
+                      <p className="text-gray-500">Nenhuma nota encontrada.</p>
                     </td>
                   </tr>
-                )) : <tr><td colSpan={8} className="p-4 text-center text-gray-500">Nenhuma nota encontrada.</td></tr>}
+                )}
               </tbody>
             </table>
           </div>
 
-          <div className="mt-3 flex items-center justify-between">
-            <div className="text-sm text-gray-600">Página {page+1} de {totalPages}</div>
+          {/* Paginação */}
+          <div className="px-4 py-3 border-t border-gray-200 bg-cdl-neutral-50 flex items-center justify-between">
+            <div className="text-sm text-gray-700">
+              Página <span className="font-medium">{page + 1}</span> de{" "}
+              <span className="font-medium">{totalPages}</span>
+            </div>
             <div className="flex gap-2">
-              <button disabled={page <= 0} onClick={() => setPage(p => Math.max(0, p-1))} className="px-2 py-1 border rounded">Anterior</button>
-              <button disabled={page+1 >= totalPages} onClick={() => setPage(p => p+1)} className="px-2 py-1 border rounded">Próxima</button>
+              <button
+                disabled={page <= 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700
+                  hover:bg-white hover:border-cdl-navy-300 disabled:opacity-50
+                  disabled:cursor-not-allowed transition-colors"
+              >
+                ← Anterior
+              </button>
+              <button
+                disabled={page + 1 >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+                className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700
+                  hover:bg-white hover:border-cdl-navy-300 disabled:opacity-50
+                  disabled:cursor-not-allowed transition-colors"
+              >
+                Próxima →
+              </button>
             </div>
           </div>
         </>
       )}
 
-      {selectedNota && <NotaModal notaId={selectedNota} onClose={() => setSelectedNota(null)} />}
+      {selectedNota && (
+        <NotaModal notaId={selectedNota} onClose={() => setSelectedNota(null)} />
+      )}
     </div>
   );
 }

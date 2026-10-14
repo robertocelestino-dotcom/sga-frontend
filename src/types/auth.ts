@@ -1,4 +1,3 @@
-
 export interface Perfil {
   id: number;
   nome: string;
@@ -39,6 +38,7 @@ export interface Usuario {
   perfilId: number;
   perfilNome: string;
   role: string;
+  fotoBase64?: string;   // 🔥 NOVO — avatar em base64
 }
 
 export interface UsuarioRequest {

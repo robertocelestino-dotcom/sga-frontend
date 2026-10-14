@@ -1,10 +1,10 @@
-// src/pages/faturamento/FaturaDetalhes.tsx
-
+// src/pages/faturamento/FaturaDetalhes.tsx - VERSÃO CDL
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMessage } from '../../providers/MessageProvider';
 import BreadCrumb from '../../components/BreadCrumb';
 import Loading from '../../components/Loading';
+import EmptyState from '../../components/ui/EmptyState';
 import faturamentoService from '../../services/faturamentoService';
 import { produtoService } from '../../services/produtoService';
 import ConfirmModal from '../../components/ui/ConfirmModal';
@@ -71,7 +71,7 @@ const FaturaDetalhes: React.FC = () => {
     codigoProduto: '',
     descricao: '',
     quantidade: 1,
-    valorUnitario: 0
+    valorUnitario: 0,
   });
 
   const [buscaProdutos, setBuscaProdutos] = useState('');
@@ -94,26 +94,22 @@ const FaturaDetalhes: React.FC = () => {
     onConfirm: () => {},
     confirmText: 'Confirmar',
     cancelText: 'Cancelar',
-    confirmVariant: 'danger'
+    confirmVariant: 'danger',
   });
 
   const [modalLogsAberta, setModalLogsAberta] = useState(false);
 
-  // 🔒 PERMISSÕES
   const podeVisualizar = hasPermission('FATURA_VIEW') || user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
   const podeEditarFatura = hasPermission('FATURA_EDIT') || user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
   const podeExportarPdf = hasPermission('FATURA_VIEW') || user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
   const podeVerLogs = hasPermission('FATURA_VIEW') || user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
-  const podeAdicionarItem = hasPermission('FATURA_EDIT') || user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
   const podeRemoverItem = hasPermission('FATURA_DELETE') || user?.role === 'SUPER_ADMIN';
 
   useEffect(() => {
-    if (id) {
-      carregarFatura();
-    }
+    if (id) carregarFatura();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // Funções do Confirm Modal
   const openConfirmModal = (
     title: string,
     message: string,
@@ -122,37 +118,21 @@ const FaturaDetalhes: React.FC = () => {
     cancelText: string = 'Cancelar',
     confirmVariant: 'danger' | 'success' | 'warning' | 'info' = 'danger'
   ) => {
-    setConfirmModal({
-      isOpen: true,
-      title,
-      message,
-      onConfirm,
-      confirmText,
-      cancelText,
-      confirmVariant
-    });
+    setConfirmModal({ isOpen: true, title, message, onConfirm, confirmText, cancelText, confirmVariant });
   };
 
-  const closeConfirmModal = () => {
-    setConfirmModal(prev => ({ ...prev, isOpen: false }));
-  };
+  const closeConfirmModal = () => setConfirmModal((prev) => ({ ...prev, isOpen: false }));
 
-  // Buscar produtos
   const buscarProdutos = useCallback(async (termo: string) => {
     if (!termo || termo.length < 2) {
       setProdutosFiltrados([]);
       return;
     }
-
     setCarregandoProdutos(true);
     try {
       const response = await produtoService.listarSimples({
-        termo: termo,
-        page: 0,
-        size: 20,
-        ativo: true
+        termo, page: 0, size: 20, ativo: true,
       });
-
       const produtos = response.content.map((p: any) => ({
         id: p.id,
         codigo: p.codigo,
@@ -161,9 +141,8 @@ const FaturaDetalhes: React.FC = () => {
         nome: p.nome,
         nomeCompleto: p.nomeCompleto,
         valor: p.valorUnitario || 0,
-        valorUnitario: p.valorUnitario || 0
+        valorUnitario: p.valorUnitario || 0,
       }));
-
       setProdutosFiltrados(produtos);
       setMostrarDropdownProdutos(true);
     } catch (error) {
@@ -178,7 +157,7 @@ const FaturaDetalhes: React.FC = () => {
       codigoProduto: produto.codigoRm,
       descricao: produto.descricao || produto.nome || '',
       quantidade: 1,
-      valorUnitario: produto.valor || produto.valorUnitario || 0
+      valorUnitario: produto.valor || produto.valorUnitario || 0,
     });
     setBuscaProdutos(produto.descricao || produto.nome || '');
     setMostrarDropdownProdutos(false);
@@ -186,17 +165,13 @@ const FaturaDetalhes: React.FC = () => {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (buscaProdutos) {
-        buscarProdutos(buscaProdutos);
-      }
+      if (buscaProdutos) buscarProdutos(buscaProdutos);
     }, 300);
     return () => clearTimeout(timer);
   }, [buscaProdutos, buscarProdutos]);
 
   const isValidItemId = (itemId: any): boolean => {
-    if (itemId === undefined || itemId === null || itemId === 0) {
-      return false;
-    }
+    if (itemId === undefined || itemId === null || itemId === 0) return false;
     const num = Number(itemId);
     return !isNaN(num) && num > 0;
   };
@@ -204,9 +179,7 @@ const FaturaDetalhes: React.FC = () => {
   const getItemId = (item: any): number | null => {
     if (!item) return null;
     const id = item.id || item.itemId || item.faturaItemId;
-    if (isValidItemId(id)) {
-      return Number(id);
-    }
+    if (isValidItemId(id)) return Number(id);
     return null;
   };
 
@@ -230,24 +203,20 @@ const FaturaDetalhes: React.FC = () => {
   const formatCurrency = (value: number) => {
     if (value === null || value === undefined) return 'R$ 0,00';
     return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
+      style: 'currency', currency: 'BRL',
+      minimumFractionDigits: 2, maximumFractionDigits: 2,
     }).format(value);
   };
 
-  const formatDate = (dateStr: string) => {
-    return formatDateWithoutTimezone(dateStr);
-  };
+  const formatDate = (dateStr: string) => formatDateWithoutTimezone(dateStr);
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'PENDENTE': return 'bg-yellow-100 text-yellow-800';
-      case 'PAGA': return 'bg-green-100 text-green-800';
-      case 'CANCELADA': return 'bg-red-100 text-red-800';
-      case 'SIMULADO': return 'bg-blue-100 text-blue-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'PENDENTE': return 'bg-cdl-yellow-100 text-cdl-yellow-700';
+      case 'PAGA': return 'bg-cdl-green-100 text-cdl-green-700';
+      case 'CANCELADA': return 'bg-cdl-danger-50 text-cdl-danger-500';
+      case 'SIMULADO': return 'bg-cdl-navy-100 text-cdl-navy-700';
+      default: return 'bg-cdl-neutral-100 text-cdl-neutral-500';
     }
   };
 
@@ -271,31 +240,26 @@ const FaturaDetalhes: React.FC = () => {
     }
   };
 
-  // ========== FUNÇÕES DE EDIÇÃO INLINE ==========
-
   const iniciarEdicaoItem = (item: FaturaItem) => {
     const itemId = getItemId(item);
     if (!isValidItemId(itemId)) {
       showToast('ID do item inválido', 'error');
       return;
     }
-    setItensEditando(prev => ({ ...prev, [itemId!]: true }));
+    setItensEditando((prev) => ({ ...prev, [itemId!]: true }));
   };
 
   const cancelarEdicaoItem = (item: FaturaItem) => {
     const itemId = getItemId(item);
-    if (!isValidItemId(itemId)) {
-      return;
-    }
-    setItensEditando(prev => ({ ...prev, [itemId!]: false }));
+    if (!isValidItemId(itemId)) return;
+    setItensEditando((prev) => ({ ...prev, [itemId!]: false }));
     carregarFatura();
   };
 
   const alterarItemEditando = (item: FaturaItem, campo: string, valor: any) => {
     const itemId = getItemId(item);
     if (!fatura || !isValidItemId(itemId)) return;
-
-    const novosItens = fatura.itens?.map(i => {
+    const novosItens = fatura.itens?.map((i) => {
       const currentId = getItemId(i);
       if (currentId === itemId) {
         const updated = { ...i, [campo]: valor };
@@ -306,28 +270,15 @@ const FaturaDetalhes: React.FC = () => {
       }
       return i;
     });
-
     setFatura({ ...fatura, itens: novosItens });
   };
 
   const salvarEdicaoItem = async (item: FaturaItem) => {
     const itemId = getItemId(item);
-    if (!isValidItemId(itemId)) {
-      showToast('ID do item inválido para salvar', 'error');
-      return;
-    }
-    if (!fatura) {
-      showToast('Fatura não carregada', 'error');
-      return;
-    }
-    if (!item.codigoProduto || !item.descricao) {
-      showToast('Código e descrição do item são obrigatórios', 'warning');
-      return;
-    }
-    if (item.quantidade <= 0 || item.valorUnitario <= 0) {
-      showToast('Quantidade e valor unitário devem ser maiores que zero', 'warning');
-      return;
-    }
+    if (!isValidItemId(itemId)) { showToast('ID do item inválido para salvar', 'error'); return; }
+    if (!fatura) { showToast('Fatura não carregada', 'error'); return; }
+    if (!item.codigoProduto || !item.descricao) { showToast('Código e descrição do item são obrigatórios', 'warning'); return; }
+    if (item.quantidade <= 0 || item.valorUnitario <= 0) { showToast('Quantidade e valor unitário devem ser maiores que zero', 'warning'); return; }
 
     openConfirmModal(
       'Salvar Alterações',
@@ -341,13 +292,11 @@ const FaturaDetalhes: React.FC = () => {
             descricao: item.descricao,
             quantidade: item.quantidade,
             valorUnitario: item.valorUnitario,
-            tipoLancamento: item.tipoLancamento || 'D'
+            tipoLancamento: item.tipoLancamento || 'D',
           });
           showToast('Item atualizado com sucesso!', 'success');
-          setItensEditando(prev => {
-            const newState = { ...prev };
-            delete newState[itemId!];
-            return newState;
+          setItensEditando((prev) => {
+            const s = { ...prev }; delete s[itemId!]; return s;
           });
           await carregarFatura();
         } catch (error: any) {
@@ -357,18 +306,13 @@ const FaturaDetalhes: React.FC = () => {
           setSalvando(false);
         }
       },
-      'Sim, salvar',
-      'Cancelar',
-      'success'
+      'Sim, salvar', 'Cancelar', 'success'
     );
   };
 
   const removerItem = async (item: FaturaItem) => {
     const itemId = getItemId(item);
-    if (!isValidItemId(itemId)) {
-      showToast('ID do item inválido', 'error');
-      return;
-    }
+    if (!isValidItemId(itemId)) { showToast('ID do item inválido', 'error'); return; }
 
     openConfirmModal(
       'Remover Item da Fatura',
@@ -387,9 +331,7 @@ const FaturaDetalhes: React.FC = () => {
           setSalvando(false);
         }
       },
-      'Sim, remover',
-      'Cancelar',
-      'danger'
+      'Sim, remover', 'Cancelar', 'danger'
     );
   };
 
@@ -398,14 +340,13 @@ const FaturaDetalhes: React.FC = () => {
       showToast('Preencha todos os campos do item', 'warning');
       return;
     }
-
     setSalvando(true);
     try {
       await faturamentoService.adicionarItemFatura(fatura!.id, {
         codigoProduto: novoItem.codigoProduto,
         descricao: novoItem.descricao,
         quantidade: novoItem.quantidade,
-        valorUnitario: novoItem.valorUnitario
+        valorUnitario: novoItem.valorUnitario,
       });
       showToast('Item adicionado com sucesso!', 'success');
       setNovoItem({ codigoProduto: '', descricao: '', quantidade: 1, valorUnitario: 0 });
@@ -421,7 +362,6 @@ const FaturaDetalhes: React.FC = () => {
 
   const handleSalvarEFechar = async () => {
     const hasEditando = Object.keys(itensEditando).length > 0;
-
     if (hasEditando) {
       openConfirmModal(
         'Salvar Alterações',
@@ -430,14 +370,14 @@ const FaturaDetalhes: React.FC = () => {
           setSalvando(true);
           try {
             for (const itemId of Object.keys(itensEditando)) {
-              const item = fatura?.itens?.find(i => i.id === Number(itemId));
+              const item = fatura?.itens?.find((i) => i.id === Number(itemId));
               if (item) {
                 await faturamentoService.atualizarItemFatura(fatura!.id, Number(itemId), {
                   codigoProduto: item.codigoProduto,
                   descricao: item.descricao,
                   quantidade: item.quantidade,
                   valorUnitario: item.valorUnitario,
-                  tipoLancamento: item.tipoLancamento || 'D'
+                  tipoLancamento: item.tipoLancamento || 'D',
                 });
               }
             }
@@ -450,9 +390,7 @@ const FaturaDetalhes: React.FC = () => {
             setSalvando(false);
           }
         },
-        'Sim, salvar',
-        'Cancelar',
-        'success'
+        'Sim, salvar', 'Cancelar', 'success'
       );
     } else {
       navigate('/faturamento/faturas');
@@ -461,19 +399,27 @@ const FaturaDetalhes: React.FC = () => {
 
   const podeEditar = (fatura?.status === 'PENDENTE' || fatura?.status === 'SIMULADO') && podeEditarFatura;
 
-  if (loading) {
-    return <Loading />;
-  }
+  if (loading) return <Loading />;
 
   if (!fatura) {
     return (
-      <div className="p-6">
+      <div className="p-6 max-w-7xl mx-auto">
         <BreadCrumb atual="Detalhes da Fatura" />
-        <div className="text-center py-12">
-          <p className="text-gray-500">Fatura não encontrada</p>
-          <button onClick={() => navigate('/faturamento/faturas')} className="mt-4 text-blue-600 hover:text-blue-800">
-            Voltar para listagem
-          </button>
+        <div className="bg-white rounded-xl shadow-cdl p-12 mt-6">
+          <EmptyState
+            icon="📄"
+            title="Fatura não encontrada"
+            description="Não foi possível localizar esta fatura."
+            action={
+              <button
+                onClick={() => navigate('/faturamento/faturas')}
+                className="px-6 py-3 bg-cdl-navy-700 text-white rounded-lg font-medium
+                           hover:bg-cdl-navy-800 transition-all active:scale-[.98]"
+              >
+                ← Voltar para listagem
+              </button>
+            }
+          />
         </div>
       </div>
     );
@@ -487,68 +433,73 @@ const FaturaDetalhes: React.FC = () => {
         items={[
           { label: 'Faturamento', path: '/faturamento/faturas' },
           { label: 'Faturas Geradas', path: '/faturamento/faturas' },
-          { label: `Fatura ${fatura.numeroFatura}` }
+          { label: `Fatura ${fatura.numeroFatura}` },
         ]}
       />
 
-      <div className="bg-white rounded-xl shadow-lg p-6 mt-6">
+      <div className="bg-white rounded-xl shadow-cdl p-6 mt-6">
         {/* Cabeçalho */}
-        <div className="flex justify-between items-start mb-6 pb-4 border-b">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6 pb-4 border-b border-gray-200">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Fatura {fatura.numeroFatura}</h1>
-            <p className="text-gray-500 mt-1">ID: {fatura.id}</p>
+            <h1 className="text-2xl font-bold text-cdl-navy-700">Fatura {fatura.numeroFatura}</h1>
+            <p className="text-gray-500 mt-1">ID: <span className="font-mono text-cdl-navy-700">{fatura.id}</span></p>
             {fatura.numeroRps && (
-              <p className="text-gray-500 mt-1">Nº RPS: {fatura.numeroRps}</p>
+              <p className="text-gray-500 mt-1">Nº RPS: <span className="font-mono text-cdl-navy-700">{fatura.numeroRps}</span></p>
             )}
           </div>
-          <div className="text-right">
-            <span className={`inline-flex items-center gap-1 px-3 py-1 text-sm rounded-full ${getStatusColor(fatura.status)}`}>
-              {getStatusIcon(fatura.status)} {getStatusText(fatura.status)}
-            </span>
-          </div>
+          <span className={`inline-flex items-center gap-1 px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(fatura.status)}`}>
+            <span>{getStatusIcon(fatura.status)}</span>
+            <span>{getStatusText(fatura.status)}</span>
+          </span>
         </div>
 
-        {/* Informações do Associado */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 pb-4 border-b">
+        {/* Associado + Datas */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 pb-4 border-b border-gray-200">
           <div>
-            <h3 className="text-sm font-medium text-gray-500 mb-2">Associado</h3>
+            <h3 className="text-sm font-medium text-cdl-navy-600 mb-2">Associado</h3>
             <p className="text-lg font-semibold text-gray-900">{fatura.associadoNome}</p>
             <p className="text-sm text-gray-600">{fatura.cnpjCpf}</p>
             {fatura.codigoSpc && (
-              <p className="text-sm text-gray-500 mt-1">Código SPC: {fatura.codigoSpc}</p>
+              <p className="text-sm text-gray-500 mt-1">
+                Código SPC: <span className="font-mono text-cdl-navy-700">{fatura.codigoSpc}</span>
+              </p>
             )}
           </div>
           <div>
-            <h3 className="text-sm font-medium text-gray-500 mb-2">Datas</h3>
-            <p><span className="text-gray-500">Emissão:</span> {formatDate(fatura.dataEmissao)}</p>
-            <p><span className="text-gray-500">Vencimento:</span> {formatDate(fatura.dataVencimento)}</p>
+            <h3 className="text-sm font-medium text-cdl-navy-600 mb-2">Datas</h3>
+            <p><span className="text-gray-500">Emissão:</span> <span className="font-medium text-gray-900">{formatDate(fatura.dataEmissao)}</span></p>
+            <p><span className="text-gray-500">Vencimento:</span> <span className="font-medium text-gray-900">{formatDate(fatura.dataVencimento)}</span></p>
             {fatura.mesReferencia && fatura.anoReferencia && (
-              <p className="text-gray-500 mt-1">Competência: {fatura.mesReferencia}/{fatura.anoReferencia}</p>
+              <p className="text-gray-500 mt-1">
+                Competência: <span className="font-medium text-cdl-navy-700">{fatura.mesReferencia}/{fatura.anoReferencia}</span>
+              </p>
             )}
           </div>
         </div>
 
-        {/* Itens da Fatura com Edição Inline */}
+        {/* Itens */}
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-800">📋 Itens da Fatura</h3>
+          <h3 className="text-lg font-semibold text-cdl-navy-700 flex items-center gap-2">
+            <span>📋</span> Itens da Fatura
+          </h3>
           {podeEditar && (
-            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+            <span className="text-xs bg-cdl-yellow-100 text-cdl-yellow-700 px-2.5 py-1 rounded-full font-medium">
               ✏️ Modo Edição
             </span>
           )}
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto border border-gray-200 rounded-lg">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-cdl-navy-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descrição</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Quantidade</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Valor Unit.</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Valor Total</th>
+                {['Código','Descrição','Quantidade','Valor Unit.','Valor Total'].map((h, i) => (
+                  <th key={h} className={`px-4 py-3 text-xs font-semibold text-cdl-navy-700 uppercase ${
+                    i >= 2 ? 'text-right' : 'text-left'
+                  }`}>{h}</th>
+                ))}
                 {podeEditar && (
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ações</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-cdl-navy-700 uppercase">Ações</th>
                 )}
               </tr>
             </thead>
@@ -557,20 +508,20 @@ const FaturaDetalhes: React.FC = () => {
                 fatura.itens.map((item) => {
                   const itemId = getItemId(item);
                   const isValid = isValidItemId(itemId);
-
                   return (
-                    <tr key={itemId || Math.random()} className="hover:bg-gray-50">
+                    <tr key={itemId || Math.random()} className="hover:bg-cdl-navy-50/40 transition-colors">
                       <td className="px-4 py-3">
                         {itensEditando[itemId!] ? (
                           <input
                             type="text"
                             value={item.codigoProduto}
                             onChange={(e) => alterarItemEditando(item, 'codigoProduto', e.target.value)}
-                            className="w-full border rounded px-2 py-1 text-sm"
+                            className="w-full px-2 py-1 border border-cdl-navy-300 rounded text-sm
+                                       focus:outline-none focus:ring-2 focus:ring-cdl-navy-600"
                             disabled={salvando}
                           />
                         ) : (
-                          <span className="text-sm font-mono">{item.codigoProduto || '-'}</span>
+                          <span className="text-sm font-mono text-cdl-navy-700">{item.codigoProduto || '-'}</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -579,11 +530,12 @@ const FaturaDetalhes: React.FC = () => {
                             type="text"
                             value={item.descricao}
                             onChange={(e) => alterarItemEditando(item, 'descricao', e.target.value)}
-                            className="w-full border rounded px-2 py-1 text-sm"
+                            className="w-full px-2 py-1 border border-cdl-navy-300 rounded text-sm
+                                       focus:outline-none focus:ring-2 focus:ring-cdl-navy-600"
                             disabled={salvando}
                           />
                         ) : (
-                          <span className="text-sm">{item.descricao}</span>
+                          <span className="text-sm text-gray-900">{item.descricao}</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -592,13 +544,14 @@ const FaturaDetalhes: React.FC = () => {
                             type="number"
                             value={item.quantidade}
                             onChange={(e) => alterarItemEditando(item, 'quantidade', parseFloat(e.target.value) || 0)}
-                            className="w-20 text-right border rounded px-2 py-1 text-sm"
+                            className="w-20 text-right px-2 py-1 border border-cdl-navy-300 rounded text-sm
+                                       focus:outline-none focus:ring-2 focus:ring-cdl-navy-600"
                             min="0"
                             step="0.01"
                             disabled={salvando}
                           />
                         ) : (
-                          <span className="text-sm">{item.quantidade}</span>
+                          <span className="text-sm text-gray-900">{item.quantidade}</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -607,16 +560,17 @@ const FaturaDetalhes: React.FC = () => {
                             type="number"
                             value={item.valorUnitario}
                             onChange={(e) => alterarItemEditando(item, 'valorUnitario', parseFloat(e.target.value) || 0)}
-                            className="w-28 text-right border rounded px-2 py-1 text-sm"
+                            className="w-28 text-right px-2 py-1 border border-cdl-navy-300 rounded text-sm
+                                       focus:outline-none focus:ring-2 focus:ring-cdl-navy-600"
                             min="0"
                             step="0.01"
                             disabled={salvando}
                           />
                         ) : (
-                          <span className="text-sm">{formatCurrency(item.valorUnitario)}</span>
+                          <span className="text-sm text-gray-900">{formatCurrency(item.valorUnitario)}</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right font-medium">
+                      <td className="px-4 py-3 text-right font-medium text-cdl-navy-700">
                         {formatCurrency(item.valorTotal)}
                       </td>
                       {podeEditar && (
@@ -627,40 +581,31 @@ const FaturaDetalhes: React.FC = () => {
                                 <button
                                   onClick={() => salvarEdicaoItem(item)}
                                   disabled={salvando}
-                                  className="p-1 text-green-600 hover:text-green-800"
+                                  className="p-1.5 text-cdl-green-600 hover:text-cdl-green-700 hover:bg-cdl-green-50 rounded transition-colors"
                                   title="Salvar"
-                                >
-                                  💾
-                                </button>
+                                >💾</button>
                                 <button
                                   onClick={() => cancelarEdicaoItem(item)}
                                   disabled={salvando}
-                                  className="p-1 text-gray-400 hover:text-gray-600"
+                                  className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-cdl-neutral-50 rounded transition-colors"
                                   title="Cancelar"
-                                >
-                                  ❌
-                                </button>
+                                >❌</button>
                               </div>
                             ) : (
                               <div className="flex justify-center gap-1">
                                 <button
                                   onClick={() => iniciarEdicaoItem(item)}
                                   disabled={salvando}
-                                  className="p-1 text-blue-600 hover:text-blue-800"
+                                  className="p-1.5 text-cdl-navy-700 hover:text-cdl-navy-900 hover:bg-cdl-navy-50 rounded transition-colors"
                                   title="Editar"
-                                >
-                                  ✏️
-                                </button>
-                                {/* 🔒 REMOVER ITEM - FATURA_DELETE */}
+                                >✏️</button>
                                 {podeRemoverItem && (
                                   <button
                                     onClick={() => removerItem(item)}
                                     disabled={salvando}
-                                    className="p-1 text-red-600 hover:text-red-800"
+                                    className="p-1.5 text-cdl-danger-500 hover:text-cdl-danger-600 hover:bg-cdl-danger-50 rounded transition-colors"
                                     title="Remover"
-                                  >
-                                    🗑️
-                                  </button>
+                                  >🗑️</button>
                                 )}
                               </div>
                             )
@@ -674,28 +619,31 @@ const FaturaDetalhes: React.FC = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={podeEditar ? 6 : 5} className="px-4 py-8 text-center text-gray-500">
-                    Nenhum item encontrado nesta fatura
+                  <td colSpan={podeEditar ? 6 : 5} className="px-4 py-8 text-center">
+                    <EmptyState
+                      icon="📋"
+                      title="Nenhum item na fatura"
+                      description="Adicione itens para compor o valor desta fatura."
+                      compact
+                    />
                   </td>
                 </tr>
               )}
-              <tr className="bg-gray-50 font-bold">
-                <td colSpan={podeEditar ? 4 : 4} className="px-4 py-3 text-right">
-                  Total da Fatura:
-                </td>
-                <td className="px-4 py-3 text-right text-blue-600 text-lg">
-                  {formatCurrency(totalFatura)}
-                </td>
-                {podeEditar && <td></td>}
+              <tr className="bg-cdl-yellow-50 font-bold">
+                <td colSpan={4} className="px-4 py-3 text-right text-cdl-navy-700">Total da Fatura:</td>
+                <td className="px-4 py-3 text-right text-cdl-navy-700 text-lg">{formatCurrency(totalFatura)}</td>
+                {podeEditar && <td />}
               </tr>
             </tbody>
           </table>
         </div>
 
-        {/* 🔒 ADICIONAR NOVO ITEM - FATURA_EDIT */}
+        {/* Adicionar item */}
         {podeEditar && (
-          <div className="mt-6 pt-4 border-t">
-            <h4 className="font-medium text-gray-700 mb-3">➕ Adicionar Novo Item</h4>
+          <div className="mt-6 pt-5 border-t border-gray-200">
+            <h4 className="font-medium text-cdl-navy-700 mb-3 flex items-center gap-2">
+              <span>➕</span> Adicionar Novo Item
+            </h4>
 
             <div className="relative">
               <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
@@ -705,39 +653,39 @@ const FaturaDetalhes: React.FC = () => {
                     placeholder="Buscar produto..."
                     value={buscaProdutos}
                     onChange={(e) => setBuscaProdutos(e.target.value)}
-                    onFocus={() => {
-                      if (buscaProdutos.length >= 2) {
-                        setMostrarDropdownProdutos(true);
-                      }
-                    }}
-                    className="w-full p-2 border rounded-lg"
+                    onFocus={() => { if (buscaProdutos.length >= 2) setMostrarDropdownProdutos(true); }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white
+                               focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
+                               focus:border-cdl-navy-600 transition-colors"
                     disabled={salvando}
                   />
                   {carregandoProdutos && (
                     <div className="absolute right-3 top-3">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-cdl-navy-100 border-t-cdl-navy-700" />
                     </div>
                   )}
 
                   {mostrarDropdownProdutos && produtosFiltrados.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg
+                                    shadow-cdl-lg max-h-48 overflow-y-auto">
                       {produtosFiltrados.map((produto) => (
                         <button
                           key={produto.id}
                           onClick={() => selecionarProduto(produto)}
-                          className="w-full text-left px-4 py-2 hover:bg-blue-50 border-b last:border-b-0 flex justify-between items-center"
+                          className="w-full text-left px-4 py-2 hover:bg-cdl-navy-50
+                                     border-b border-gray-100 last:border-b-0 flex justify-between items-center transition-colors"
                         >
                           <div>
-                            <div className="font-medium text-sm">{produto.descricao || produto.nome}</div>
-                            <div className="text-xs text-gray-500">
+                            <div className="font-medium text-sm text-gray-900">{produto.descricao || produto.nome}</div>
+                            <div className="text-xs text-gray-500 mt-0.5">
                               <span className="font-medium">Código RM:</span>{' '}
-                              <span className="font-mono text-blue-600 font-semibold">{produto.codigoRm}</span>
+                              <span className="font-mono text-cdl-navy-700 font-semibold">{produto.codigoRm}</span>
                               {produto.codigo && produto.codigo !== produto.codigoRm && (
                                 <span className="ml-2 text-gray-400">(interno: {produto.codigo})</span>
                               )}
                             </div>
                           </div>
-                          <div className="text-sm font-semibold text-green-600">
+                          <div className="text-sm font-semibold text-cdl-green-700">
                             {formatCurrency(produto.valor || produto.valorUnitario || 0)}
                           </div>
                         </button>
@@ -746,7 +694,8 @@ const FaturaDetalhes: React.FC = () => {
                   )}
 
                   {mostrarDropdownProdutos && buscaProdutos.length >= 2 && produtosFiltrados.length === 0 && !carregandoProdutos && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg p-4 text-center text-gray-500 text-sm">
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg
+                                    shadow-cdl-lg p-4 text-center text-gray-500 text-sm">
                       Nenhum produto encontrado para "{buscaProdutos}"
                     </div>
                   )}
@@ -757,17 +706,20 @@ const FaturaDetalhes: React.FC = () => {
                   placeholder="Código RM"
                   value={novoItem.codigoProduto}
                   onChange={(e) => setNovoItem({ ...novoItem, codigoProduto: e.target.value })}
-                  className="p-2 border rounded-lg font-mono bg-gray-50"
+                  className="px-3 py-2 border border-gray-300 rounded-lg font-mono bg-cdl-neutral-50
+                             focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
+                             focus:border-cdl-navy-600 transition-colors"
                   disabled={salvando}
                   title="Código RM do produto"
                 />
-
                 <input
                   type="text"
                   placeholder="Descrição"
                   value={novoItem.descricao}
                   onChange={(e) => setNovoItem({ ...novoItem, descricao: e.target.value })}
-                  className="p-2 border rounded-lg"
+                  className="px-3 py-2 border border-gray-300 rounded-lg bg-white
+                             focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
+                             focus:border-cdl-navy-600 transition-colors"
                   disabled={salvando}
                 />
                 <input
@@ -775,7 +727,9 @@ const FaturaDetalhes: React.FC = () => {
                   placeholder="Qtd"
                   value={novoItem.quantidade}
                   onChange={(e) => setNovoItem({ ...novoItem, quantidade: parseFloat(e.target.value) || 0 })}
-                  className="p-2 border rounded-lg"
+                  className="px-3 py-2 border border-gray-300 rounded-lg bg-white
+                             focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
+                             focus:border-cdl-navy-600 transition-colors"
                   min="0"
                   step="0.01"
                   disabled={salvando}
@@ -785,7 +739,9 @@ const FaturaDetalhes: React.FC = () => {
                   placeholder="Valor Unit."
                   value={novoItem.valorUnitario}
                   onChange={(e) => setNovoItem({ ...novoItem, valorUnitario: parseFloat(e.target.value) || 0 })}
-                  className="p-2 border rounded-lg"
+                  className="px-3 py-2 border border-gray-300 rounded-lg bg-white
+                             focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
+                             focus:border-cdl-navy-600 transition-colors"
                   min="0"
                   step="0.01"
                   disabled={salvando}
@@ -793,13 +749,13 @@ const FaturaDetalhes: React.FC = () => {
                 <button
                   onClick={adicionarItem}
                   disabled={salvando || !novoItem.codigoProduto || !novoItem.descricao || novoItem.valorUnitario <= 0}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 flex items-center justify-center gap-1"
+                  className="px-4 py-2 bg-cdl-navy-700 text-white rounded-lg hover:bg-cdl-navy-800
+                             disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center
+                             gap-2 font-medium transition-all active:scale-[.98]"
                 >
                   {salvando ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  ) : (
-                    '➕ Adicionar'
-                  )}
+                    <span className="inline-block w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  ) : '➕ Adicionar'}
                 </button>
               </div>
             </div>
@@ -808,49 +764,47 @@ const FaturaDetalhes: React.FC = () => {
 
         {/* Observação */}
         {fatura.observacao && (
-          <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-600">
+          <div className="mt-4 p-3 bg-cdl-navy-50 border border-cdl-navy-100 rounded-lg">
+            <p className="text-sm text-cdl-navy-700">
               <span className="font-medium">Observação:</span> {fatura.observacao}
             </p>
           </div>
         )}
 
-        {/* 🔒 BOTÕES COM PERMISSION GUARD */}
-        <div className="flex flex-wrap justify-end gap-3 mt-6 pt-4 border-t">
+        {/* Botões */}
+        <div className="flex flex-wrap justify-end gap-3 mt-6 pt-5 border-t border-gray-200">
           <button
             onClick={() => navigate('/faturamento/faturas')}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            className="px-4 py-2.5 border border-gray-300 text-cdl-navy-700 rounded-lg
+                       hover:bg-cdl-neutral-50 transition-colors font-medium"
           >
             ❌ Fechar
           </button>
 
-          {/* 🔒 VER LOGS - FATURA_VIEW */}
           {podeVerLogs && (
             <button
               onClick={() => setModalLogsAberta(true)}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+              className="px-4 py-2.5 bg-cdl-navy-700 text-white rounded-lg hover:bg-cdl-navy-800
+                         transition-all active:scale-[.98] flex items-center gap-2 font-medium"
             >
-              <span>📝</span>
-              Ver Logs
+              <span>📝</span> Ver Logs
             </button>
           )}
 
-          {/* 🔒 SALVAR E FECHAR - FATURA_EDIT */}
           {podeEditar && (
             <button
               onClick={handleSalvarEFechar}
               disabled={salvando}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+              className="px-4 py-2.5 bg-cdl-green-500 text-white rounded-lg hover:bg-cdl-green-600
+                         disabled:bg-gray-400 disabled:cursor-not-allowed transition-all
+                         active:scale-[.98] flex items-center gap-2 font-medium"
             >
               {salvando ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              ) : (
-                '💾 Salvar e Fechar'
-              )}
+                <span className="inline-block w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+              ) : '💾 Salvar e Fechar'}
             </button>
           )}
 
-          {/* 🔒 EXPORTAR PDF - FATURA_VIEW */}
           {podeExportarPdf && (
             <button
               onClick={async () => {
@@ -871,7 +825,8 @@ const FaturaDetalhes: React.FC = () => {
                   showToast(error.response?.data?.message || 'Erro ao exportar PDF', 'error');
                 }
               }}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+              className="px-4 py-2.5 bg-cdl-navy-700 text-white rounded-lg hover:bg-cdl-navy-800
+                         transition-all active:scale-[.98] flex items-center gap-2 font-medium"
             >
               📄 Exportar PDF
             </button>
@@ -879,7 +834,6 @@ const FaturaDetalhes: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal de Logs */}
       <ModalLogFatura
         isOpen={modalLogsAberta}
         onClose={() => setModalLogsAberta(false)}
@@ -887,7 +841,6 @@ const FaturaDetalhes: React.FC = () => {
         faturaNumero={fatura.numeroFatura}
       />
 
-      {/* Confirm Modal */}
       <ConfirmModal
         isOpen={confirmModal.isOpen}
         onClose={closeConfirmModal}

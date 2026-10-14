@@ -23,17 +23,13 @@ const limparValor = (valor: string): string => {
   
   let limpo = valor.trim();
   
-  // Remover aspas duplas no início e fim
   if (limpo.startsWith('"') && limpo.endsWith('"')) {
     limpo = limpo.slice(1, -1);
   }
-  // Remover aspas isoladas no início
   limpo = limpo.replace(/^"+|"+$/g, '');
-  // Remover ponto e vírgula do final se existir
   if (limpo.endsWith(';')) {
     limpo = limpo.slice(0, -1);
   }
-  // Remover caracteres de escape
   limpo = limpo.replace(/\\"/g, '"');
   
   return limpo;
@@ -47,7 +43,6 @@ const converterDataParaISO = (dataStr: string): string | null => {
   
   const valorLimpo = limparValor(dataStr);
   
-  // Tentar formato DD/MM/YYYY
   const regexDDMMYYYY = /^(\d{2})\/(\d{2})\/(\d{4})$/;
   const match = valorLimpo.match(regexDDMMYYYY);
   
@@ -58,13 +53,11 @@ const converterDataParaISO = (dataStr: string): string | null => {
     return `${ano}-${mes}-${dia}`;
   }
   
-  // Tentar formato YYYY-MM-DD
   const regexYYYYMMDD = /^(\d{4})-(\d{2})-(\d{2})$/;
   if (regexYYYYMMDD.test(valorLimpo)) {
     return valorLimpo;
   }
   
-  // Tentar criar data via Date
   try {
     const data = new Date(valorLimpo);
     if (!isNaN(data.getTime())) {
@@ -106,11 +99,9 @@ const normalizarEmail = (email: string, usarPadrao: boolean = true): string => {
   
   let emailProcessado = emailLimpo.toLowerCase();
   
-  // Remover caracteres inválidos
   emailProcessado = emailProcessado.replace(/\s/g, '');
   emailProcessado = emailProcessado.replace(/[\(\)\[\]\{\}]/g, '');
   
-  // Se não tiver @, retorna padrão
   if (!emailProcessado.includes('@')) {
     return usarPadrao ? 'sistema_sga@cdlfor.com.br' : '';
   }
@@ -121,7 +112,6 @@ const normalizarEmail = (email: string, usarPadrao: boolean = true): string => {
     return usarPadrao ? 'sistema_sga@cdlfor.com.br' : '';
   }
   
-  // Se o domínio não tiver ponto, adicionar .com.br
   if (!dominio.includes('.')) {
     emailProcessado = `${usuario}@${dominio}.com.br`;
   }
@@ -289,7 +279,6 @@ export const associadoImportacaoService = {
             let valor = valores[idx]?.trim() || '';
             const campoLower = campo.toLowerCase();
             
-            // 🔥 APLICAR LIMPEZA EM CAMPOS DE TEXTO
             const camposQueLimpar = ['logradouro', 'complemento', 'bairro', 'cidade', 'nome_razao', 'nome_fantasia'];
             if (camposQueLimpar.includes(campoLower)) {
               valor = limparValor(valor);
@@ -411,7 +400,6 @@ export const associadoImportacaoService = {
         erros.push('Nome/Razão Social é obrigatório');
       }
       
-      // Email é sempre válido (terá fallback)
       const emailOriginal = linha.email;
       const emailNormalizado = normalizarEmail(emailOriginal, true);
       
@@ -419,7 +407,6 @@ export const associadoImportacaoService = {
         console.log(`📧 Email normalizado: "${emailOriginal}" -> "${emailNormalizado}"`);
       }
       
-      // 🔥 Buscar IDs pelos códigos
       const vendedorId = linha.codigoVendedor ? mapaVendedores.get(linha.codigoVendedor) : undefined;
       const vendedorExternoId = linha.codigoVendedorExterno ? mapaVendedores.get(linha.codigoVendedorExterno) : undefined;
       const planoId = linha.codigoPlano ? mapaPlanos.get(linha.codigoPlano) : CONFIG_FATURAMENTO_PADRAO.planoId;
@@ -432,11 +419,9 @@ export const associadoImportacaoService = {
         continue;
       }
       
-      // 🔥 Preparar DTO com data tratada
       const dataFiliacaoISO = converterDataParaISO(linha.dataFiliacao);
       const telefoneNormalizado = normalizarTelefone(linha.ddd || '', linha.telefone || '');
       
-      // 🔥 CRIAR ENDEREÇO COMERCIAL (se disponível)
       let enderecoComercial = null;
       if (linha.cep || linha.logradouro) {
         enderecoComercial = {
@@ -451,7 +436,6 @@ export const associadoImportacaoService = {
         };
       }
       
-      // 🔥 CRIAR TELEFONE COMERCIAL (se disponível)
       let telefoneComercial = null;
       if (telefoneNormalizado.ddd && telefoneNormalizado.numero) {
         telefoneComercial = {
@@ -463,24 +447,20 @@ export const associadoImportacaoService = {
         };
       }
       
-      // 🔥 CRIAR EMAIL COMERCIAL (sempre terá valor, pois tem fallback)
       const emailComercial = emailNormalizado;
       
-      // 🔥 MONTAR LISTA DE ENDEREÇOS (COMERCIAL + REPLICAÇÕES)
       const enderecos = [];
       if (enderecoComercial) {
         enderecos.push(enderecoComercial);
         enderecos.push(...replicarEnderecoComercial(enderecoComercial));
       }
       
-      // 🔥 MONTAR LISTA DE TELEFONES (COMERCIAL + REPLICAÇÕES)
       const telefones = [];
       if (telefoneComercial) {
         telefones.push(telefoneComercial);
         telefones.push(...replicarTelefoneComercial(telefoneComercial));
       }
       
-      // 🔥 MONTAR LISTA DE EMAILS (COMERCIAL + REPLICAÇÕES)
       const emails = [];
       if (emailComercial) {
         emails.push({
@@ -491,7 +471,6 @@ export const associadoImportacaoService = {
         emails.push(...replicarEmailComercial(emailComercial));
       }
       
-      // 🔥 DTO COMPLETO
       const dto: any = {
         tipoPessoa: linha.tipoPessoa,
         cnpjCpf: normalizarCnpjCpf(linha.cnpjCpf),
@@ -524,6 +503,7 @@ export const associadoImportacaoService = {
     let criados = 0;
     let atualizados = 0;
     let configuracoesCriadas = 0;
+    let reguasVinculadas = 0;   // 🔥 NOVO
     let inativados = 0;
     let associadosInativados: AssociadoInativado[] = [];
     
@@ -533,11 +513,9 @@ export const associadoImportacaoService = {
         
         const response = await api.post('/associados/importacao/lote', associadosParaAPI);
         
-        // 🔥 CORREÇÃO: LER HEADERS CORRETAMENTE (axios converte para minúsculo)
         const headers = response.headers;
         console.log('📊 Headers recebidos:', headers);
         
-        // 🔥 LER HEADERS EXISTENTES
         criados = parseInt(
           headers['x-importacao-criados'] || 
           headers['X-Importacao-Criados'] || 
@@ -553,6 +531,15 @@ export const associadoImportacaoService = {
         configuracoesCriadas = parseInt(
           headers['x-importacao-configuracoes'] || 
           headers['X-Importacao-Configuracoes'] || 
+          '0'
+        );
+        
+        // ============================================================
+        // 🔥 NOVO: LER HEADER DE RÉGUAS VINCULADAS
+        // ============================================================
+        reguasVinculadas = parseInt(
+          headers['x-importacao-regua-vinculadas'] || 
+          headers['X-Importacao-Regua-Vinculadas'] || 
           '0'
         );
         
@@ -582,7 +569,7 @@ export const associadoImportacaoService = {
           '0'
         );
         
-        console.log(`📊 Importação concluída: ${criados} criados, ${atualizados} atualizados, ${inativados} inativados, ${configuracoesCriadas} configurações`);
+        console.log(`📊 Importação concluída: ${criados} criados, ${atualizados} atualizados, ${reguasVinculadas} réguas vinculadas, ${inativados} inativados, ${configuracoesCriadas} configurações`);
         
         associadosImportados.push(...response.data);
         
@@ -605,6 +592,10 @@ export const associadoImportacaoService = {
             } else {
               atualizados++;
             }
+            
+            // 🔥 SOMAR RÉGUAS VINCULADAS (modo individual)
+            const reguas = parseInt(headers['x-importacao-regua-vinculadas'] || headers['X-Importacao-Regua-Vinculadas'] || '0');
+            reguasVinculadas += reguas;
             
             const percentual = 50 + (i / associadosParaAPI.length) * 45;
             onProgress?.(percentual, `Importando ${i + 1}/${associadosParaAPI.length}: ${dto.nomeRazao}`);
@@ -632,6 +623,7 @@ export const associadoImportacaoService = {
       criados: criados || 0,
       atualizados: atualizados || 0,
       configuracoesCriadas: configuracoesCriadas || 0,
+      reguasVinculadas: reguasVinculadas || 0,   // 🔥 NOVO
       inativados: inativados || 0,
       associadosInativados: associadosInativados || [],
       erros: linhasComErro,
@@ -644,6 +636,7 @@ export const associadoImportacaoService = {
       erros: resultadoFinal.linhasComErro,
       criados: resultadoFinal.criados,
       atualizados: resultadoFinal.atualizados,
+      reguasVinculadas: resultadoFinal.reguasVinculadas,
       inativados: resultadoFinal.inativados,
       configuracoesCriadas: resultadoFinal.configuracoesCriadas
     });
@@ -699,5 +692,8 @@ export interface ResultadoImportacao {
   criados?: number;
   atualizados?: number;
   configuracoesCriadas?: number;
+  reguasVinculadas?: number;   // 🔥 NOVO
+  inativados?: number;
+  associadosInativados?: any[];
   erros: Array<{ linha: number; mensagem: string; dados: AssociadoImportacaoLinha }>;
 }

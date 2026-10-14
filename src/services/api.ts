@@ -7,10 +7,9 @@ import { useAuthStore } from "../stores/authStore";
    CONFIGURAÇÃO GLOBAL AXIOS
    ============================================================================ */
 const api = axios.create({
-  baseURL: "http://localhost:8080/api",
-  //baseURL: import.meta.env.VITE_API_URL || "/api",
+  baseURL: import.meta.env.VITE_API_URL || "/api",
   timeout: 600000, // 🔥 10 MINUTOS PADRÃO
-  headers: { 
+  headers: {
     "Content-Type": "application/json",
     "X-Usuario": "SISTEMA"
   },
@@ -24,14 +23,14 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
+
     const usuario = useAuthStore.getState().user?.username || "SISTEMA";
     config.headers["X-Usuario"] = usuario;
-    
+
     // 🔥 AUMENTAR TIMEOUT PARA ENDPOINTS PESADOS
     const url = config.url || '';
-    if (url.includes('/simular') || 
-        url.includes('/processar') || 
+    if (url.includes('/simular') ||
+        url.includes('/processar') ||
         url.includes('/exportar') ||
         url.includes('/gerar-fatura') ||
         url.includes('/processar-assincrono') ||
@@ -41,7 +40,7 @@ api.interceptors.request.use(
         console.log(`⏰ Timeout aumentado para 20min: ${url}`);
       }
     }
-    
+
     // Log para debug (apenas em desenvolvimento)
     if (process.env.NODE_ENV === "development") {
       console.log(`🔄 API Request: ${config.method?.toUpperCase()} ${config.url}`, {
@@ -49,7 +48,7 @@ api.interceptors.request.use(
         headers: config.headers
       });
     }
-    
+
     return config;
   },
   (error) => {
@@ -73,7 +72,7 @@ api.interceptors.response.use(
       error.isTimeout = true;
       error.userMessage = '⏰ A operação está demorando muito. Tente com menos dados ou processe em lotes menores.';
     }
-    
+
     console.error("❌ API Error:", {
       url: error.config?.url,
       method: error.config?.method,
@@ -82,15 +81,23 @@ api.interceptors.response.use(
       isTimeout: error.isTimeout || false
     });
 
-    // 🔥 TRATAMENTO DE 401 - Token expirado
+    // 🔥 TRATAMENTO DE 401 - Token expirado ou inválido
     if (error.response?.status === 401) {
       const { logout } = useAuthStore.getState();
       logout();
-      if (typeof window !== "undefined" && window.location.pathname !== "/login") {
-        window.location.href = "/login";
+
+      // 🔥 Respeita o base path do Vite (/sga/)
+      if (typeof window !== "undefined") {
+        const baseUrl = import.meta.env.BASE_URL || '/';
+        const loginUrl = `${baseUrl}login`.replace(/\/+/g, '/');
+
+        // Evita redirecionar se já estiver na página de login
+        if (!window.location.pathname.endsWith('/login')) {
+          window.location.href = loginUrl;
+        }
       }
     }
-    
+
     return Promise.reject(error);
   }
 );
@@ -589,7 +596,7 @@ export const errorHandler = {
   getErrorMessage(error: any): string {
     if (error?.response?.data?.erro) return error.response.data.erro;
     if (error?.response?.data?.message) return error.response.data.message;
-    
+
     if (error.isTimeout || error.code === "ECONNABORTED") {
       return "⏰ A operação está demorando muito. Tente com menos dados ou processe em lotes menores.";
     }
@@ -625,6 +632,7 @@ export const errorHandler = {
   isTimeoutError: (e: any) => e?.isTimeout || e?.code === "ECONNABORTED",
   isUnauthorized: (e: any) => e?.response?.status === 401,
   isForbidden: (e: any) => e?.response?.status === 403,
+  
 };
 
 // 🔥 EXPORTAÇÃO PADRÃO

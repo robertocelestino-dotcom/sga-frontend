@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { X } from 'lucide-react';
 
 interface ModalProps {
   title: string;
@@ -8,75 +9,62 @@ interface ModalProps {
   showCloseButton?: boolean;
 }
 
-export default function Modal({ 
-  title, 
-  onClose, 
-  children, 
-  size = 'lg',
-  showCloseButton = true 
-}: ModalProps) {
-  
-  // Fechar com tecla ESC
-  useEffect(() => {
-    const handleEsc = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [onClose]);
+const SIZES = {
+  sm:   'sm:max-w-md',
+  md:   'sm:max-w-lg',
+  lg:   'sm:max-w-2xl',
+  xl:   'sm:max-w-4xl',
+  full: 'sm:max-w-6xl',
+} as const;
 
-  // Impedir scroll do body
+export default function Modal({
+  title, onClose, children, size = 'lg', showCloseButton = true,
+}: ModalProps) {
   useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
-      document.body.style.overflow = 'unset';
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
     };
-  }, []);
-
-  const sizeClasses = {
-    sm: 'max-w-md',
-    md: 'max-w-lg',
-    lg: 'max-w-2xl',
-    xl: 'max-w-4xl',
-    full: 'max-w-6xl',
-  };
+  }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      {/* Overlay escuro */}
-      <div 
-        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in">
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
         onClick={onClose}
+        aria-hidden="true"
       />
 
-      {/* Container do modal */}
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div 
-          className={`relative w-full ${sizeClasses[size]} transform rounded-lg bg-white shadow-xl transition-all`}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Cabeçalho */}
-          <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-            {showCloseButton && (
-              <button
-                onClick={onClose}
-                className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-                aria-label="Fechar"
-              >
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
-          </div>
+      <div
+        role="dialog" aria-modal="true"
+        className={`relative w-full ${SIZES[size]} bg-white shadow-cdl-lg
+                    rounded-t-2xl sm:rounded-xl overflow-hidden
+                    max-h-[95vh] sm:max-h-[90vh] flex flex-col
+                    border-t-4 border-cdl-navy-700 animate-slide-up`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-gray-200 px-4 sm:px-6 py-3 sm:py-4 shrink-0">
+          <h3 className="text-base sm:text-lg font-semibold text-cdl-navy-700 truncate pr-2">
+            {title}
+          </h3>
+          {showCloseButton && (
+            <button
+              onClick={onClose}
+              aria-label="Fechar"
+              className="rounded-lg p-1.5 text-gray-400 hover:bg-cdl-neutral-50
+                         hover:text-cdl-navy-700 transition-colors shrink-0"
+            >
+              <X size={20} />
+            </button>
+          )}
+        </div>
 
-          {/* Conteúdo */}
-          <div className="px-6 py-4 max-h-[calc(100vh-200px)] overflow-y-auto">
-            {children}
-          </div>
+        <div className="px-4 sm:px-6 py-4 overflow-y-auto flex-1">
+          {children}
         </div>
       </div>
     </div>

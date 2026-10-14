@@ -13,10 +13,12 @@ interface AuthState {
     loading: boolean;
     initialized: boolean;
 
-    // Ações
     login: (credentials: LoginRequest) => Promise<LoginResult>;
-    logout: () => void;
+    logout: () => Promise<void>;
+    logoutAll: () => Promise<void>;
     setAuth: (response: AuthResponse) => void;
+    atualizarFoto: (fotoBase64: string) => void;
+    removerFoto: () => void;
     hasPermission: (permissao: string) => boolean;
     hasAnyPermission: (permissoes: string[]) => boolean;
     hasAllPermissions: (permissoes: string[]) => boolean;
@@ -40,22 +42,17 @@ export const useAuthStore = create<AuthState>()(
                 const state = get();
                 if (state.token && state.user) {
                     set({ isAuthenticated: true, initialized: true });
-                    console.log('✅ Store reidratada com sucesso', state.user);
                 } else {
                     set({ initialized: true });
-                    console.log('🔄 Store inicializada sem token');
                 }
             },
 
             login: async (credentials: LoginRequest) => {
                 set({ loading: true });
-                console.log('🔄 Iniciando processo de login...');
                 try {
                     const response = await authService.login(credentials);
-                    console.log('📥 Resposta do login:', response);
-                    
                     const { token, usuario, menus, permissoes } = response;
-                    
+
                     set({
                         user: usuario,
                         menus: menus || [],
@@ -65,7 +62,6 @@ export const useAuthStore = create<AuthState>()(
                         loading: false
                     });
 
-                    console.log('✅ Login realizado com sucesso!', { usuario, menus: menus?.length, permissoes: permissoes?.length });
                     return { success: true };
                 } catch (error: any) {
                     console.error('❌ Erro no login:', error);
@@ -77,8 +73,13 @@ export const useAuthStore = create<AuthState>()(
                 }
             },
 
-            logout: () => {
-                console.log('🔄 Realizando logout...');
+            logout: async () => {
+                try {
+                    await authService.logout();
+                } catch (error) {
+                    console.warn('⚠️ Falha ao notificar logout:', error);
+                }
+
                 set({
                     user: null,
                     menus: [],
@@ -88,11 +89,27 @@ export const useAuthStore = create<AuthState>()(
                     loading: false
                 });
                 localStorage.removeItem('auth-storage');
-                console.log('✅ Logout realizado com sucesso');
+            },
+
+            logoutAll: async () => {
+                try {
+                    await authService.logoutAll();
+                } catch (error) {
+                    console.warn('⚠️ Falha ao notificar logout-all:', error);
+                }
+
+                set({
+                    user: null,
+                    menus: [],
+                    permissoes: [],
+                    token: null,
+                    isAuthenticated: false,
+                    loading: false
+                });
+                localStorage.removeItem('auth-storage');
             },
 
             setAuth: (response: AuthResponse) => {
-                console.log('🔄 Configurando autenticação...');
                 set({
                     user: response.usuario,
                     menus: response.menus || [],
@@ -101,12 +118,28 @@ export const useAuthStore = create<AuthState>()(
                     isAuthenticated: true,
                     loading: false
                 });
-                console.log('✅ Autenticação configurada');
+            },
+
+            atualizarFoto: (fotoBase64: string) => {
+                const currentUser = get().user;
+                if (currentUser) {
+                    set({
+                        user: { ...currentUser, fotoBase64 }
+                    });
+                }
+            },
+
+            removerFoto: () => {
+                const currentUser = get().user;
+                if (currentUser) {
+                    set({
+                        user: { ...currentUser, fotoBase64: undefined }
+                    });
+                }
             },
 
             hasPermission: (permissao: string) => {
-                const permissoes = get().permissoes;
-                return permissoes.includes(permissao);
+                return get().permissoes.includes(permissao);
             },
 
             hasAnyPermission: (permissoes: string[]) => {
@@ -124,25 +157,56 @@ export const useAuthStore = create<AuthState>()(
                 return menus ? menus.filter(m => m.ativo !== false) : [];
             },
 
+            /**
+             * 🔥 Constrói a árvore de menus de forma robusta.
+             *
+             * O backend pode enviar em 2 formatos:
+             *
+             *  A) ÁRVORE (formato atual após a otimização do AuthController):
+             *     8 menus raiz, cada um com seus subMenus já aninhados.
+             *     Nesse caso apenas ordenamos recursivamente e retornamos.
+             *
+             *  B) FLAT (formato legado): 28 menus soltos, cada um com menuPaiId.
+             *     Nesse caso reconstruímos a árvore pelo menuPaiId (comportamento
+             *     original do store).
+             *
+             * A detecção é automática: se algum menu já tem subMenus preenchidos,
+             * tratamos como árvore (A). Caso contrário, flat (B).
+             */
             buildMenuTree: () => {
                 const menus = get().menus || [];
-                console.log('🔄 Construindo árvore de menus:', menus);
-                
-                if (!menus || menus.length === 0) {
-                    console.warn('⚠️ Nenhum menu disponível');
-                    return [];
+                if (!menus || menus.length === 0) return [];
+
+                // Detecção do formato
+                const temSubMenusAninhados = menus.some(
+                    (m) => m.subMenus && Array.isArray(m.subMenus) && m.subMenus.length > 0
+                );
+
+                if (temSubMenusAninhados) {
+                    // 🟢 Formato ÁRVORE — apenas ordena recursivamente
+                    const ordenarRecursivo = (arr: Menu[]): Menu[] => {
+                        const copia = arr.map((m) => ({
+                            ...m,
+                            subMenus:
+                                m.subMenus && m.subMenus.length > 0
+                                    ? ordenarRecursivo(m.subMenus)
+                                    : []
+                        }));
+                        copia.sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+                        return copia;
+                    };
+                    return ordenarRecursivo(menus);
                 }
 
+                // 🟡 Formato FLAT — reconstrói árvore pelo menuPaiId
                 const menuMap = new Map<number, Menu>();
                 const roots: Menu[] = [];
 
-                // Primeiro, criar todos os menus com subMenus vazio
-                menus.forEach(menu => {
+                menus.forEach((menu) => {
                     menuMap.set(menu.id, { ...menu, subMenus: [] });
                 });
 
-                // Depois, construir a árvore
-                menuMap.forEach(menu => {
+                menuMap.forEach((menu) => {
                     if (menu.menuPaiId && menuMap.has(menu.menuPaiId)) {
                         const parent = menuMap.get(menu.menuPaiId)!;
                         parent.subMenus.push(menu);
@@ -151,33 +215,39 @@ export const useAuthStore = create<AuthState>()(
                     }
                 });
 
-                // Ordenar
-                roots.sort((a, b) => a.ordem - b.ordem);
-                roots.forEach(root => {
-                    root.subMenus.sort((a, b) => a.ordem - b.ordem);
-                });
+                const ordenarRecursivo = (arr: Menu[]): Menu[] => {
+                    arr.sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+                    arr.forEach((m) => {
+                        if (m.subMenus && m.subMenus.length > 0) {
+                            ordenarRecursivo(m.subMenus);
+                        }
+                    });
+                    return arr;
+                };
 
-                console.log('✅ Árvore de menus construída:', roots.length, 'menus raiz');
-                return roots;
+                return ordenarRecursivo(roots);
             }
         }),
         {
             name: 'auth-storage',
+            // 🔥 Só persiste o essencial. fotoBase64 fica de fora
+            //    e é recarregada do backend a cada boot.
             partialize: (state) => ({
-                user: state.user,
+                user: state.user
+                    ? {
+                        ...state.user,
+                        fotoBase64: undefined
+                      }
+                    : null,
                 menus: state.menus,
                 permissoes: state.permissoes,
                 token: state.token,
                 isAuthenticated: state.isAuthenticated
             }),
             onRehydrateStorage: () => {
-                console.log('🔄 Iniciando reidratação do store...');
                 return (state) => {
                     if (state) {
-                        console.log('✅ Store reidratada com sucesso', state.user);
                         state.initialized = true;
-                    } else {
-                        console.log('🔄 Store inicializada sem token');
                     }
                 };
             }

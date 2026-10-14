@@ -1,12 +1,10 @@
-// src/components/faturamento/ModalSelecaoAssociados.tsx
+// src/components/faturamento/ModalSelecaoAssociados.tsx - VERSÃO CDL
 // 🚨 VERSÃO 2.0 — Filtro de associados com nota no período
-
 import React, { useState, useEffect, useCallback } from 'react';
+import { X } from 'lucide-react';
 import api from '../../services/api';
 import { useMessage } from '../../providers/MessageProvider';
-import Loading from '../Loading';
-
-console.log('🚨🚨🚨 ModalSelecaoAssociados CARREGADO — VERSÃO 2.0 🚨🚨🚨');
+import EmptyState from '../ui/EmptyState';
 
 interface AssociadoResumo {
   id: number;
@@ -27,14 +25,6 @@ interface ReguaFaturamento {
   diaEmissao: number;
 }
 
-interface ModalSelecaoAssociadosProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: (associadosIds: number[], config: ProcessamentoConfig) => void;
-  onSimulate?: (associadosIds: number[], config: ProcessamentoConfig) => void;
-  titulo?: string;
-}
-
 interface ProcessamentoConfig {
   reguaId?: number;
   mesReferencia: number;
@@ -43,66 +33,70 @@ interface ProcessamentoConfig {
   integrarRM: boolean;
 }
 
-const PAGE_SIZE = 15;
+interface ModalSelecaoAssociadosProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: (associadosIds: number[], config: ProcessamentoConfig) => void;
+  onSimulate?: (associadosIds: number[], config: ProcessamentoConfig) => void;
+  titulo?: string;
+}
 
-// Nome exato da régua de faturamento consolidado (ajuste conforme seu banco)
-const REGUA_CONSOLIDADO_NOME = "Faturamento Consolidado";
+const PAGE_SIZE = 15;
+const REGUA_CONSOLIDADO_NOME = 'Faturamento Consolidado';
 
 const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
   isOpen,
   onClose,
   onConfirm,
   onSimulate,
-  titulo = 'Selecionar Associados para Faturamento'
+  titulo = 'Selecionar Associados para Faturamento',
 }) => {
   const { showToast } = useMessage();
-  
-  // Estados
+
+  /* ============================================================
+     ESTADOS
+     ============================================================ */
   const [associados, setAssociados] = useState<AssociadoResumo[]>([]);
   const [reguas, setReguas] = useState<ReguaFaturamento[]>([]);
   const [loading, setLoading] = useState(false);
   const [carregandoAssociados, setCarregandoAssociados] = useState(false);
-  
-  // Filtros
+
   const [filtroNome, setFiltroNome] = useState('');
   const [filtroCnpjCpf, setFiltroCnpjCpf] = useState('');
   const [reguaSelecionadaId, setReguaSelecionadaId] = useState<number | undefined>(undefined);
   const [reguaSelecionadaNome, setReguaSelecionadaNome] = useState<string>('');
-  
-  // Seleção
+
   const [associadosSelecionados, setAssociadosSelecionados] = useState<Set<number>>(new Set());
   const [selecionarTodos, setSelecionarTodos] = useState(false);
   const [todosIdsAssociados, setTodosIdsAssociados] = useState<number[]>([]);
-  
-  // Configuração do processamento
+
   const [configProcessamento, setConfigProcessamento] = useState<ProcessamentoConfig>({
     mesReferencia: new Date().getMonth() + 1,
     anoReferencia: new Date().getFullYear(),
     gerarNotas: true,
     integrarRM: false,
-    reguaId: undefined
+    reguaId: undefined,
   });
-  
-  // Paginação
+
   const [pagina, setPagina] = useState(0);
   const [totalPaginas, setTotalPaginas] = useState(0);
   const [totalItens, setTotalItens] = useState(0);
-  
-  // 🔥 NOVO: Quantidade de associados sem nota
   const [totalSemNota, setTotalSemNota] = useState(0);
-  
-  // Verificar se a régua selecionada é a de faturamento consolidado
-  const isReguaConsolidado = useCallback(() => {
-    return reguaSelecionadaNome === REGUA_CONSOLIDADO_NOME;
-  }, [reguaSelecionadaNome]);
-  
-  // Carregar réguas ativas
+
+  const isReguaConsolidado = useCallback(
+    () => reguaSelecionadaNome === REGUA_CONSOLIDADO_NOME,
+    [reguaSelecionadaNome]
+  );
+
+  /* ============================================================
+     CARREGAR RÉGUAS
+     ============================================================ */
   const carregarReguas = useCallback(async () => {
     setLoading(true);
     try {
       const response = await api.get('/regua-faturamento/ativas');
       setReguas(response.data);
-      
+
       if (response.data.length > 0 && !reguaSelecionadaId) {
         setReguaSelecionadaId(response.data[0].id);
         setReguaSelecionadaNome(response.data[0].nome);
@@ -115,8 +109,10 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
       setLoading(false);
     }
   }, [reguaSelecionadaId, showToast]);
-  
-  // Carregar associados (com filtro por nota)
+
+  /* ============================================================
+     CARREGAR ASSOCIADOS
+     ============================================================ */
   const carregarAssociados = useCallback(async () => {
     if (!reguaSelecionadaId) {
       setAssociados([]);
@@ -126,125 +122,68 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
       setTotalSemNota(0);
       return;
     }
-    
+
     setCarregandoAssociados(true);
     try {
       const isConsolidado = reguaSelecionadaNome === REGUA_CONSOLIDADO_NOME;
-      
-      console.log('🔍 [CARREGAR] Iniciando:', {
-        reguaSelecionadaId,
-        reguaSelecionadaNome,
-        isConsolidado,
-        pagina,
-        mes: configProcessamento.mesReferencia,
-        ano: configProcessamento.anoReferencia
-      });
-      
-      let response;
-      let idsResponse;
-      
+
+      let response: any;
+      let idsResponse: any;
+
       if (isConsolidado) {
-        // 🔥 RÉGUA CONSOLIDADO - comportamento original
-        console.log('📌 [CARREGAR] Régua CONSOLIDADO');
-        
+        // Régua CONSOLIDADO
         response = await api.get(`/regua-faturamento/${reguaSelecionadaId}/associados-consolidado/paginado`, {
           params: {
             page: pagina,
             size: PAGE_SIZE,
             nome: filtroNome || undefined,
-            cnpjCpf: filtroCnpjCpf || undefined
-          }
+            cnpjCpf: filtroCnpjCpf || undefined,
+          },
         });
-        
         idsResponse = await api.get(`/regua-faturamento/${reguaSelecionadaId}/associados-consolidado/todos-ids`);
-        
         setTotalSemNota(0);
-        
       } else {
-        // 🔥 RÉGUA NORMAL - filtro por nota
-        console.log('🔥 [CARREGAR] Régua NORMAL — filtrando por nota');
-        
+        // Régua NORMAL — filtro por nota
         const { mesReferencia, anoReferencia } = configProcessamento;
         const dataInicio = `${anoReferencia}-${String(mesReferencia).padStart(2, '0')}-01`;
         const ultimoDia = new Date(anoReferencia, mesReferencia, 0).getDate();
         const dataFim = `${anoReferencia}-${String(mesReferencia).padStart(2, '0')}-${String(ultimoDia).padStart(2, '0')}`;
-        
-        console.log('🔥 [CARREGAR] Período:', { dataInicio, dataFim });
-        
+
         const responseFiltro = await api.get('/faturamento/associados-da-regua', {
           params: {
             reguaId: reguaSelecionadaId,
             dataInicio,
             dataFim,
-            somenteComNota: true
-          }
+            somenteComNota: true,
+          },
         });
-        
-        console.log('🔥 [CARREGAR] Resposta backend:', {
-          total: responseFiltro.data.total,
-          totalSemNota: responseFiltro.data.totalSemNota,
-          tempoMs: responseFiltro.data.tempoMs
-        });
-        
+
         let listaCompleta = responseFiltro.data.associados || [];
         const totalSemNotaCalculado = responseFiltro.data.totalSemNota || 0;
-        
-        // Filtros locais
+
         if (filtroNome) {
           const nomeLower = filtroNome.toLowerCase();
-          listaCompleta = listaCompleta.filter((a: any) => 
-            a.nomeRazao?.toLowerCase().includes(nomeLower)
-          );
+          listaCompleta = listaCompleta.filter((a: any) => a.nomeRazao?.toLowerCase().includes(nomeLower));
         }
         if (filtroCnpjCpf) {
-          listaCompleta = listaCompleta.filter((a: any) => 
-            a.cnpjCpf?.includes(filtroCnpjCpf)
-          );
+          listaCompleta = listaCompleta.filter((a: any) => a.cnpjCpf?.includes(filtroCnpjCpf));
         }
-        
+
         const todosIds = listaCompleta.map((a: any) => a.id);
-        
-        // Paginação local
         const totalElements = listaCompleta.length;
         const totalPages = Math.max(1, Math.ceil(totalElements / PAGE_SIZE));
         const inicio = pagina * PAGE_SIZE;
-        const fim = inicio + PAGE_SIZE;
-        const paginaAtual = listaCompleta.slice(inicio, fim);
-        
-        console.log('🔥 [CARREGAR] Paginação local:', {
-          totalElements,
-          totalPages,
-          paginaAtual: paginaAtual.length,
-          todosIds: todosIds.length
-        });
-        
-        response = {
-          data: {
-            content: paginaAtual,
-            totalPages,
-            totalElements
-          }
-        };
-        
+        const paginaAtual = listaCompleta.slice(inicio, inicio + PAGE_SIZE);
+
+        response = { data: { content: paginaAtual, totalPages, totalElements } };
         idsResponse = { data: todosIds };
-        
         setTotalSemNota(totalSemNotaCalculado);
       }
-      
+
       setAssociados(response.data.content);
       setTotalPaginas(response.data.totalPages);
       setTotalItens(response.data.totalElements);
-      
-      const idsFinal = idsResponse.data || [];
-      setTodosIdsAssociados(idsFinal);
-      
-      console.log('✅ [CARREGAR] Estados atualizados:', {
-        associados: response.data.content.length,
-        totalPaginas: response.data.totalPages,
-        totalItens: response.data.totalElements,
-        todosIdsAssociados: idsFinal.length
-      });
-      
+      setTodosIdsAssociados(idsResponse.data || []);
     } catch (error) {
       console.error('❌ [CARREGAR] Erro:', error);
       showToast('Erro ao carregar lista de associados', 'error');
@@ -257,73 +196,60 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
       setCarregandoAssociados(false);
     }
   }, [pagina, filtroNome, filtroCnpjCpf, reguaSelecionadaId, reguaSelecionadaNome, showToast, configProcessamento]);
-  
-  // Efeitos
+
+  /* ============================================================
+     EFEITOS
+     ============================================================ */
   useEffect(() => {
-    if (isOpen) {
-      carregarReguas();
-    }
+    if (isOpen) carregarReguas();
   }, [isOpen, carregarReguas]);
-  
+
   useEffect(() => {
-    if (isOpen && reguaSelecionadaId) {
-      setPagina(0);
-    }
+    if (isOpen && reguaSelecionadaId) setPagina(0);
   }, [isOpen, reguaSelecionadaId, configProcessamento.mesReferencia, configProcessamento.anoReferencia]);
-  
+
   useEffect(() => {
-    if (isOpen && reguaSelecionadaId) {
-      carregarAssociados();
-    }
+    if (isOpen && reguaSelecionadaId) carregarAssociados();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, reguaSelecionadaId, pagina, configProcessamento.mesReferencia, configProcessamento.anoReferencia]);
-  
+
   useEffect(() => {
     setAssociadosSelecionados(new Set());
     setSelecionarTodos(false);
   }, [reguaSelecionadaId]);
-  
-  // Toggle seleção de associado
+
+  /* ============================================================
+     AÇÕES
+     ============================================================ */
   const toggleSelecionarAssociado = (id: number) => {
     const novosSelecionados = new Set(associadosSelecionados);
-    if (novosSelecionados.has(id)) {
-      novosSelecionados.delete(id);
-    } else {
-      novosSelecionados.add(id);
-    }
+    if (novosSelecionados.has(id)) novosSelecionados.delete(id);
+    else novosSelecionados.add(id);
     setAssociadosSelecionados(novosSelecionados);
-    const todosDaPaginaSelecionados = associados.length > 0 && 
-      associados.every(a => novosSelecionados.has(a.id));
-    setSelecionarTodos(todosDaPaginaSelecionados);
+    setSelecionarTodos(associados.length > 0 && associados.every(a => novosSelecionados.has(a.id)));
   };
-  
-  // Selecionar todos os associados
+
   const toggleSelecionarTodos = () => {
     if (selecionarTodos) {
       setAssociadosSelecionados(new Set());
       setSelecionarTodos(false);
     } else {
-      const novosSelecionados = new Set(todosIdsAssociados);
-      setAssociadosSelecionados(novosSelecionados);
+      setAssociadosSelecionados(new Set(todosIdsAssociados));
       setSelecionarTodos(true);
-      console.log(`✅ Selecionados ${novosSelecionados.size} associados`);
     }
   };
-  
-  // Limpar filtros
+
   const limparFiltros = () => {
     setFiltroNome('');
     setFiltroCnpjCpf('');
     setPagina(0);
   };
-  
-  // Aplicar filtros
+
   const aplicarFiltros = () => {
     setPagina(0);
     carregarAssociados();
   };
-  
-  // Confirmar seleção
+
   const handleConfirm = () => {
     if (associadosSelecionados.size === 0) {
       showToast('Selecione pelo menos um associado para processar', 'warning');
@@ -331,196 +257,219 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
     }
     onConfirm(Array.from(associadosSelecionados), configProcessamento);
   };
-  
-  // Simular
+
   const handleSimulate = () => {
     if (associadosSelecionados.size === 0) {
       showToast('Selecione pelo menos um associado para simular', 'warning');
       return;
     }
-    if (onSimulate) {
-      onSimulate(Array.from(associadosSelecionados), configProcessamento);
-    }
+    if (onSimulate) onSimulate(Array.from(associadosSelecionados), configProcessamento);
   };
-  
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'A': return 'bg-green-100 text-green-800';
-      case 'I': return 'bg-red-100 text-red-800';
-      case 'S': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'A': return 'bg-cdl-green-100 text-cdl-green-700';
+      case 'I': return 'bg-cdl-danger-50 text-cdl-danger-500';
+      case 'S': return 'bg-cdl-yellow-100 text-cdl-yellow-700';
+      default:  return 'bg-cdl-neutral-100 text-cdl-neutral-500';
     }
   };
-  
+
   const getStatusTexto = (status: string) => {
     switch (status) {
       case 'A': return 'Ativo';
       case 'I': return 'Inativo';
       case 'S': return 'Suspenso';
-      default: return status;
+      default:  return status;
     }
   };
-  
+
   if (!isOpen) return null;
-  
+
+  /* ============================================================
+     RENDER
+     ============================================================ */
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen px-4">
-        <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={onClose} />
-        
-        <div className="relative bg-white rounded-xl shadow-xl w-full max-w-7xl max-h-[90vh] overflow-hidden">
-          {/* Header */}
-          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-            <h2 className="text-xl font-semibold text-gray-800">{titulo}</h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+      <div className="flex items-end sm:items-center justify-center min-h-screen sm:px-4">
+        <div
+          className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+
+        <div className="relative bg-white rounded-t-2xl sm:rounded-xl shadow-cdl-lg
+                        w-full max-w-7xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden
+                        border-t-4 border-cdl-navy-700 flex flex-col">
+          {/* ============ Header ============ */}
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 flex justify-between items-center bg-cdl-navy-50 shrink-0">
+            <h2 className="text-base sm:text-xl font-semibold text-cdl-navy-700 truncate pr-2">
+              {titulo}
+            </h2>
+            <button
+              onClick={onClose}
+              aria-label="Fechar"
+              className="rounded-lg p-1.5 text-gray-400 hover:bg-white hover:text-cdl-navy-700
+                         transition-colors shrink-0"
+            >
+              <X size={20} />
+            </button>
           </div>
-          
-          {/* Body */}
-          <div className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 140px)' }}>
+
+          {/* ============ Body ============ */}
+          <div className="p-4 sm:p-6 overflow-y-auto flex-1">
             {/* Configurações do Processamento */}
-            <div className="bg-gray-50 p-4 rounded-lg mb-6">
-              <h3 className="font-semibold text-gray-700 mb-3">⚙️ Configurações do Processamento</h3>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-cdl-navy-50 border border-cdl-navy-100 p-4 rounded-lg mb-6">
+              <h3 className="font-semibold text-cdl-navy-700 mb-3 flex items-center gap-2">
+                <span>⚙️</span> Configurações do Processamento
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Mês Referência</label>
+                  <label className="block text-sm font-medium text-cdl-navy-700 mb-1">
+                    Mês Referência
+                  </label>
                   <select
                     value={configProcessamento.mesReferencia}
-                    onChange={(e) => setConfigProcessamento({ ...configProcessamento, mesReferencia: parseInt(e.target.value) })}
-                    className="w-full p-2 border rounded-lg"
+                    onChange={(e) =>
+                      setConfigProcessamento({ ...configProcessamento, mesReferencia: parseInt(e.target.value) })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white
+                               focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
+                               focus:border-cdl-navy-600 transition-colors"
                   >
-                    {['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
-                      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'].map((mes, idx) => (
+                    {['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                      'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'].map((mes, idx) => (
                       <option key={idx} value={idx + 1}>{mes}</option>
                     ))}
                   </select>
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ano Referência</label>
+                  <label className="block text-sm font-medium text-cdl-navy-700 mb-1">
+                    Ano Referência
+                  </label>
                   <input
                     type="number"
                     value={configProcessamento.anoReferencia}
-                    onChange={(e) => setConfigProcessamento({ ...configProcessamento, anoReferencia: parseInt(e.target.value) })}
-                    className="w-full p-2 border rounded-lg"
+                    onChange={(e) =>
+                      setConfigProcessamento({ ...configProcessamento, anoReferencia: parseInt(e.target.value) })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white
+                               focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
+                               focus:border-cdl-navy-600 transition-colors"
                     min={2020}
                     max={2030}
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Régua de Faturamento</label>
-                  {loading ? (
-                    <Loading size="small" />
-                  ) : (
-                    <select
-                      value={reguaSelecionadaId || ''}
-                      onChange={(e) => {
-                        const novaReguaId = e.target.value ? parseInt(e.target.value) : undefined;
-                        const novaRegua = reguas.find(r => r.id === novaReguaId);
-                        setReguaSelecionadaId(novaReguaId);
-                        setReguaSelecionadaNome(novaRegua?.nome || '');
-                        setConfigProcessamento({ ...configProcessamento, reguaId: novaReguaId });
-                      }}
-                      className="w-full p-2 border rounded-lg"
-                    >
-                      <option value="">Selecione uma régua</option>
-                      {reguas.map(regua => (
-                        <option key={regua.id} value={regua.id}>
-                          {regua.nome} (Dia {regua.diaEmissao}) {!regua.ativa && '(Inativa)'}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-                
-                <div className="flex items-end gap-3">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={configProcessamento.gerarNotas}
-                      onChange={(e) => setConfigProcessamento({ ...configProcessamento, gerarNotas: e.target.checked })}
-                      className="rounded"
-                    />
-                    <span className="text-sm text-gray-700">Gerar Notas</span>
+                  <label className="block text-sm font-medium text-cdl-navy-700 mb-1">
+                    Régua de Faturamento
                   </label>
-                  
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={configProcessamento.integrarRM}
-                      onChange={(e) => setConfigProcessamento({ ...configProcessamento, integrarRM: e.target.checked })}
-                      className="rounded"
-                    />
-                    <span className="text-sm text-gray-700">Integrar RM</span>
-                  </label>
+                  <select
+                    value={reguaSelecionadaId || ''}
+                    onChange={(e) => {
+                      const novaReguaId = e.target.value ? parseInt(e.target.value) : undefined;
+                      const novaRegua = reguas.find(r => r.id === novaReguaId);
+                      setReguaSelecionadaId(novaReguaId);
+                      setReguaSelecionadaNome(novaRegua?.nome || '');
+                      setConfigProcessamento({ ...configProcessamento, reguaId: novaReguaId });
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white
+                               focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
+                               focus:border-cdl-navy-600 transition-colors disabled:opacity-50"
+                    disabled={loading}
+                  >
+                    <option value="">Selecione uma régua</option>
+                    {reguas.map(regua => (
+                      <option key={regua.id} value={regua.id}>
+                        {regua.nome} (Dia {regua.diaEmissao}) {!regua.ativa && '(Inativa)'}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
-              
-              {/* INDICADOR VISUAL PARA RÉGUA CONSOLIDADA */}
+
+              {/* Aviso régua consolidada */}
               {isReguaConsolidado() && (
-                <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 flex items-center gap-2">
+                <div className="mt-3 p-3 bg-cdl-navy-100 border border-cdl-navy-200 rounded-lg text-sm text-cdl-navy-700 flex items-start gap-2">
                   <span>📋</span>
                   <span>
-                    <strong>Faturamento Consolidado</strong> - Serão exibidos apenas associados que possuem notas no último arquivo consolidado importado (busca automática)
+                    <strong>Faturamento Consolidado</strong> — Serão exibidos apenas associados que possuem notas no último arquivo consolidado importado (busca automática).
                   </span>
                 </div>
               )}
-              
-              {/* NOVO: Aviso de associados sem nota */}
+
+              {/* Aviso associados sem nota */}
               {!isReguaConsolidado() && reguaSelecionadaId && totalSemNota > 0 && (
-                <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700 flex items-center gap-2">
+                <div className="mt-3 p-3 bg-cdl-yellow-50 border border-cdl-yellow-100 rounded-lg text-sm text-cdl-yellow-700 flex items-start gap-2">
                   <span>⚠️</span>
                   <span>
-                    <strong>{totalSemNota}</strong> associado(s) da régua foram excluídos 
-                    por não possuírem nota de débito no período selecionado.
+                    <strong>{totalSemNota}</strong> associado(s) da régua foram excluídos por não possuírem nota de débito no período selecionado.
                   </span>
                 </div>
               )}
             </div>
-            
+
             {/* Filtros */}
             {reguaSelecionadaId && (
-              <div className="bg-white p-4 rounded-lg border mb-6">
-                <h3 className="font-semibold text-gray-700 mb-3">🔍 Filtros</h3>
+              <div className="bg-white p-4 rounded-lg border border-gray-200 mb-6">
+                <h3 className="font-semibold text-cdl-navy-700 mb-3 flex items-center gap-2">
+                  <span>🔍</span> Filtros
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   <input
                     type="text"
                     placeholder="Nome/Razão Social"
                     value={filtroNome}
                     onChange={(e) => setFiltroNome(e.target.value)}
-                    className="p-2 border rounded-lg"
+                    className="px-3 py-2 border border-gray-300 rounded-lg bg-white
+                               focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
+                               focus:border-cdl-navy-600 transition-colors"
                   />
                   <input
                     type="text"
                     placeholder="CNPJ/CPF"
                     value={filtroCnpjCpf}
                     onChange={(e) => setFiltroCnpjCpf(e.target.value)}
-                    className="p-2 border rounded-lg"
+                    className="px-3 py-2 border border-gray-300 rounded-lg bg-white
+                               focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
+                               focus:border-cdl-navy-600 transition-colors"
                   />
-                  <button onClick={aplicarFiltros} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                  <button
+                    onClick={aplicarFiltros}
+                    className="px-4 py-2 bg-cdl-navy-700 text-white rounded-lg
+                               hover:bg-cdl-navy-800 font-medium transition-all active:scale-[.98]"
+                  >
                     Buscar
                   </button>
-                  <button onClick={limparFiltros} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                  <button
+                    onClick={limparFiltros}
+                    className="px-4 py-2 border border-gray-300 text-cdl-navy-700 rounded-lg
+                               hover:bg-cdl-neutral-50 transition-colors"
+                  >
                     Limpar
                   </button>
                 </div>
               </div>
             )}
-            
-            {/* Mensagem quando não há régua */}
+
+            {/* Sem régua selecionada */}
             {!reguaSelecionadaId && (
-              <div className="text-center py-8 text-gray-500">
-                <div className="text-5xl mb-4">📏</div>
-                <p>Selecione uma régua de faturamento para carregar os associados</p>
-              </div>
+              <EmptyState
+                icon="📏"
+                title="Selecione uma régua de faturamento"
+                description="Escolha uma régua acima para carregar os associados disponíveis."
+                compact
+              />
             )}
-            
+
             {/* Tabela de Associados */}
             {reguaSelecionadaId && (
               <>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto border border-gray-200 rounded-lg">
                   <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-cdl-navy-50">
                       <tr>
                         <th className="px-4 py-3 text-left">
                           <div className="flex items-center gap-2">
@@ -528,124 +477,165 @@ const ModalSelecaoAssociados: React.FC<ModalSelecaoAssociadosProps> = ({
                               type="checkbox"
                               checked={selecionarTodos && todosIdsAssociados.length > 0}
                               onChange={toggleSelecionarTodos}
-                              className="rounded"
+                              className="h-4 w-4 text-cdl-navy-700 rounded focus:ring-cdl-navy-600"
                               disabled={carregandoAssociados}
                             />
-                            <span className="text-xs text-gray-500">
-                              {todosIdsAssociados.length > 0 && `(${associadosSelecionados.size} de ${todosIdsAssociados.length})`}
+                            <span className="text-xs text-cdl-navy-600 font-medium">
+                              {todosIdsAssociados.length > 0 &&
+                                `(${associadosSelecionados.size} de ${todosIdsAssociados.length})`}
                             </span>
                           </div>
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome/Razão</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">CNPJ/CPF</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Plano</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vendedor</th>
+                        {['Código','Nome/Razão','CNPJ/CPF','Plano','Status','Vendedor'].map(h => (
+                          <th
+                            key={h}
+                            className="px-4 py-3 text-left text-xs font-semibold text-cdl-navy-700 uppercase tracking-wider"
+                          >
+                            {h}
+                          </th>
+                        ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200">
+                    <tbody className="divide-y divide-gray-200 bg-white">
                       {carregandoAssociados ? (
                         <tr>
-                          <td colSpan={7} className="px-4 py-8 text-center">
-                            <Loading size="small" />
-                            <span className="ml-2 text-gray-500">Carregando associados...</span>
+                          <td colSpan={7} className="px-4 py-12 text-center">
+                            <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-cdl-navy-100 border-t-cdl-navy-700" />
+                            <p className="mt-2 text-cdl-navy-700 text-sm font-medium">
+                              Carregando associados...
+                            </p>
                           </td>
                         </tr>
                       ) : associados.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                            {isReguaConsolidado() 
-                              ? 'Nenhum associado encontrado no último arquivo consolidado importado'
-                              : 'Nenhum associado com nota encontrado para esta régua no período selecionado'}
+                          <td colSpan={7} className="px-4 py-12">
+                            <EmptyState
+                              icon="👥"
+                              title={
+                                isReguaConsolidado()
+                                  ? 'Nenhum associado no último consolidado'
+                                  : 'Nenhum associado com nota no período'
+                              }
+                              description={
+                                isReguaConsolidado()
+                                  ? 'Importe um arquivo consolidado para que os associados apareçam aqui.'
+                                  : 'Ajuste o período ou a régua para encontrar associados com notas.'
+                              }
+                              compact
+                            />
                           </td>
                         </tr>
                       ) : (
                         associados.map((associado) => (
-                          <tr key={associado.id} className="hover:bg-gray-50">
+                          <tr key={associado.id} className="hover:bg-cdl-navy-50/40 transition-colors">
                             <td className="px-4 py-3">
                               <input
                                 type="checkbox"
                                 checked={associadosSelecionados.has(associado.id)}
                                 onChange={() => toggleSelecionarAssociado(associado.id)}
-                                className="rounded"
+                                className="h-4 w-4 text-cdl-navy-700 rounded focus:ring-cdl-navy-600"
                               />
                             </td>
-                            <td className="px-4 py-3 text-sm font-mono text-blue-600">
+                            <td className="px-4 py-3 text-sm font-mono text-cdl-navy-700 font-medium">
                               {associado.codigoSpc || associado.id}
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-900 font-medium">{associado.nomeRazao}</td>
+                            <td className="px-4 py-3 text-sm text-gray-900 font-medium">
+                              {associado.nomeRazao}
+                            </td>
                             <td className="px-4 py-3 text-sm text-gray-600">{associado.cnpjCpf}</td>
-                            <td className="px-4 py-3 text-sm text-gray-600">{associado.planoTitulo || '-'}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">
+                              {associado.planoTitulo || '-'}
+                            </td>
                             <td className="px-4 py-3">
-                              <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(associado.status)}`}>
+                              <span
+                                className={`px-2 py-1 text-xs rounded-full font-medium ${getStatusColor(associado.status)}`}
+                              >
                                 {getStatusTexto(associado.status)}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-600">{associado.vendedorNome || '-'}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">
+                              {associado.vendedorNome || '-'}
+                            </td>
                           </tr>
                         ))
                       )}
                     </tbody>
                   </table>
                 </div>
-                
+
                 {/* Paginação */}
                 {totalPaginas > 1 && (
-                  <div className="flex justify-center gap-2 mt-4">
+                  <div className="flex flex-col sm:flex-row justify-center items-center gap-3 mt-4">
                     <button
                       onClick={() => setPagina(p => Math.max(0, p - 1))}
                       disabled={pagina === 0 || carregandoAssociados}
-                      className="px-3 py-1 border rounded-lg disabled:opacity-50 hover:bg-gray-50"
+                      className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium
+                                 text-cdl-navy-700 hover:bg-cdl-navy-50 hover:border-cdl-navy-300
+                                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
-                      Anterior
+                      ← Anterior
                     </button>
-                    <span className="px-3 py-1 text-gray-600">
-                      Página {pagina + 1} de {totalPaginas} ({totalItens} associados)
+                    <span className="px-3 py-2 text-sm text-gray-700">
+                      Página <strong className="text-cdl-navy-700">{pagina + 1}</strong> de{' '}
+                      <strong className="text-cdl-navy-700">{totalPaginas}</strong>{' '}
+                      ({totalItens} associados)
                     </span>
                     <button
                       onClick={() => setPagina(p => Math.min(totalPaginas - 1, p + 1))}
                       disabled={pagina === totalPaginas - 1 || carregandoAssociados}
-                      className="px-3 py-1 border rounded-lg disabled:opacity-50 hover:bg-gray-50"
+                      className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium
+                                 text-cdl-navy-700 hover:bg-cdl-navy-50 hover:border-cdl-navy-300
+                                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
-                      Próxima
+                      Próxima →
                     </button>
                   </div>
                 )}
               </>
             )}
           </div>
-          
-          {/* Footer */}
-          <div className="px-6 py-4 border-t border-gray-200 flex justify-between items-center bg-gray-50">
-            <div className="text-sm text-gray-500">
-              {associadosSelecionados.size} de {todosIdsAssociados.length} associado(s) selecionado(s)
+
+          {/* ============ Footer ============ */}
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-cdl-neutral-50 shrink-0">
+            <div className="text-sm text-gray-600">
+              <strong className="text-cdl-navy-700">{associadosSelecionados.size}</strong> de{' '}
+              <strong className="text-cdl-navy-700">{todosIdsAssociados.length}</strong> associado(s) selecionado(s)
               {!isReguaConsolidado() && totalSemNota > 0 && (
-                <span className="ml-2 text-amber-600">
+                <span className="ml-2 text-cdl-yellow-700">
                   ({totalSemNota} sem nota excluído{totalSemNota > 1 ? 's' : ''})
                 </span>
               )}
               {isReguaConsolidado() && todosIdsAssociados.length === 0 && (
-                <span className="ml-2 text-yellow-600"> (Nenhum associado com notas no último consolidado)</span>
+                <span className="ml-2 text-cdl-yellow-700">
+                  (Nenhum associado com notas no último consolidado)
+                </span>
               )}
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-2">
               {onSimulate && (
                 <button
                   onClick={handleSimulate}
                   disabled={associadosSelecionados.size === 0 || !reguaSelecionadaId}
-                  className="px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 disabled:opacity-50"
+                  className="px-4 py-2 border border-cdl-navy-300 text-cdl-navy-700 bg-white rounded-lg
+                             hover:bg-cdl-navy-50 disabled:opacity-50 disabled:cursor-not-allowed
+                             font-medium transition-colors"
                 >
                   Simular
                 </button>
               )}
-              <button onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+              <button
+                onClick={onClose}
+                className="px-4 py-2 border border-gray-300 text-cdl-navy-700 rounded-lg
+                           hover:bg-cdl-neutral-50 transition-colors"
+              >
                 Cancelar
               </button>
               <button
                 onClick={handleConfirm}
                 disabled={associadosSelecionados.size === 0 || !reguaSelecionadaId}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="px-4 py-2 bg-cdl-navy-700 text-white rounded-lg
+                           hover:bg-cdl-navy-800 disabled:opacity-50 disabled:cursor-not-allowed
+                           font-medium transition-all active:scale-[.98]"
               >
                 Processar Faturamento
               </button>

@@ -1,138 +1,202 @@
-// src/components/ui/ConfirmModal.tsx
+import { useEffect, useRef, ReactNode } from 'react';
+import { AlertTriangle, CheckCircle, Info, XCircle, X } from 'lucide-react';
 
-import React from 'react';
+type Variant = 'danger' | 'warning' | 'success' | 'info';
 
 interface ConfirmModalProps {
   isOpen: boolean;
-  title: string;
-  message: string;
+  title?: string;
+  message: ReactNode;
   confirmText?: string;
   cancelText?: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-  type?: 'danger' | 'warning' | 'info' | 'success';
+  type?: Variant;              // usado no Usuarios.tsx
+  variant?: Variant;           // alias
+  loading?: boolean;
+  onConfirm: () => void | Promise<void>;
+  onCancel?: () => void;
+  onClose?: () => void;        // alias (compatível com Usuarios.tsx)
 }
 
-const ConfirmModal: React.FC<ConfirmModalProps> = ({
+/* ============================================================
+   MAPA DE VARIANTES → classes Tailwind CDL
+   Todas listadas no `safelist` do tailwind.config.js
+   ============================================================ */
+const CFG: Record<Variant, {
+  Icon: any;
+  iconCls: string;     // cor do ícone
+  iconBgCls: string;   // fundo do círculo do ícone
+  ringCls: string;     // "anel" externo (usando shadow-[...] com hex)
+  borderCls: string;   // borda superior
+  btnCls: string;      // botão confirmar
+}> = {
+  danger: {
+    Icon: XCircle,
+    iconCls:     'text-cdl-danger-500',
+    iconBgCls:   'bg-cdl-danger-50',
+    ringCls:     'shadow-[0_0_0_6px_rgba(192,57,43,.18)]',
+    borderCls:   'border-t-4 border-cdl-danger-500',
+    btnCls:      'bg-cdl-danger-500 hover:bg-cdl-danger-600 text-white',
+  },
+  warning: {
+    Icon: AlertTriangle,
+    iconCls:     'text-cdl-yellow-600',
+    iconBgCls:   'bg-cdl-yellow-50',
+    ringCls:     'shadow-[0_0_0_6px_rgba(245,197,24,.28)]',
+    borderCls:   'border-t-4 border-cdl-yellow-500',
+    // Amarelo CDL é claro → texto navy garante contraste WCAG AA
+    btnCls:      'bg-cdl-yellow-gradient text-cdl-navy-700 hover:brightness-105',
+  },
+  success: {
+    Icon: CheckCircle,
+    iconCls:     'text-cdl-green-500',
+    iconBgCls:   'bg-cdl-green-50',
+    ringCls:     'shadow-[0_0_0_6px_rgba(45,139,78,.18)]',
+    borderCls:   'border-t-4 border-cdl-green-500',
+    btnCls:      'bg-cdl-green-500 hover:bg-cdl-green-600 text-white',
+  },
+  info: {
+    Icon: Info,
+    iconCls:     'text-cdl-navy-700',
+    iconBgCls:   'bg-cdl-navy-50',
+    ringCls:     'shadow-[0_0_0_6px_rgba(31,58,138,.18)]',
+    borderCls:   'border-t-4 border-cdl-navy-700',
+    btnCls:      'bg-cdl-navy-700 hover:bg-cdl-navy-800 text-white',
+  },
+};
+
+export default function ConfirmModal({
   isOpen,
-  title,
+  title = 'Confirmar ação',
   message,
   confirmText = 'Confirmar',
   cancelText = 'Cancelar',
+  type,
+  variant,
+  loading = false,
   onConfirm,
   onCancel,
-  type = 'warning'
-}) => {
+  onClose,
+}: ConfirmModalProps) {
+  const confirmRef = useRef<HTMLButtonElement>(null);
+  const v = variant ?? type ?? 'warning';
+  const cfg = CFG[v];
+  const { Icon } = cfg;
+  const handleClose = onCancel ?? onClose ?? (() => {});
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !loading) handleClose();
+    };
+    document.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const t = setTimeout(() => confirmRef.current?.focus(), 80);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+      clearTimeout(t);
+    };
+  }, [isOpen, loading, handleClose]);
+
   if (!isOpen) return null;
 
-  const getButtonColor = () => {
-    switch (type) {
-      case 'danger': return 'bg-red-600 hover:bg-red-700 focus:ring-red-500';
-      case 'warning': return 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500';
-      case 'success': return 'bg-green-600 hover:bg-green-700 focus:ring-green-500';
-      case 'info': return 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500';
-      default: return 'bg-gray-600 hover:bg-gray-700 focus:ring-gray-500';
-    }
-  };
-
-  // 🔥 ÍCONE POR TIPO
-  const getIcon = () => {
-    switch (type) {
-      case 'danger':
-        return (
-          <div className="flex-shrink-0 w-14 h-14 rounded-full bg-red-100 flex items-center justify-center">
-            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-        );
-      case 'warning':
-        return (
-          <div className="flex-shrink-0 w-14 h-14 rounded-full bg-yellow-100 flex items-center justify-center">
-            <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-        );
-      case 'success':
-        return (
-          <div className="flex-shrink-0 w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
-            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-        );
-      case 'info':
-        return (
-          <div className="flex-shrink-0 w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center">
-            <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-        );
-      default:
-        return (
-          <div className="flex-shrink-0 w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
-            <svg className="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-        );
-    }
-  };
-
-  // 🔥 COR DO TÍTULO POR TIPO
-  const getTitleColor = () => {
-    switch (type) {
-      case 'danger': return 'text-red-800';
-      case 'warning': return 'text-yellow-800';
-      case 'success': return 'text-green-800';
-      case 'info': return 'text-blue-800';
-      default: return 'text-gray-800';
-    }
-  };
-
-  // 🔥 COR DA BORDA POR TIPO
-  const getBorderColor = () => {
-    switch (type) {
-      case 'danger': return 'border-red-200';
-      case 'warning': return 'border-yellow-200';
-      case 'success': return 'border-green-200';
-      case 'info': return 'border-blue-200';
-      default: return 'border-gray-200';
-    }
-  };
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className={`bg-white rounded-xl shadow-2xl w-full max-w-md border ${getBorderColor()}`}>
-        {/* Cabeçalho com ícone */}
-        <div className="p-6 pb-2 flex items-start gap-4">
-          {getIcon()}
-          <div>
-            <h3 className={`text-lg font-semibold ${getTitleColor()}`}>{title}</h3>
-            <p className="text-gray-600 mt-1">{message}</p>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="cm-title"
+      className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center
+                 p-0 sm:p-4 animate-fade-in"
+    >
+      {/* backdrop */}
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+        onClick={() => !loading && handleClose()}
+        aria-hidden="true"
+      />
+
+      {/* card */}
+      <div
+        className={`relative w-full sm:max-w-md bg-white
+                    rounded-t-2xl sm:rounded-2xl
+                    shadow-[0_20px_60px_-15px_rgba(0,0,0,.35)]
+                    overflow-hidden max-h-[92vh] flex flex-col
+                    animate-slide-up ${cfg.borderCls}`}
+      >
+        {/* botão fechar */}
+        <button
+          type="button"
+          onClick={handleClose}
+          disabled={loading}
+          aria-label="Fechar"
+          className="absolute top-3 right-3 z-10 p-1.5 rounded-full
+                     text-gray-400 hover:text-cdl-navy-700 hover:bg-cdl-neutral-50
+                     disabled:opacity-40 transition-colors"
+        >
+          <X size={18} />
+        </button>
+
+        {/* cabeçalho */}
+        <div className="flex flex-col items-center pt-7 px-6">
+          <div
+            className={`flex items-center justify-center w-14 h-14 rounded-full mb-4
+                        ${cfg.iconBgCls} ${cfg.ringCls}`}
+          >
+            <Icon size={28} className={cfg.iconCls} strokeWidth={2.2} />
+          </div>
+          <h2
+            id="cm-title"
+            className="text-lg sm:text-xl font-semibold text-center
+                       text-cdl-navy-700 whitespace-pre-line"
+          >
+            {title}
+          </h2>
+        </div>
+
+        {/* corpo */}
+        <div className="px-6 py-4 overflow-y-auto">
+          <div className="text-sm sm:text-[15px] text-center leading-relaxed
+                          text-cdl-neutral-500 whitespace-pre-line">
+            {message}
           </div>
         </div>
-        
-        {/* Botões */}
-        <div className="flex justify-end gap-3 p-6 border-t border-gray-200">
+
+        {/* ações */}
+        <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 px-6 pb-6 pt-2">
           <button
-            onClick={onCancel}
-            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            type="button"
+            onClick={handleClose}
+            disabled={loading}
+            className="flex-1 px-4 py-2.5 rounded-lg font-medium text-sm
+                       border border-[#D6DCE5] text-cdl-navy-700 bg-white
+                       hover:bg-cdl-neutral-50 transition-all
+                       disabled:opacity-50 active:scale-[.98]"
           >
             {cancelText}
           </button>
+
           <button
-            onClick={onConfirm}
-            className={`px-4 py-2 text-white rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${getButtonColor()}`}
+            ref={confirmRef}
+            type="button"
+            onClick={() => !loading && onConfirm()}
+            disabled={loading}
+            className={`flex-1 px-4 py-2.5 rounded-lg font-semibold text-sm
+                        transition-all disabled:opacity-60 active:scale-[.98]
+                        flex items-center justify-center gap-2
+                        ${cfg.btnCls}`}
           >
-            {confirmText}
+            {loading && (
+              <span
+                className="inline-block w-4 h-4 rounded-full border-2 border-t-transparent animate-spin"
+                style={{ borderColor: 'currentColor transparent currentColor currentColor' }}
+                aria-hidden="true"
+              />
+            )}
+            {loading ? 'Processando…' : confirmText}
           </button>
         </div>
       </div>
     </div>
   );
-};
-
-export default ConfirmModal;
+}

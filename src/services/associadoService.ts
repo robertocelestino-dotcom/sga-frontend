@@ -34,6 +34,7 @@ export interface AssociadoFiltros {
   nomeRazao?: string;
   tipoPessoa?: string;
   status?: string;
+  origem?: string;   // 🔥 NOVO — CADASTRO_MANUAL | IMPORTACAO_NOVO | IMPORTACAO_ATUALIZADO
 }
 
 export interface AssociadoResumoDTO {
@@ -54,6 +55,7 @@ export interface AssociadoResumoDTO {
   dataFimSuspensao?: string;
   motivoInativacao?: string;
   motivoSuspensao?: string;
+  origemUltimaOperacao?: string;   // 🔥 NOVO
   
   faturamentoMinimo?: number;
   vendedorId?: number;
@@ -277,6 +279,7 @@ export const associadoService = {
       if (params?.nomeRazao) queryParams.append('nomeRazao', params.nomeRazao);
       if (params?.tipoPessoa) queryParams.append('tipoPessoa', params.tipoPessoa);
       if (params?.status) queryParams.append('status', params.status);
+      if (params?.origem) queryParams.append('origem', params.origem);   // 🔥 NOVO
   
       const url = `${endpoints.associados.listar}?${queryParams.toString()}`;
       console.log('🔍 URL FINAL que será chamada:', url);

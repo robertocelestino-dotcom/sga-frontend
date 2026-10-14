@@ -1,177 +1,217 @@
-// src/pages/Login.tsx
-import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useAuthStore } from '../stores/authStore'
+// src/pages/Login.tsx - VERSÃO CDL
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { AlertCircle, Eye, EyeOff, LogIn, Lock } from 'lucide-react';
+import { useAuthStore } from '../stores/authStore';
+import logoCdl from '../assets/logo-cdl.jpg';
 
 const Login: React.FC = () => {
-  const [username, setUsername] = useState('admin')
-  const [password, setPassword] = useState('admin@2025')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  
-  const { login, isAuthenticated } = useAuthStore()
-  const navigate = useNavigate()
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [errorType, setErrorType] = useState<'erro' | 'bloqueado' | 'aviso'>('erro');
+  const [loading, setLoading] = useState(false);
 
-  // Redireciona se já estiver autenticado
+  const { login, isAuthenticated } = useAuthStore();
+  const navigate = useNavigate();
+
   useEffect(() => {
-    if (isAuthenticated) {
-      console.log('✅ Usuário já autenticado, redirecionando...')
-      navigate('/dashboard')
-    }
-  }, [isAuthenticated, navigate])
+    if (isAuthenticated) navigate('/dashboard');
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
-
-    console.log('📤 Enviando credenciais para login...', { username, password })
+    e.preventDefault();
+    setError('');
+    setLoading(true);
 
     try {
-      const result = await login({ username, password })
-      
+      const result = await login({ username, password });
+
       if (result.success) {
-        console.log('✅ Login bem-sucedido! Redirecionando...')
-        navigate('/dashboard')
+        navigate('/dashboard');
       } else {
-        setError(result.error || 'Erro ao fazer login')
-        console.error('❌ Falha no login:', result.error)
+        const msg = result.error || 'Erro ao fazer login';
+        setErrorType(msg.toLowerCase().includes('bloquead') ? 'bloqueado' : 'erro');
+        setError(msg);
       }
     } catch (error: any) {
-      const errorMessage = error.message || 'Erro inesperado ao fazer login'
-      setError(errorMessage)
-      console.error('❌ Erro no login:', error)
+      const status = error.response?.status;
+      const data = error.response?.data;
+
+      if (status === 423) {
+        setErrorType('bloqueado');
+        setError(`🔒 ${data?.message || 'Conta bloqueada. Contate o administrador.'}`);
+      } else if (status === 401) {
+        setErrorType('aviso');
+        const restantes = data?.tentativasRestantes;
+        if (restantes !== undefined && restantes > 0) {
+          setError(`❌ Usuário ou senha incorretos. Você ainda tem ${restantes} tentativa(s).`);
+        } else {
+          setError(`❌ ${data?.message || 'Usuário ou senha incorretos.'}`);
+        }
+      } else {
+        setErrorType('erro');
+        setError(data?.message || error.message || 'Erro ao fazer login');
+      }
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleInputChange = (field: 'username' | 'password', value: string) => {
-    setError('') // Limpa erro quando usuário digitar
-    if (field === 'username') {
-      setUsername(value)
-    } else {
-      setPassword(value)
+    setError('');
+    if (field === 'username') setUsername(value);
+    else setPassword(value);
+  };
+
+  const getErrorClasses = () => {
+    switch (errorType) {
+      case 'bloqueado':
+        return 'bg-cdl-danger-50 border-cdl-danger-500 text-cdl-danger-600';
+      case 'aviso':
+        return 'bg-cdl-yellow-50 border-cdl-yellow-500 text-cdl-yellow-700';
+      default:
+        return 'bg-cdl-danger-50 border-cdl-danger-100 text-cdl-danger-500';
     }
-  }
+  };
+
+  const getErrorIconColor = () => {
+    switch (errorType) {
+      case 'bloqueado': return 'text-cdl-danger-500';
+      case 'aviso': return 'text-cdl-yellow-600';
+      default: return 'text-cdl-danger-500';
+    }
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="max-w-md w-full mx-4">
-        {/* Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          {/* Header */}
+    <div className="min-h-screen flex items-center justify-center bg-cdl-gradient-reverse relative overflow-hidden">
+      {/* Elementos decorativos */}
+      <div className="absolute inset-0 opacity-10 pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-cdl-yellow-500 blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-cdl-green-500 blur-3xl" />
+      </div>
+
+      <div className="max-w-md w-full mx-4 relative z-10">
+        <div className="bg-white rounded-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,.35)] p-8 border-t-4 border-cdl-yellow-500">
+          {/* Logo */}
           <div className="text-center mb-8">
-            <div className="mx-auto w-16 h-16 bg-indigo-600 rounded-full flex items-center justify-center mb-4">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-            </div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">
+            <img
+              src={logoCdl}
+              alt="CDL Fortaleza"
+              className="h-20 w-auto mx-auto mb-4 object-contain"
+            />
+            <h2 className="text-2xl font-bold text-cdl-navy-700 mb-1">
               Sistema SGA
             </h2>
-            <p className="text-gray-600">
+            <p className="text-gray-600 text-sm">
               Sistema de Gestão de Associados
             </p>
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-700">
-                <strong>Credenciais de teste:</strong><br />
-                Usuário: <strong>admin</strong><br />
-                Senha: <strong>admin@2025</strong>
-              </p>
-            </div>
           </div>
 
-          {/* Form */}
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <form className="space-y-5" onSubmit={handleSubmit}>
+            {/* Erro */}
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <div className="flex items-center">
-                  <svg className="w-5 h-5 text-red-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-red-700 text-sm font-medium">{error}</span>
-                </div>
+              <div className={`border rounded-lg p-4 flex items-start gap-2 ${getErrorClasses()}`}>
+                <AlertCircle size={20} className={`flex-shrink-0 mt-0.5 ${getErrorIconColor()}`} />
+                <span className="text-sm font-medium whitespace-pre-line">{error}</span>
               </div>
             )}
 
+            {/* Usuário */}
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="username" className="block text-sm font-medium text-cdl-navy-700 mb-2">
                 Usuário
               </label>
-              <div className="relative">
-                <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  required
-                  disabled={loading}
-                  className="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  placeholder="Digite seu usuário"
-                  value={username}
-                  onChange={(e) => handleInputChange('username', e.target.value)}
-                />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                  <svg className="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
+              <input
+                id="username"
+                name="username"
+                type="text"
+                required
+                disabled={loading}
+                autoComplete="username"
+                className="block w-full px-4 py-3 border border-gray-300 rounded-lg
+                           placeholder-gray-400 focus:outline-none focus:ring-2
+                           focus:ring-cdl-navy-600 focus:border-cdl-navy-600
+                           disabled:opacity-50 disabled:cursor-not-allowed
+                           transition-colors"
+                placeholder="Digite seu usuário"
+                value={username}
+                onChange={(e) => handleInputChange('username', e.target.value)}
+              />
             </div>
 
+            {/* Senha */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-cdl-navy-700 mb-2">
                 Senha
               </label>
               <div className="relative">
                 <input
                   id="password"
                   name="password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
                   disabled={loading}
-                  className="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  autoComplete="current-password"
+                  className="block w-full px-4 py-3 pr-11 border border-gray-300 rounded-lg
+                             placeholder-gray-400 focus:outline-none focus:ring-2
+                             focus:ring-cdl-navy-600 focus:border-cdl-navy-600
+                             disabled:opacity-50 disabled:cursor-not-allowed
+                             transition-colors"
                   placeholder="Digite sua senha"
                   value={password}
                   onChange={(e) => handleInputChange('password', e.target.value)}
                 />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                  <svg className="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                  </svg>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  disabled={loading}
+                  aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400
+                             hover:text-cdl-navy-700 transition-colors disabled:opacity-50
+                             disabled:cursor-not-allowed p-1 rounded"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
               </div>
             </div>
 
+            {/* Botão Entrar */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-lg
+                         text-sm font-semibold text-white bg-cdl-navy-700 hover:bg-cdl-navy-800
+                         focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cdl-navy-500
+                         disabled:opacity-50 disabled:cursor-not-allowed transition-all
+                         active:scale-[.98]"
             >
               {loading ? (
                 <>
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
+                  <span className="inline-block w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
                   Entrando...
                 </>
               ) : (
-                'Entrar no Sistema'
+                <>
+                  <LogIn size={18} />
+                  Entrar no Sistema
+                </>
               )}
             </button>
           </form>
 
           {/* Footer */}
-          <div className="mt-6 text-center">
-            <p className="text-xs text-gray-500">
-              Sistema de Gestão de Associados v1.0
+          <div className="mt-6 pt-4 border-t border-gray-100 text-center">
+            <p className="text-xs text-gray-500 flex items-center justify-center gap-1.5">
+              <Lock size={12} />
+              Conexão segura · SGA v1.0.0 · © 2025 CDL Fortaleza
             </p>
           </div>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Login
+export default Login;

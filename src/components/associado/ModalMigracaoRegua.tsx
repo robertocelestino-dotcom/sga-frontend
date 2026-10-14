@@ -1,10 +1,10 @@
-// src/components/associado/ModalMigracaoRegua.tsx
-
+// src/components/associado/ModalMigracaoRegua.tsx - VERSÃO CDL
 import React, { useState, useEffect } from 'react';
-import migracaoReguaService, { 
-  ReguaFaturamento, 
+import { X } from 'lucide-react';
+import migracaoReguaService, {
+  ReguaFaturamento,
   MigracaoReguaResponse,
-  FaturaPendente 
+  FaturaPendente,
 } from '../../services/migracaoReguaService';
 import { useMessage } from '../../providers/MessageProvider';
 import Loading from '../Loading';
@@ -28,17 +28,14 @@ const ModalMigracaoRegua: React.FC<ModalMigracaoReguaProps> = ({
   associadoNome,
   reguaAtualId,
   reguaAtualNome,
-  onSuccess
+  onSuccess,
 }) => {
   const { showToast } = useMessage();
-  
-  // ========== ESTADOS ==========
+
   const [reguas, setReguas] = useState<ReguaFaturamento[]>([]);
   const [novaReguaId, setNovaReguaId] = useState<number | null>(null);
   const [motivo, setMotivo] = useState('');
-  const [dataMigracao, setDataMigracao] = useState(
-    new Date().toISOString().split('T')[0]
-  );
+  const [dataMigracao, setDataMigracao] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
   const [carregandoReguas, setCarregandoReguas] = useState(false);
   const [verificacao, setVerificacao] = useState<MigracaoReguaResponse | null>(null);
@@ -46,23 +43,11 @@ const ModalMigracaoRegua: React.FC<ModalMigracaoReguaProps> = ({
   const [step, setStep] = useState<StepType>('selecionar');
   const [faturasPendentes, setFaturasPendentes] = useState<FaturaPendente[]>([]);
 
-  // ========== NOVOS ESTADOS PARA VALIDAÇÃO DE DATA ==========
   const [dataDisponivel, setDataDisponivel] = useState<boolean>(true);
   const [validandoData, setValidandoData] = useState<boolean>(false);
   const [mensagemData, setMensagemData] = useState<string>('');
   const [dataVerificada, setDataVerificada] = useState<boolean>(false);
 
-  // ========== LOGS PARA DEBUG ==========
-  useEffect(() => {
-    if (isOpen) {
-      console.log('📌 Modal aberto - Associado:', associadoNome);
-      console.log('📌 Associado ID:', associadoId);
-      console.log('📌 Régua atual ID:', reguaAtualId);
-      console.log('📌 Régua atual Nome:', reguaAtualNome);
-    }
-  }, [isOpen, associadoNome, associadoId, reguaAtualId, reguaAtualNome]);
-
-  // ========== CARREGAR RÉGUAS ==========
   useEffect(() => {
     if (isOpen) {
       carregarReguas();
@@ -79,30 +64,20 @@ const ModalMigracaoRegua: React.FC<ModalMigracaoReguaProps> = ({
     }
   }, [isOpen, associadoId]);
 
-  // ========== VERIFICAR DATA QUANDO RÉGUA OU DATA MUDAR ==========
   useEffect(() => {
     if (novaReguaId && dataMigracao && isOpen) {
-      const timer = setTimeout(() => {
-        verificarDataDisponivel(dataMigracao);
-      }, 600); // Debounce de 600ms
-      
+      const timer = setTimeout(() => verificarDataDisponivel(dataMigracao), 600);
       return () => clearTimeout(timer);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [novaReguaId, dataMigracao, associadoId, isOpen]);
-
-  // ========== FUNÇÕES ==========
 
   const carregarReguas = async () => {
     setCarregandoReguas(true);
     try {
-      console.log('📡 Carregando réguas disponíveis para migração...');
       const data = await migracaoReguaService.listarReguasDisponiveis(associadoId);
-      console.log('📥 Réguas disponíveis:', data);
       setReguas(data);
-      
-      if (data.length === 0) {
-        showToast('⚠️ Nenhuma régua disponível para migração', 'warning');
-      }
+      if (data.length === 0) showToast('⚠️ Nenhuma régua disponível para migração', 'warning');
     } catch (error) {
       console.error('❌ Erro ao carregar réguas:', error);
       showToast('Erro ao carregar réguas disponíveis', 'error');
@@ -111,7 +86,6 @@ const ModalMigracaoRegua: React.FC<ModalMigracaoReguaProps> = ({
     }
   };
 
-  // 🔥 FUNÇÃO PARA VERIFICAR SE A DATA JÁ FOI USADA
   const verificarDataDisponivel = async (data: string) => {
     if (!novaReguaId) {
       setDataDisponivel(true);
@@ -119,28 +93,21 @@ const ModalMigracaoRegua: React.FC<ModalMigracaoReguaProps> = ({
       setDataVerificada(false);
       return;
     }
-
-    // Não verificar se a data é a mesma que já foi verificada
-    if (dataVerificada && dataDisponivel) {
-      return;
-    }
+    if (dataVerificada && dataDisponivel) return;
 
     setValidandoData(true);
     setMensagemData('🔄 Verificando disponibilidade da data...');
 
     try {
       const response = await migracaoReguaService.verificarDataMigracao(associadoId, novaReguaId, data);
-      
       if (response.existe) {
         setDataDisponivel(false);
         setDataVerificada(true);
-        
-        // Sugerir próxima data disponível
-        const dataAtual = new Date(data);
-        const proximaData = new Date(dataAtual);
+
+        const proximaData = new Date(data);
         proximaData.setDate(proximaData.getDate() + 1);
         const proximaDataStr = proximaData.toISOString().split('T')[0];
-        
+
         setMensagemData(
           `⚠️ Já existe uma migração para esta data. Tente ${proximaDataStr.replace(/-/g, '/')} ou outra data.`
         );
@@ -159,24 +126,14 @@ const ModalMigracaoRegua: React.FC<ModalMigracaoReguaProps> = ({
   };
 
   const handleVerificar = async () => {
-    if (!novaReguaId) {
-      showToast('Selecione uma régua para migração', 'warning');
-      return;
-    }
-
-    if (!dataDisponivel) {
-      showToast('⚠️ A data selecionada não está disponível. Selecione outra data.', 'warning');
-      return;
-    }
+    if (!novaReguaId) { showToast('Selecione uma régua para migração', 'warning'); return; }
+    if (!dataDisponivel) { showToast('⚠️ A data selecionada não está disponível.', 'warning'); return; }
 
     setLoading(true);
     setStep('verificando');
 
     try {
-      console.log('🔍 Verificando migração para régua:', novaReguaId);
       const response = await migracaoReguaService.verificarMigracao(associadoId, novaReguaId);
-      console.log('📥 Resposta da verificação:', response);
-      
       setVerificacao(response);
 
       if (response.faturasPendentes) {
@@ -204,17 +161,10 @@ const ModalMigracaoRegua: React.FC<ModalMigracaoReguaProps> = ({
 
   const handleConfirmar = async () => {
     if (!novaReguaId) return;
-
-    if (!dataDisponivel) {
-      showToast('⚠️ A data selecionada não está disponível. Selecione outra data.', 'warning');
-      return;
-    }
+    if (!dataDisponivel) { showToast('⚠️ A data selecionada não está disponível.', 'warning'); return; }
 
     setLoading(true);
     try {
-      console.log('🔄 Confirmando migração para régua:', novaReguaId);
-      console.log('📋 Dados:', { associadoId, novaReguaId, motivo, forcarMigracao, dataMigracao });
-      
       const response = await migracaoReguaService.migrarAssociado(
         associadoId,
         novaReguaId,
@@ -223,23 +173,18 @@ const ModalMigracaoRegua: React.FC<ModalMigracaoReguaProps> = ({
         dataMigracao
       );
 
-      console.log('📥 Resposta da migração:', response);
       setVerificacao(response);
       setStep('resultado');
 
       if (response.status === 'SUCESSO') {
         showToast(`✅ ${response.mensagem}`, 'success');
-        setTimeout(() => {
-          onSuccess();
-          onClose();
-        }, 2000);
+        setTimeout(() => { onSuccess(); onClose(); }, 2000);
       } else {
         showToast(response.mensagem, 'error');
       }
     } catch (error: any) {
       console.error('❌ Erro ao migrar régua:', error);
-      
-      // 🔥 TRATAR ERRO DE DATA DUPLICADA
+
       if (error.response?.data?.message?.includes('mesma data')) {
         showToast('⚠️ Já existe uma migração com esta data. Por favor, selecione outra data.', 'warning');
         setDataDisponivel(false);
@@ -263,81 +208,96 @@ const ModalMigracaoRegua: React.FC<ModalMigracaoReguaProps> = ({
     setDataVerificada(false);
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
-  };
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '-';
     try {
       const [ano, mes, dia] = dateStr.split('-');
       return `${dia}/${mes}/${ano}`;
-    } catch {
-      return dateStr;
-    }
+    } catch { return dateStr; }
   };
 
   if (!isOpen) return null;
 
+  const inputCls = (hasError: boolean) =>
+    `w-full p-3 border rounded-lg bg-white transition-colors
+     focus:outline-none focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600
+     ${hasError ? 'border-cdl-danger-500' : 'border-gray-300'}`;
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+    >
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+        onClick={() => !loading && onClose()}
+        aria-hidden="true"
+      />
+
+      <div className="relative w-full sm:max-w-2xl bg-white rounded-t-2xl sm:rounded-2xl
+                      shadow-[0_20px_60px_-15px_rgba(0,0,0,.35)] overflow-hidden
+                      max-h-[95vh] sm:max-h-[90vh] flex flex-col border-t-4 border-cdl-navy-700">
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-gray-200">
-          <div>
-            <h2 className="text-xl font-bold text-gray-800">🔄 Migrar Régua de Faturamento</h2>
-            <p className="text-sm text-gray-500">
-              Associado: <strong>{associadoNome}</strong> (ID: {associadoId})
-            </p>
-            <p className="text-sm mt-1">
-              <span className="text-gray-500">Régua Atual:</span>
-              {reguaAtualId && reguaAtualNome ? (
-                <span className="ml-2 font-medium text-blue-600">
-                  {reguaAtualNome} (ID: {reguaAtualId})
-                </span>
-              ) : (
-                <span className="ml-2 text-gray-400">Nenhuma régua associada</span>
-              )}
-            </p>
+        <div className="px-4 sm:px-6 py-4 border-b border-gray-200 bg-cdl-navy-50 shrink-0">
+          <div className="flex justify-between items-start gap-3">
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-xl font-bold text-cdl-navy-700 flex items-center gap-2">
+                <span>🔄</span> Migrar Régua de Faturamento
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Associado: <strong className="text-cdl-navy-700">{associadoNome}</strong>{' '}
+                <span className="text-gray-400">(ID: {associadoId})</span>
+              </p>
+              <p className="text-sm mt-0.5">
+                <span className="text-gray-500">Régua Atual:</span>
+                {reguaAtualId && reguaAtualNome ? (
+                  <span className="ml-2 font-semibold text-cdl-navy-700">
+                    {reguaAtualNome} <span className="text-gray-400 font-normal">(ID: {reguaAtualId})</span>
+                  </span>
+                ) : (
+                  <span className="ml-2 text-gray-400 italic">Nenhuma régua associada</span>
+                )}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              aria-label="Fechar"
+              className="rounded-lg p-1.5 text-gray-400 hover:bg-white hover:text-cdl-navy-700
+                         transition-colors shrink-0 disabled:opacity-40"
+            >
+              <X size={20} />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl"
-            disabled={loading}
-          >
-            ✕
-          </button>
         </div>
 
-        {/* Conteúdo */}
-        <div className="flex-1 overflow-y-auto p-6">
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {carregandoReguas && step === 'selecionar' ? (
             <div className="text-center py-8">
               <Loading />
-              <p className="text-gray-500 mt-2">Carregando réguas disponíveis...</p>
             </div>
           ) : (
             <>
-              {/* STEP 1: Selecionar Régua */}
+              {/* STEP 1: Selecionar */}
               {step === 'selecionar' && (
                 <div>
-                  {/* Régua Atual */}
-                  <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <p className="text-sm text-blue-700">
-                      <strong>Régua Atual:</strong> 
+                  <div className="mb-4 p-4 bg-cdl-navy-50 rounded-lg border border-cdl-navy-100">
+                    <p className="text-sm text-cdl-navy-700">
+                      <strong>Régua Atual:</strong>{' '}
                       {reguaAtualId && reguaAtualNome ? (
-                        <span className="ml-2 font-medium">
-                          {reguaAtualNome} (ID: {reguaAtualId})
-                        </span>
+                        <span className="ml-2 font-medium">{reguaAtualNome} (ID: {reguaAtualId})</span>
                       ) : (
-                        <span className="ml-2 text-gray-500">Nenhuma</span>
+                        <span className="ml-2 text-gray-500 italic">Nenhuma</span>
                       )}
                     </p>
                     {!reguaAtualId && (
-                      <p className="text-xs text-blue-600 mt-1">
+                      <p className="text-xs text-cdl-navy-600 mt-1">
                         💡 O associado será adicionado à nova régua selecionada
                       </p>
                     )}
@@ -345,7 +305,7 @@ const ModalMigracaoRegua: React.FC<ModalMigracaoReguaProps> = ({
 
                   {/* Nova Régua */}
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-cdl-navy-700 mb-2">
                       Nova Régua *
                     </label>
                     <select
@@ -356,7 +316,7 @@ const ModalMigracaoRegua: React.FC<ModalMigracaoReguaProps> = ({
                         setMensagemData('');
                         setDataVerificada(false);
                       }}
-                      className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className={inputCls(false)}
                       disabled={loading}
                     >
                       <option value="">Selecione uma régua...</option>
@@ -373,15 +333,15 @@ const ModalMigracaoRegua: React.FC<ModalMigracaoReguaProps> = ({
                       </p>
                     )}
                     {novaReguaId === reguaAtualId && (
-                      <p className="text-sm text-yellow-600 mt-1">
+                      <p className="text-sm text-cdl-yellow-700 mt-1 font-medium">
                         ⚠️ Você selecionou a mesma régua atual
                       </p>
                     )}
                   </div>
 
-                  {/* 🔥 DATA DA MIGRAÇÃO COM VALIDAÇÃO */}
+                  {/* Data com validação */}
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-cdl-navy-700 mb-2">
                       Data da Migração *
                     </label>
                     <input
@@ -393,42 +353,40 @@ const ModalMigracaoRegua: React.FC<ModalMigracaoReguaProps> = ({
                         setMensagemData('');
                         setDataVerificada(false);
                       }}
-                      className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 ${
+                      className={`w-full p-3 border rounded-lg bg-white transition-colors focus:outline-none focus:ring-2 ${
                         !dataDisponivel && dataVerificada
-                          ? 'border-red-500 focus:ring-red-500' 
+                          ? 'border-cdl-danger-500 focus:ring-cdl-danger-500'
                           : dataDisponivel && dataVerificada
-                          ? 'border-green-500 focus:ring-green-500'
-                          : 'border-gray-300 focus:ring-blue-500'
+                            ? 'border-cdl-green-500 focus:ring-cdl-green-500'
+                            : 'border-gray-300 focus:ring-cdl-navy-600 focus:border-cdl-navy-600'
                       }`}
                       disabled={loading || validandoData}
                       min={new Date().toISOString().split('T')[0]}
                     />
-                    
-                    {/* 🔥 INDICADOR DE VALIDAÇÃO DA DATA */}
+
                     {validandoData && (
-                      <p className="text-sm text-gray-500 mt-1 flex items-center gap-2">
-                        <span className="animate-spin inline-block w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full"></span>
+                      <p className="text-sm text-cdl-navy-600 mt-1 flex items-center gap-2 font-medium">
+                        <span className="inline-block w-4 h-4 rounded-full border-2 border-cdl-navy-100 border-t-cdl-navy-700 animate-spin" />
                         Verificando disponibilidade da data...
                       </p>
                     )}
-                    
+
                     {!validandoData && mensagemData && dataVerificada && (
-                      <p className={`text-sm mt-1 flex items-center gap-1 ${
-                        dataDisponivel ? 'text-green-600' : 'text-red-600'
+                      <p className={`text-sm mt-1 flex items-center gap-1 font-medium ${
+                        dataDisponivel ? 'text-cdl-green-700' : 'text-cdl-danger-500'
                       }`}>
-                        <span>{dataDisponivel ? '✅' : '❌'}</span>
                         {mensagemData}
                       </p>
                     )}
-                    
+
                     {!dataDisponivel && dataVerificada && (
-                      <div className="mt-2 p-2 bg-yellow-50 rounded-lg border border-yellow-200">
-                        <p className="text-xs text-yellow-700">
+                      <div className="mt-2 p-2.5 bg-cdl-yellow-50 rounded-lg border border-cdl-yellow-200">
+                        <p className="text-xs text-cdl-yellow-700 font-medium">
                           💡 Dica: Tente uma data diferente, como{' '}
                           {(() => {
-                            const dataAtual = new Date(dataMigracao);
-                            dataAtual.setDate(dataAtual.getDate() + 1);
-                            return formatDate(dataAtual.toISOString().split('T')[0]);
+                            const d = new Date(dataMigracao);
+                            d.setDate(d.getDate() + 1);
+                            return formatDate(d.toISOString().split('T')[0]);
                           })()}
                         </p>
                       </div>
@@ -437,14 +395,14 @@ const ModalMigracaoRegua: React.FC<ModalMigracaoReguaProps> = ({
 
                   {/* Motivo */}
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Motivo (opcional)
+                    <label className="block text-sm font-medium text-cdl-navy-700 mb-2">
+                      Motivo <span className="text-gray-400 font-normal">(opcional)</span>
                     </label>
                     <textarea
                       value={motivo}
                       onChange={(e) => setMotivo(e.target.value)}
                       placeholder="Descreva o motivo da migração..."
-                      className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className={`${inputCls(false)} resize-none`}
                       rows={3}
                       disabled={loading}
                     />
@@ -452,41 +410,41 @@ const ModalMigracaoRegua: React.FC<ModalMigracaoReguaProps> = ({
 
                   {/* Botão Verificar */}
                   <button
+                    type="button"
                     onClick={handleVerificar}
                     disabled={
-                      !novaReguaId || 
-                      loading || 
-                      reguas.length === 0 || 
-                      novaReguaId === reguaAtualId || 
+                      !novaReguaId ||
+                      loading ||
+                      reguas.length === 0 ||
+                      novaReguaId === reguaAtualId ||
                       !dataDisponivel ||
                       validandoData
                     }
-                    className={`w-full p-3 rounded-lg flex items-center justify-center gap-2 ${
+                    className={`w-full p-3 rounded-lg flex items-center justify-center gap-2 font-medium
+                                transition-all active:scale-[.98] ${
                       !novaReguaId || loading || reguas.length === 0 || novaReguaId === reguaAtualId || !dataDisponivel || validandoData
                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                        : 'bg-cdl-navy-700 text-white hover:bg-cdl-navy-800'
                     }`}
                   >
                     {loading ? (
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      <span className="inline-block w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
                     ) : validandoData ? (
                       <>
-                        <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
+                        <span className="inline-block w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
                         Validando...
                       </>
-                    ) : (
-                      '🔍 Verificar Migração'
-                    )}
+                    ) : '🔍 Verificar Migração'}
                   </button>
-                  
+
                   {novaReguaId === reguaAtualId && (
-                    <p className="text-sm text-yellow-600 mt-2 text-center">
+                    <p className="text-sm text-cdl-yellow-700 mt-2 text-center font-medium">
                       ⚠️ Selecione uma régua diferente da atual
                     </p>
                   )}
-                  
+
                   {!dataDisponivel && dataVerificada && (
-                    <p className="text-sm text-red-600 mt-2 text-center">
+                    <p className="text-sm text-cdl-danger-500 mt-2 text-center font-medium">
                       ⚠️ Selecione uma data diferente para prosseguir
                     </p>
                   )}
@@ -496,47 +454,52 @@ const ModalMigracaoRegua: React.FC<ModalMigracaoReguaProps> = ({
               {/* STEP 2: Verificando */}
               {step === 'verificando' && (
                 <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="text-gray-600 mt-4">Verificando condições para migração...</p>
+                  <div className="inline-block animate-spin rounded-full h-12 w-12 border-2 border-cdl-navy-100 border-t-cdl-navy-700" />
+                  <p className="text-cdl-navy-700 mt-4 font-medium">Verificando condições para migração...</p>
                 </div>
               )}
 
               {/* STEP 3: Verificar - Faturas Pendentes */}
               {step === 'verificar' && verificacao && (
                 <div>
-                  <div className="mb-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                    <div className="flex items-start gap-3">
-                      <span className="text-2xl">⚠️</span>
-                      <div>
-                        <p className="text-sm font-medium text-yellow-800">
-                          Associado possui faturas pendentes
-                        </p>
-                        <p className="text-sm text-yellow-700 mt-1">
-                          {verificacao.totalFaturasPendentes} faturas pendentes encontradas.
-                          A migração pode ser forçada, mas as faturas pendentes serão mantidas.
-                        </p>
-                      </div>
+                  <div className="mb-4 p-4 bg-cdl-yellow-50 rounded-lg border border-cdl-yellow-200 flex items-start gap-3">
+                    <span className="text-2xl">⚠️</span>
+                    <div>
+                      <p className="text-sm font-semibold text-cdl-yellow-700">
+                        Associado possui faturas pendentes
+                      </p>
+                      <p className="text-sm text-cdl-yellow-600 mt-1">
+                        {verificacao.totalFaturasPendentes} faturas pendentes encontradas.
+                        A migração pode ser forçada, mas as faturas pendentes serão mantidas.
+                      </p>
                     </div>
                   </div>
 
                   {faturasPendentes.length > 0 && (
-                    <div className="mb-4 max-h-48 overflow-y-auto border rounded-lg">
+                    <div className="mb-4 max-h-48 overflow-y-auto border border-gray-200 rounded-lg">
                       <table className="min-w-full divide-y divide-gray-200 text-sm">
-                        <thead className="bg-gray-50">
+                        <thead className="bg-cdl-navy-50 sticky top-0">
                           <tr>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Fatura</th>
-                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Valor</th>
-                            <th className="px-3 py-2 text-center text-xs font-medium text-gray-500">Vencimento</th>
+                            {['Fatura','Valor','Vencimento'].map((h, i) => (
+                              <th
+                                key={h}
+                                className={`px-3 py-2 text-xs font-semibold text-cdl-navy-700 uppercase ${
+                                  i === 1 ? 'text-right' : i === 2 ? 'text-center' : 'text-left'
+                                }`}
+                              >
+                                {h}
+                              </th>
+                            ))}
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-200">
+                        <tbody className="divide-y divide-gray-200 bg-white">
                           {faturasPendentes.map((fatura) => (
-                            <tr key={fatura.id} className="hover:bg-gray-50">
-                              <td className="px-3 py-2 font-mono text-xs">{fatura.numeroFatura}</td>
-                              <td className="px-3 py-2 text-right font-medium">
+                            <tr key={fatura.id} className="hover:bg-cdl-navy-50/40 transition-colors">
+                              <td className="px-3 py-2 font-mono text-xs text-cdl-navy-700">{fatura.numeroFatura}</td>
+                              <td className="px-3 py-2 text-right font-medium text-gray-900">
                                 {formatCurrency(fatura.valorTotal)}
                               </td>
-                              <td className="px-3 py-2 text-center text-xs">
+                              <td className="px-3 py-2 text-center text-xs text-gray-700">
                                 {formatDate(fatura.dataVencimento)}
                               </td>
                             </tr>
@@ -546,116 +509,120 @@ const ModalMigracaoRegua: React.FC<ModalMigracaoReguaProps> = ({
                     </div>
                   )}
 
-                  <div className="mb-4 flex items-center gap-2">
+                  <div className="mb-4 p-3 bg-cdl-yellow-50 border border-cdl-yellow-200 rounded-lg flex items-center gap-2">
                     <input
                       type="checkbox"
                       id="forcarMigracao"
                       checked={forcarMigracao}
                       onChange={(e) => setForcarMigracao(e.target.checked)}
-                      className="w-4 h-4 text-blue-600"
+                      className="w-4 h-4 text-cdl-navy-700 rounded focus:ring-cdl-navy-600"
                     />
-                    <label htmlFor="forcarMigracao" className="text-sm text-gray-700">
+                    <label htmlFor="forcarMigracao" className="text-sm text-cdl-yellow-700 font-medium cursor-pointer">
                       Sim, desejo forçar a migração mesmo com faturas pendentes
                     </label>
                   </div>
 
                   <div className="flex gap-3">
                     <button
+                      type="button"
                       onClick={handleVoltar}
-                      className="flex-1 p-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
                       disabled={loading}
+                      className="flex-1 p-3 border border-gray-300 text-cdl-navy-700 rounded-lg
+                                 hover:bg-cdl-neutral-50 disabled:opacity-50 font-medium
+                                 transition-colors"
                     >
-                      ⬅ Voltar
+                      ← Voltar
                     </button>
                     <button
+                      type="button"
                       onClick={handleConfirmar}
                       disabled={!forcarMigracao || loading}
-                      className="flex-1 p-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:bg-gray-400 flex items-center justify-center gap-2"
+                      className="flex-1 p-3 bg-cdl-yellow-gradient text-cdl-navy-700 rounded-lg
+                                 hover:brightness-105 disabled:bg-gray-400 disabled:cursor-not-allowed
+                                 flex items-center justify-center gap-2 font-medium
+                                 transition-all active:scale-[.98]"
                     >
                       {loading ? (
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      ) : (
-                        '⚠️ Forçar Migração'
-                      )}
+                        <span className="inline-block w-5 h-5 rounded-full border-2 border-cdl-navy-700 border-t-transparent animate-spin" />
+                      ) : '⚠️ Forçar Migração'}
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* STEP 4: Confirmar Migração */}
+              {/* STEP 4: Confirmar */}
               {step === 'confirmar' && verificacao && (
                 <div>
-                  <div className="mb-4 p-4 bg-green-50 rounded-lg border border-green-200">
-                    <div className="flex items-start gap-3">
-                      <span className="text-2xl">✅</span>
-                      <div>
-                        <p className="text-sm font-medium text-green-800">
-                          Associado pode ser migrado
-                        </p>
-                        <p className="text-sm text-green-700 mt-1">
-                          {verificacao.mensagem}
-                        </p>
-                      </div>
+                  <div className="mb-4 p-4 bg-cdl-green-50 rounded-lg border border-cdl-green-100 flex items-start gap-3">
+                    <span className="text-2xl">✅</span>
+                    <div>
+                      <p className="text-sm font-semibold text-cdl-green-700">Associado pode ser migrado</p>
+                      <p className="text-sm text-cdl-green-600 mt-1">{verificacao.mensagem}</p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <span className="text-gray-500">Régua Atual</span>
-                      <p className="font-medium">{verificacao.reguaOrigemNome || 'Nenhuma'}</p>
+                  <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
+                    <div className="p-3 bg-cdl-neutral-50 rounded-lg border border-cdl-neutral-100">
+                      <span className="text-xs text-cdl-navy-600 font-medium">Régua Atual</span>
+                      <p className="font-semibold text-cdl-navy-700 mt-0.5">
+                        {verificacao.reguaOrigemNome || 'Nenhuma'}
+                      </p>
                     </div>
-                    <div className="p-3 bg-blue-50 rounded-lg">
-                      <span className="text-gray-500">Nova Régua</span>
-                      <p className="font-medium text-blue-700">{verificacao.reguaDestinoNome}</p>
+                    <div className="p-3 bg-cdl-navy-50 rounded-lg border border-cdl-navy-100">
+                      <span className="text-xs text-cdl-navy-600 font-medium">Nova Régua</span>
+                      <p className="font-semibold text-cdl-navy-700 mt-0.5">{verificacao.reguaDestinoNome}</p>
                     </div>
                   </div>
 
-                  <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                    <span className="text-gray-500 text-sm">Data da Migração</span>
-                    <p className="text-sm mt-1 font-medium text-blue-600">
-                      {formatDate(dataMigracao)} 
+                  <div className="mb-4 p-3 bg-cdl-navy-50 border border-cdl-navy-100 rounded-lg">
+                    <span className="text-xs text-cdl-navy-600 font-medium">Data da Migração</span>
+                    <p className="text-sm mt-1 font-semibold text-cdl-navy-700">
+                      {formatDate(dataMigracao)}
                       {dataDisponivel && dataVerificada && (
-                        <span className="ml-2 text-xs text-green-600">✅ Disponível</span>
+                        <span className="ml-2 text-xs text-cdl-green-700">✅ Disponível</span>
                       )}
                     </p>
                   </div>
 
                   {motivo && (
-                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                      <span className="text-gray-500 text-sm">Motivo</span>
-                      <p className="text-sm mt-1">{motivo}</p>
+                    <div className="mb-4 p-3 bg-cdl-neutral-50 border border-cdl-neutral-100 rounded-lg">
+                      <span className="text-xs text-cdl-navy-600 font-medium">Motivo</span>
+                      <p className="text-sm mt-1 text-gray-700">{motivo}</p>
                     </div>
                   )}
 
                   <div className="flex gap-3">
                     <button
+                      type="button"
                       onClick={handleVoltar}
-                      className="flex-1 p-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
                       disabled={loading}
+                      className="flex-1 p-3 border border-gray-300 text-cdl-navy-700 rounded-lg
+                                 hover:bg-cdl-neutral-50 disabled:opacity-50 font-medium
+                                 transition-colors"
                     >
-                      ⬅ Voltar
+                      ← Voltar
                     </button>
                     <button
+                      type="button"
                       onClick={handleConfirmar}
                       disabled={loading || !dataDisponivel}
-                      className={`flex-1 p-3 rounded-lg flex items-center justify-center gap-2 ${
+                      className={`flex-1 p-3 rounded-lg flex items-center justify-center gap-2 font-medium
+                                  transition-all active:scale-[.98] ${
                         loading || !dataDisponivel
                           ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                          : 'bg-green-600 text-white hover:bg-green-700'
+                          : 'bg-cdl-green-500 text-white hover:bg-cdl-green-600'
                       }`}
                     >
                       {loading ? (
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                        <span className="inline-block w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
                       ) : !dataDisponivel ? (
                         '⚠️ Data indisponível'
-                      ) : (
-                        '✅ Confirmar Migração'
-                      )}
+                      ) : '✅ Confirmar Migração'}
                     </button>
                   </div>
-                  
+
                   {!dataDisponivel && (
-                    <p className="text-sm text-red-600 mt-2 text-center">
+                    <p className="text-sm text-cdl-danger-500 mt-2 text-center font-medium">
                       ⚠️ A data selecionada não está disponível. Volte e escolha outra data.
                     </p>
                   )}
@@ -664,50 +631,58 @@ const ModalMigracaoRegua: React.FC<ModalMigracaoReguaProps> = ({
 
               {/* STEP 5: Resultado */}
               {step === 'resultado' && verificacao && (
-                <div className="text-center py-8">
+                <div className="text-center py-6">
                   <div className="text-5xl mb-4">
                     {verificacao.status === 'SUCESSO' ? '🎉' : '❌'}
                   </div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-2">
+                  <h3 className={`text-xl font-bold mb-2 ${
+                    verificacao.status === 'SUCESSO' ? 'text-cdl-green-700' : 'text-cdl-danger-600'
+                  }`}>
                     {verificacao.status === 'SUCESSO' ? 'Migração Concluída!' : 'Erro na Migração'}
                   </h3>
                   <p className="text-gray-600">{verificacao.mensagem}</p>
 
-                  <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <span className="text-gray-500">Régua Origem</span>
-                      <p className="font-medium">{verificacao.reguaOrigemNome || 'Nenhuma'}</p>
+                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                    <div className="p-3 bg-cdl-neutral-50 border border-cdl-neutral-100 rounded-lg">
+                      <span className="text-xs text-cdl-navy-600 font-medium">Régua Origem</span>
+                      <p className="font-semibold text-cdl-navy-700 mt-0.5">
+                        {verificacao.reguaOrigemNome || 'Nenhuma'}
+                      </p>
                     </div>
-                    <div className="p-3 bg-green-50 rounded-lg">
-                      <span className="text-gray-500">Régua Destino</span>
-                      <p className="font-medium text-green-700">{verificacao.reguaDestinoNome}</p>
+                    <div className="p-3 bg-cdl-green-50 border border-cdl-green-100 rounded-lg">
+                      <span className="text-xs text-cdl-green-600 font-medium">Régua Destino</span>
+                      <p className="font-semibold text-cdl-green-700 mt-0.5">
+                        {verificacao.reguaDestinoNome}
+                      </p>
                     </div>
                   </div>
 
-                  <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                    <span className="text-gray-500 text-sm">Data da Migração</span>
-                    <p className="text-sm mt-1 font-medium">
+                  <div className="mt-3 p-3 bg-cdl-navy-50 border border-cdl-navy-100 rounded-lg">
+                    <span className="text-xs text-cdl-navy-600 font-medium">Data da Migração</span>
+                    <p className="text-sm mt-0.5 font-semibold text-cdl-navy-700">
                       {formatDate(dataMigracao)}
                     </p>
                   </div>
 
                   {verificacao.migracaoForcada && (
-                    <div className="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                      <p className="text-sm text-yellow-700">
+                    <div className="mt-3 p-3 bg-cdl-yellow-50 border border-cdl-yellow-200 rounded-lg">
+                      <p className="text-sm text-cdl-yellow-700 font-medium">
                         ⚠️ Migração forçada com {verificacao.totalFaturasPendentes} faturas pendentes
                       </p>
                     </div>
                   )}
 
                   {verificacao.dataMigracao && (
-                    <p className="text-sm text-gray-400 mt-4">
+                    <p className="text-xs text-gray-400 mt-4">
                       {new Date(verificacao.dataMigracao).toLocaleString('pt-BR')}
                     </p>
                   )}
 
                   <button
+                    type="button"
                     onClick={onClose}
-                    className="mt-6 p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 px-8"
+                    className="mt-6 px-8 py-3 bg-cdl-navy-700 text-white rounded-lg
+                               hover:bg-cdl-navy-800 font-medium transition-all active:scale-[.98]"
                   >
                     Fechar
                   </button>
