@@ -95,6 +95,10 @@ const ModalTiposArquivo: React.FC<{
   const getTipoLabel = (tipo: string) =>
     ({ CONSOLIDACAO: 'Consolidação', PREVIA_CORRENTE: 'Prévia Corrente', PREVIA_ANTERIOR: 'Prévia Anterior' } as any)[tipo] || tipo;
 
+  const inputBase =
+    'w-full px-3 py-2 border border-gray-300 rounded-md bg-white transition-colors ' +
+    'focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600';
+
   return (
     <Modal title="Configurar Tipos de Arquivo" onClose={onFechar} size="lg">
       <div className="space-y-4">
@@ -102,9 +106,7 @@ const ModalTiposArquivo: React.FC<{
           <select
             value={novoTipo.tipo}
             onChange={(e) => setNovoTipo({ ...novoTipo, tipo: e.target.value })}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-white
-                       focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                       focus:border-cdl-navy-600 transition-colors"
+            className={inputBase}
           >
             <option value="CONSOLIDACAO">Consolidação</option>
             <option value="PREVIA_CORRENTE">Prévia Corrente</option>
@@ -171,8 +173,8 @@ const ModalTiposArquivo: React.FC<{
         <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
           <button
             onClick={onFechar}
-            className="px-4 py-2 border border-gray-300 text-cdl-navy-700 rounded-lg
-                       hover:bg-cdl-neutral-50 transition-colors"
+            className="px-4 py-2 bg-cdl-neutral-50 text-cdl-navy-700 border border-[#E2E6EC]
+                       rounded-lg flex items-center gap-2 hover:bg-cdl-navy-50 transition-colors"
           >Cancelar</button>
           <button
             onClick={handleSalvar}
@@ -236,14 +238,14 @@ const ListaAssociadosRegua: React.FC<{
     <div className="space-y-3">
       {/* Filtro */}
       <div className="relative">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
         <input
           type="text"
-          placeholder="🔍 Buscar por Código SPC ou Nome..."
+          placeholder="Buscar por Código SPC ou Nome..."
           value={filtroPesquisa}
           onChange={(e) => { setFiltroPesquisa(e.target.value); setPaginaAtual(1); }}
-          className="w-full px-3 py-2 pr-8 text-sm border border-gray-300 rounded-lg
-                     focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                     focus:border-cdl-navy-600 transition-colors"
+          className="w-full px-3 py-2 pl-9 pr-8 text-sm border border-gray-300 rounded-md
+                     focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600 transition-colors"
         />
         {filtroPesquisa && (
           <button
@@ -279,8 +281,8 @@ const ListaAssociadosRegua: React.FC<{
             <table className="min-w-full">
               <thead className="bg-cdl-navy-50 sticky top-0 z-10">
                 <tr>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-cdl-navy-700 uppercase">Código SPC</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-cdl-navy-700 uppercase">Nome/Razão Social</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-cdl-navy-700 uppercase tracking-wider">Código SPC</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-cdl-navy-700 uppercase tracking-wider">Nome/Razão Social</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
@@ -437,23 +439,22 @@ const ModalSelecionarAssociados: React.FC<{
             type="date"
             value={dataInicio}
             onChange={(e) => setDataInicio(e.target.value)}
-            className="px-3 py-1.5 border border-gray-300 rounded-lg bg-white
-                       focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                       focus:border-cdl-navy-600 transition-colors"
+            className="px-3 py-1.5 border border-gray-300 rounded-md bg-white
+                       focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600 transition-colors"
           />
           <span className="text-xs text-gray-500">Os associados serão ativos a partir desta data</span>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1 relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
             <input
               type="text"
-              placeholder="🔍 Pesquisar por nome, código SPC ou CNPJ/CPF..."
+              placeholder="Pesquisar por nome, código SPC ou CNPJ/CPF..."
               value={filtro}
               onChange={(e) => setFiltro(e.target.value)}
-              className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg
-                         focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                         focus:border-cdl-navy-600 transition-colors"
+              className="w-full px-3 py-2 pl-9 pr-10 border border-gray-300 rounded-md
+                         focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600 transition-colors"
             />
             {filtro && (
               <button
@@ -467,8 +468,8 @@ const ModalSelecionarAssociados: React.FC<{
             type="button"
             onClick={toggleSelecionarTodos}
             disabled={totalDisponiveis === 0}
-            className="px-4 py-2 border border-gray-300 text-cdl-navy-700 rounded-lg
-                       hover:bg-cdl-navy-50 disabled:opacity-50 transition-colors font-medium"
+            className="px-4 py-2 bg-cdl-neutral-50 text-cdl-navy-700 border border-[#E2E6EC]
+                       rounded-lg hover:bg-cdl-navy-50 disabled:opacity-50 transition-colors font-medium"
           >
             {totalSelecionados === totalDisponiveis && totalDisponiveis > 0 ? 'Desmarcar Todos' : 'Marcar Todos'}
           </button>
@@ -519,17 +520,17 @@ const ModalSelecionarAssociados: React.FC<{
                       type="checkbox"
                       checked={totalSelecionados === associadosFiltrados.length && associadosFiltrados.length > 0}
                       onChange={toggleSelecionarTodos}
-                      className="h-4 w-4 text-cdl-navy-700 rounded"
+                      className="h-4 w-4 text-cdl-navy-700 rounded focus:ring-cdl-navy-600"
                     />
                   </th>
                   {['Código SPC','Nome/Razão Social','CNPJ/CPF','Status'].map(h => (
-                    <th key={h} className="px-4 py-2 text-left text-xs font-semibold text-cdl-navy-700 uppercase">
+                    <th key={h} className="px-4 py-2 text-left text-xs font-semibold text-cdl-navy-700 uppercase tracking-wider">
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-gray-200">
                 {associadosFiltrados.map((assoc) => (
                   <tr
                     key={assoc.id}
@@ -541,7 +542,7 @@ const ModalSelecionarAssociados: React.FC<{
                         type="checkbox"
                         checked={associadosSelecionados.includes(assoc.id)}
                         onChange={() => toggleAssociado(assoc.id)}
-                        className="h-4 w-4 text-cdl-navy-700 rounded"
+                        className="h-4 w-4 text-cdl-navy-700 rounded focus:ring-cdl-navy-600"
                       />
                     </td>
                     <td className="px-4 py-2 font-mono text-sm text-cdl-navy-700">{assoc.codigoSpc || '-'}</td>
@@ -580,8 +581,8 @@ const ModalSelecionarAssociados: React.FC<{
           <div className="flex gap-3">
             <button
               onClick={handleFechar}
-              className="px-4 py-2 border border-gray-300 text-cdl-navy-700 rounded-lg
-                         hover:bg-cdl-neutral-50 transition-colors"
+              className="px-4 py-2 bg-cdl-neutral-50 text-cdl-navy-700 border border-[#E2E6EC]
+                         rounded-lg flex items-center gap-2 hover:bg-cdl-navy-50 transition-colors"
             >Cancelar</button>
             <button
               onClick={handleConfirmar}
@@ -776,69 +777,104 @@ const ReguaFaturamentoForm: React.FC = () => {
 
   const totalTipos = formData.tiposArquivo?.length || 0;
 
+  // Classes utilitárias
+  const inputBase =
+    'w-full px-3 py-2 border border-gray-300 rounded-md bg-white transition-colors ' +
+    'focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600';
+
+  const inputDisabled =
+    'w-full px-3 py-2 bg-cdl-neutral-50 border border-gray-200 rounded-md text-cdl-navy-700 font-medium';
+
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <BreadCrumb items={[
-        { label: 'Faturamento', path: '/faturamento/regua' },
-        { label: isEditMode ? 'Editar Régua' : 'Nova Régua' },
-      ]} />
+    <div className="p-6">
+      <BreadCrumb atual={isEditMode ? 'Editar Régua' : 'Nova Régua'} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+      {/* ===== Cabeçalho ===== */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-cdl-navy-700">
+            {isEditMode ? 'Editar Régua de Faturamento' : 'Nova Régua de Faturamento'}
+          </h1>
+          <p className="text-gray-600">
+            Configure os períodos de faturamento, regras e tipos de arquivo
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => navigate('/faturamento/regua')}
+            className="px-4 py-2 bg-cdl-neutral-50 text-cdl-navy-700 border border-[#E2E6EC]
+                       rounded-lg flex items-center gap-2 hover:bg-cdl-navy-50 transition-colors"
+          >
+            ✕ Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={loading}
+            className="px-4 py-2 bg-cdl-navy-700 text-white rounded-lg flex items-center gap-2
+                       hover:bg-cdl-navy-800 font-medium transition-all active:scale-[.98]
+                       disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                Salvando...
+              </>
+            ) : (
+              <>💾 Salvar Régua</>
+            )}
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <div className="bg-white rounded-xl shadow-cdl p-6">
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold text-cdl-navy-700">
-                {isEditMode ? 'Editar Régua de Faturamento' : 'Nova Régua de Faturamento'}
-              </h1>
-              <p className="text-gray-600 mt-1">
-                Configure os períodos de faturamento, regras e tipos de arquivo
-              </p>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Seção 1: Identificação */}
-              <div className="border-b border-gray-200 pb-6">
-                <h3 className="text-lg font-semibold text-cdl-navy-700 mb-4 flex items-center gap-2">
-                  📋 Identificação
-                </h3>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* ===== Seção 1: Identificação ===== */}
+            <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200 bg-cdl-navy-50 flex items-center gap-2">
+                <div className="w-1 h-6 bg-cdl-navy-700 rounded"></div>
+                <h3 className="text-lg font-semibold text-cdl-navy-700">📋 Identificação</h3>
+              </div>
+              <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-cdl-navy-700 mb-1">Nome da Régua *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Nome da Régua <span className="text-cdl-danger-500">*</span>
+                    </label>
                     <input
                       type="text" name="nome" value={formData.nome} onChange={handleChange} required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg
-                                 focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                                 focus:border-cdl-navy-600 transition-colors"
+                      className={inputBase}
                       placeholder="Ex: Primeiro Período - Consolidação"
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-cdl-navy-700 mb-1">Descrição</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
                     <textarea
                       name="descricao" value={formData.descricao || ''} onChange={handleChange} rows={3}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg
-                                 focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                                 focus:border-cdl-navy-600 transition-colors"
+                      className={`${inputBase} resize-none`}
                       placeholder="Descreva o propósito desta régua..."
                     />
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Seção 2: Período */}
-              <div className="border-b border-gray-200 pb-6">
-                <h3 className="text-lg font-semibold text-cdl-navy-700 mb-4 flex items-center gap-2">
-                  📅 Período e Datas
-                </h3>
+            {/* ===== Seção 2: Período e Datas ===== */}
+            <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200 bg-cdl-navy-50 flex items-center gap-2">
+                <div className="w-1 h-6 bg-cdl-navy-700 rounded"></div>
+                <h3 className="text-lg font-semibold text-cdl-navy-700">📅 Período e Datas</h3>
+              </div>
+              <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-cdl-navy-700 mb-1">Dia de Emissão *</label>
-                    <select
-                      name="diaEmissao" value={formData.diaEmissao} onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white
-                                 focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                                 focus:border-cdl-navy-600 transition-colors"
-                    >
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Dia de Emissão <span className="text-cdl-danger-500">*</span>
+                    </label>
+                    <select name="diaEmissao" value={formData.diaEmissao} onChange={handleChange} className={inputBase}>
                       <option value={1}>1º dia do mês</option>
                       <option value={2}>2º dia do mês</option>
                       <option value={16}>16º dia do mês</option>
@@ -846,13 +882,8 @@ const ReguaFaturamentoForm: React.FC = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-cdl-navy-700 mb-1">Dia de Vencimento</label>
-                    <select
-                      name="diaVencimento" value={formData.diaVencimento || ''} onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white
-                                 focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                                 focus:border-cdl-navy-600 transition-colors"
-                    >
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Dia de Vencimento</label>
+                    <select name="diaVencimento" value={formData.diaVencimento || ''} onChange={handleChange} className={inputBase}>
                       <option value="">Não definido</option>
                       {Array.from({ length: 31 }, (_, i) => i + 1).map(dia => (
                         <option key={dia} value={dia}>Dia {dia}</option>
@@ -860,23 +891,25 @@ const ReguaFaturamentoForm: React.FC = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-cdl-navy-700 mb-1">Período (auto)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Período (auto)</label>
                     <input
                       type="text"
                       value={periodos.find(p => p.value === formData.periodo)?.label || ''}
                       disabled
-                      className="w-full px-4 py-2 bg-cdl-neutral-50 border border-gray-200
-                                 rounded-lg text-cdl-navy-700 font-medium"
+                      className={inputDisabled}
                     />
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Seção 3: Regras */}
-              <div className="border-b border-gray-200 pb-6">
-                <h3 className="text-lg font-semibold text-cdl-navy-700 mb-4 flex items-center gap-2">
-                  🎯 Regras Aplicadas no Faturamento
-                </h3>
+            {/* ===== Seção 3: Regras ===== */}
+            <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200 bg-cdl-navy-50 flex items-center gap-2">
+                <div className="w-1 h-6 bg-cdl-navy-700 rounded"></div>
+                <h3 className="text-lg font-semibold text-cdl-navy-700">🎯 Regras Aplicadas no Faturamento</h3>
+              </div>
+              <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <label className="flex items-start gap-3 p-4 bg-cdl-navy-50 border border-cdl-navy-100 rounded-lg cursor-pointer hover:bg-cdl-navy-100/60 transition-colors">
                     <input
@@ -915,12 +948,15 @@ const ReguaFaturamentoForm: React.FC = () => {
                   </label>
                 </div>
               </div>
+            </div>
 
-              {/* Seção 4: Tipos de Arquivo */}
-              <div className="border-b border-gray-200 pb-6">
-                <h3 className="text-lg font-semibold text-cdl-navy-700 mb-4 flex items-center gap-2">
-                  📂 Tipos de Arquivo
-                </h3>
+            {/* ===== Seção 4: Tipos de Arquivo ===== */}
+            <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200 bg-cdl-navy-50 flex items-center gap-2">
+                <div className="w-1 h-6 bg-cdl-navy-700 rounded"></div>
+                <h3 className="text-lg font-semibold text-cdl-navy-700">📂 Tipos de Arquivo</h3>
+              </div>
+              <div className="p-6">
                 <div className="flex gap-2">
                   <div className="flex-1 px-3 py-2 bg-cdl-neutral-50 border border-cdl-neutral-100 rounded-lg text-cdl-navy-700 font-medium">
                     {totalTipos} tipo(s) de arquivo configurado(s)
@@ -933,7 +969,7 @@ const ReguaFaturamentoForm: React.FC = () => {
                   >Configurar</button>
                 </div>
                 {totalTipos > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
+                  <div className="mt-3 flex flex-wrap gap-2">
                     {formData.tiposArquivo?.sort((a, b) => a.ordem - b.ordem).map(tipo => (
                       <span key={tipo.id} className="inline-flex items-center px-2 py-1 text-xs bg-cdl-navy-50 text-cdl-navy-700 rounded-full font-medium">
                         {tipo.ordem}º - {
@@ -946,12 +982,15 @@ const ReguaFaturamentoForm: React.FC = () => {
                   </div>
                 )}
               </div>
+            </div>
 
-              {/* Seção 5: Migração */}
-              <div className="border-b border-gray-200 pb-6">
-                <h3 className="text-lg font-semibold text-cdl-navy-700 mb-4 flex items-center gap-2">
-                  🔄 Migração de Associados
-                </h3>
+            {/* ===== Seção 5: Migração ===== */}
+            <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200 bg-cdl-navy-50 flex items-center gap-2">
+                <div className="w-1 h-6 bg-cdl-navy-700 rounded"></div>
+                <h3 className="text-lg font-semibold text-cdl-navy-700">🔄 Migração de Associados</h3>
+              </div>
+              <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <label className="flex items-center gap-3 p-4 bg-cdl-navy-50 border border-cdl-navy-100 rounded-lg cursor-pointer hover:bg-cdl-navy-100/60 transition-colors">
                     <input
@@ -966,13 +1005,11 @@ const ReguaFaturamentoForm: React.FC = () => {
                   </label>
 
                   <div>
-                    <label className="block text-sm font-medium text-cdl-navy-700 mb-1">Régua Destino Padrão</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Régua Destino Padrão</label>
                     <select
                       name="reguaDestinoMigracaoId" value={formData.reguaDestinoMigracaoId || ''}
                       onChange={handleChange} disabled={formData.permiteMigracao === false}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white
-                                 focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                                 focus:border-cdl-navy-600 transition-colors disabled:bg-cdl-neutral-50"
+                      className={`${inputBase} disabled:bg-cdl-neutral-50`}
                     >
                       <option value="">Nenhuma (usar padrão)</option>
                       {reguasDisponiveis.map(r => (
@@ -983,20 +1020,21 @@ const ReguaFaturamentoForm: React.FC = () => {
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Seção 6: Processamento */}
-              <div className="border-b border-gray-200 pb-6">
-                <h3 className="text-lg font-semibold text-cdl-navy-700 mb-4 flex items-center gap-2">
-                  ⚙️ Processamento
-                </h3>
+            {/* ===== Seção 6: Processamento ===== */}
+            <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200 bg-cdl-navy-50 flex items-center gap-2">
+                <div className="w-1 h-6 bg-cdl-navy-700 rounded"></div>
+                <h3 className="text-lg font-semibold text-cdl-navy-700">⚙️ Processamento</h3>
+              </div>
+              <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-cdl-navy-700 mb-1">Tipo de Processamento</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Processamento</label>
                     <select
                       name="tipoProcessamento" value={formData.tipoProcessamento || 'NORMAL'} onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white
-                                 focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                                 focus:border-cdl-navy-600 transition-colors"
+                      className={inputBase}
                     >
                       {tiposProcessamento.map(tp => <option key={tp.value} value={tp.value}>{tp.label}</option>)}
                     </select>
@@ -1004,116 +1042,127 @@ const ReguaFaturamentoForm: React.FC = () => {
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Seção 7: Aparência */}
-              <div className="border-b border-gray-200 pb-6">
-                <h3 className="text-lg font-semibold text-cdl-navy-700 mb-4 flex items-center gap-2">
-                  🎨 Aparência
-                </h3>
+            {/* ===== Seção 7: Aparência ===== */}
+            <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200 bg-cdl-navy-50 flex items-center gap-2">
+                <div className="w-1 h-6 bg-cdl-navy-700 rounded"></div>
+                <h3 className="text-lg font-semibold text-cdl-navy-700">🎨 Aparência</h3>
+              </div>
+              <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-cdl-navy-700 mb-1">Cor do Badge</label>
-                    <select
-                      name="cor" value={formData.cor} onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white
-                                 focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                                 focus:border-cdl-navy-600 transition-colors"
-                    >
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Cor do Badge</label>
+                    <select name="cor" value={formData.cor} onChange={handleChange} className={inputBase}>
                       {cores.map(cor => <option key={cor.value} value={cor.value}>{cor.label}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-cdl-navy-700 mb-1">Ícone</label>
-                    <select
-                      name="icone" value={formData.icone} onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white
-                                 focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                                 focus:border-cdl-navy-600 transition-colors"
-                    >
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Ícone</label>
+                    <select name="icone" value={formData.icone} onChange={handleChange} className={inputBase}>
                       {icones.map(ic => <option key={ic.value} value={ic.value}>{ic.label} {ic.value}</option>)}
                     </select>
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Seção 8: Status */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox" name="ativo" checked={formData.ativo} onChange={handleChange}
-                    className="h-4 w-4 text-cdl-navy-700 rounded focus:ring-cdl-navy-600"
-                  />
-                  <label className="text-sm text-gray-700 font-medium">Régua Ativa</label>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox" name="ehPadrao" checked={formData.ehPadrao} onChange={handleChange}
-                    className="h-4 w-4 text-cdl-yellow-600 rounded focus:ring-cdl-yellow-500"
-                  />
-                  <label className="text-sm text-gray-700 font-medium">Régua Padrão</label>
-                </div>
-
-                {isEditMode && (
-                  <button
-                    type="button"
-                    onClick={() => setModalAssociadosAberto(true)}
-                    className="px-4 py-2 bg-cdl-navy-700 text-white rounded-lg
-                               hover:bg-cdl-navy-800 flex items-center justify-center gap-2 font-medium
-                               transition-all active:scale-[.98]"
-                  >
-                    👥 Adicionar Associados
-                  </button>
-                )}
+            {/* ===== Seção 8: Status ===== */}
+            <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200 bg-cdl-navy-50 flex items-center gap-2">
+                <div className="w-1 h-6 bg-cdl-navy-700 rounded"></div>
+                <h3 className="text-lg font-semibold text-cdl-navy-700">✅ Status</h3>
               </div>
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <label className="flex items-center gap-3 p-3 bg-cdl-navy-50 border border-cdl-navy-100 rounded-lg cursor-pointer hover:bg-cdl-navy-100/60 transition-colors">
+                    <input
+                      type="checkbox" name="ativo" checked={formData.ativo} onChange={handleChange}
+                      className="h-4 w-4 text-cdl-navy-700 rounded focus:ring-cdl-navy-600"
+                    />
+                    <span className="text-sm text-cdl-navy-700 font-medium">Régua Ativa</span>
+                  </label>
 
-              <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-gray-200">
+                  <label className="flex items-center gap-3 p-3 bg-cdl-yellow-50 border border-cdl-yellow-100 rounded-lg cursor-pointer hover:bg-cdl-yellow-100/60 transition-colors">
+                    <input
+                      type="checkbox" name="ehPadrao" checked={formData.ehPadrao} onChange={handleChange}
+                      className="h-4 w-4 text-cdl-yellow-600 rounded focus:ring-cdl-yellow-500"
+                    />
+                    <span className="text-sm text-cdl-yellow-700 font-medium">Régua Padrão</span>
+                  </label>
+
+                  {isEditMode && (
+                    <button
+                      type="button"
+                      onClick={() => setModalAssociadosAberto(true)}
+                      className="px-4 py-2 bg-cdl-navy-700 text-white rounded-lg
+                                 hover:bg-cdl-navy-800 flex items-center justify-center gap-2 font-medium
+                                 transition-all active:scale-[.98]"
+                    >
+                      👥 Adicionar Associados
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Rodapé */}
+            <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+              <div className="px-6 py-4 bg-cdl-neutral-50 flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => navigate('/faturamento/regua')}
-                  className="px-6 py-3 border border-gray-300 text-cdl-navy-700 rounded-lg
-                             hover:bg-cdl-neutral-50 transition-colors font-medium"
-                >Cancelar</button>
+                  className="px-4 py-2 bg-cdl-neutral-50 text-cdl-navy-700 border border-[#E2E6EC]
+                             rounded-lg flex items-center gap-2 hover:bg-cdl-navy-50 transition-colors"
+                >✕ Cancelar</button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-6 py-3 bg-cdl-navy-700 text-white rounded-lg
-                             hover:bg-cdl-navy-800 disabled:opacity-50 font-medium
-                             transition-all active:scale-[.98] flex items-center justify-center gap-2"
+                  className="px-4 py-2 bg-cdl-navy-700 text-white rounded-lg flex items-center gap-2
+                             hover:bg-cdl-navy-800 font-medium transition-all active:scale-[.98]
+                             disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? (
                     <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
                       Salvando...
                     </>
-                  ) : '💾 Salvar Régua'}
+                  ) : (
+                    <>💾 Salvar Régua</>
+                  )}
                 </button>
               </div>
-            </form>
-          </div>
+            </div>
+          </form>
         </div>
 
+        {/* ===== Sidebar: Associados ===== */}
         {isEditMode && (
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-cdl p-6 lg:sticky lg:top-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold text-cdl-navy-700 flex items-center gap-2">
-                  <span>👥</span> Associados da Régua
-                </h2>
-                <span className="text-sm text-cdl-navy-600 bg-cdl-navy-50 px-2 py-0.5 rounded-full font-medium">
+            <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden lg:sticky lg:top-6">
+              <div className="px-6 py-4 border-b border-gray-200 bg-cdl-navy-50 flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-6 bg-cdl-navy-700 rounded"></div>
+                  <h2 className="text-lg font-semibold text-cdl-navy-700">👥 Associados da Régua</h2>
+                </div>
+                <span className="text-sm text-cdl-navy-600 bg-white px-2 py-0.5 rounded-full font-medium border border-cdl-navy-100">
                   {associadosVinculados.length}
                 </span>
               </div>
-              <ListaAssociadosRegua
-                reguaId={parseInt(id!)}
-                associados={associadosVinculados}
-                loading={loadingAssociados}
-              />
+              <div className="p-4">
+                <ListaAssociadosRegua
+                  reguaId={parseInt(id!)}
+                  associados={associadosVinculados}
+                  loading={loadingAssociados}
+                />
+              </div>
             </div>
           </div>
         )}
       </div>
 
+      {/* Modais */}
       {modalTiposAberto && (
         <ModalTiposArquivo
           aberto={modalTiposAberto}

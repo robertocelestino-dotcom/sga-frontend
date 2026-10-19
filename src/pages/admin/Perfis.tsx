@@ -1,4 +1,4 @@
-// src/pages/admin/Perfis.tsx - VERSÃO CDL
+// src/pages/admin/Perfis.tsx - VERSÃO CDL (alinhada a Associados.tsx)
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -180,24 +180,24 @@ export const Perfis: React.FC = () => {
   if (!podeVerPerfis && !isSuperAdmin && !isAdmin) {
     return (
       <div className="p-6">
-        <div className="bg-white rounded-xl shadow-cdl p-12 text-center">
-          <div className="text-6xl mb-4">🔒</div>
-          <h2 className="text-2xl font-bold text-cdl-navy-700 mb-2">Acesso Restrito</h2>
-          <p className="text-gray-500">Você não tem permissão para visualizar perfis de acesso.</p>
+        <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+          <div className="p-12 text-center">
+            <div className="text-6xl mb-4">🔒</div>
+            <h2 className="text-2xl font-bold text-cdl-navy-700 mb-2">Acesso Restrito</h2>
+            <p className="text-gray-500">Você não tem permissão para visualizar perfis de acesso.</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+    <div className="p-6">
+      {/* ===== Cabeçalho ===== */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-cdl-navy-700 flex items-center gap-2">
-            <span>🛡️</span> Perfis de Acesso
-          </h1>
-          <p className="text-gray-600 text-sm mt-1">
+          <h1 className="text-2xl font-bold text-cdl-navy-700">Perfis de Acesso</h1>
+          <p className="text-gray-600">
             Gerencie os perfis e suas permissões no sistema
             {perfisVisiveis.length < perfis.length && (
               <span className="ml-2 text-xs text-gray-400">
@@ -209,18 +209,17 @@ export const Perfis: React.FC = () => {
         {podeCriarPerfis && (
           <Link
             to="/admin/perfis/novo"
-            className="flex items-center gap-2 bg-cdl-navy-700 text-white px-4 py-2.5 rounded-lg
-                       hover:bg-cdl-navy-800 transition-all active:scale-[.98] font-medium"
+            className="px-4 py-2 bg-cdl-navy-700 text-white rounded-lg flex items-center gap-2
+                       hover:bg-cdl-navy-800 font-medium transition-all active:scale-[.98]"
           >
-            <Plus size={20} />
-            Novo Perfil
+            ➕ Novo Perfil
           </Link>
         )}
       </div>
 
-      {/* Aviso perfis ocultos */}
+      {/* ===== Aviso de perfis ocultos ===== */}
       {perfisVisiveis.length < perfis.length && (
-        <div className="mb-4 p-3 bg-cdl-yellow-50 border border-cdl-yellow-100 rounded-lg flex items-center gap-2">
+        <div className="mb-6 p-3 bg-cdl-yellow-50 border border-cdl-yellow-100 rounded-lg flex items-center gap-2">
           <EyeOff size={18} className="text-cdl-yellow-700" />
           <span className="text-sm text-cdl-yellow-700 font-medium">
             Alguns perfis estão ocultos pois você não tem permissão para visualizá-los.
@@ -228,32 +227,30 @@ export const Perfis: React.FC = () => {
         </div>
       )}
 
-      {/* Busca */}
-      <div className="bg-white rounded-lg shadow-cdl p-4 mb-6">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+      {/* ===== Card principal ===== */}
+      <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+        {/* Busca */}
+        <div className="px-6 py-4 border-b border-gray-200 bg-cdl-neutral-50">
+          <div className="flex flex-col sm:flex-row gap-4 items-center">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type="text"
                 placeholder="Buscar por nome ou descrição..."
                 value={searchTerm}
                 onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg
-                           focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                           focus:border-cdl-navy-600 transition-colors"
+                className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-md
+                           focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600 transition-colors"
               />
             </div>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-cdl-navy-600">
-            Total: <strong className="text-cdl-navy-700">{perfisFiltrados.length}</strong> perfis
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              Total: <span className="font-semibold text-cdl-navy-700">{perfisFiltrados.length}</span> perfis
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Tabela / Empty */}
-      {perfisFiltrados.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-cdl">
+        {/* Tabela / Empty */}
+        {perfisFiltrados.length === 0 ? (
           <EmptyState
             icon="🛡️"
             title={searchTerm ? 'Nenhum perfil encontrado' : 'Nenhum perfil cadastrado'}
@@ -277,144 +274,148 @@ export const Perfis: React.FC = () => {
                   className="inline-flex items-center gap-2 px-6 py-3 bg-cdl-navy-700 text-white
                              rounded-lg font-medium hover:bg-cdl-navy-800 transition-all active:scale-[.98]"
                 >
-                  <Plus size={20} /> Criar Primeiro Perfil
+                  ➕ Criar Primeiro Perfil
                 </Link>
               ) : undefined
             }
           />
-        </div>
-      ) : (
-        <div className="bg-white rounded-lg shadow-cdl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-cdl-navy-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-cdl-navy-700 uppercase tracking-wider">Perfil</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-cdl-navy-700 uppercase tracking-wider">Descrição</th>
-                  <th className="px-6 py-3 text-center text-xs font-semibold text-cdl-navy-700 uppercase tracking-wider">Menus</th>
-                  <th className="px-6 py-3 text-center text-xs font-semibold text-cdl-navy-700 uppercase tracking-wider">Permissões</th>
-                  <th className="px-6 py-3 text-center text-xs font-semibold text-cdl-navy-700 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-cdl-navy-700 uppercase tracking-wider">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {perfisPaginados.map((perfil) => {
-                  const { icon: Icon, color, bg, border } = getPerfilIcon(perfil.nome);
-                  const bgColor = getPerfilBgColor(perfil.nome);
-                  const badge = getPerfilBadge(perfil.nome);
-                  const isEditable = podeEditarPerfis || isSuperAdmin || isAdmin;
-                  const isDeletable = podeDeletarPerfis || isSuperAdmin || isAdmin;
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-cdl-navy-50">
+                  <tr>
+                    {['Perfil','Descrição','Menus','Permissões','Status','Ações'].map((h, i) => (
+                      <th
+                        key={h}
+                        className={`px-6 py-3 text-xs font-semibold text-cdl-navy-700 uppercase tracking-wider ${
+                          i === 2 || i === 3 || i === 4 ? 'text-center' : i === 5 ? 'text-right' : 'text-left'
+                        }`}
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {perfisPaginados.map((perfil) => {
+                    const { icon: Icon, color, bg, border } = getPerfilIcon(perfil.nome);
+                    const bgColor = getPerfilBgColor(perfil.nome);
+                    const badge = getPerfilBadge(perfil.nome);
+                    const isEditable = podeEditarPerfis || isSuperAdmin || isAdmin;
+                    const isDeletable = podeDeletarPerfis || isSuperAdmin || isAdmin;
 
-                  return (
-                    <tr key={perfil.id} className={`hover:bg-cdl-navy-50/40 transition-colors ${bgColor}`}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg ${bg} ${border} border`}>
-                            <Icon size={20} className={color} />
-                          </div>
-                          <div>
-                            <div className="flex items-center text-sm font-medium text-cdl-navy-700">
-                              {perfil.nome}
-                              {badge}
+                    return (
+                      <tr key={perfil.id} className={`hover:bg-cdl-navy-50/40 transition-colors ${bgColor}`}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg ${bg} ${border} border`}>
+                              <Icon size={20} className={color} />
                             </div>
-                            <div className="text-xs text-gray-500 font-mono">ID: {perfil.id}</div>
+                            <div>
+                              <div className="flex items-center text-sm font-medium text-cdl-navy-700">
+                                {perfil.nome}
+                                {badge}
+                              </div>
+                              <div className="text-xs text-gray-500 font-mono">ID: {perfil.id}</div>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-600 max-w-xs truncate">
-                          {perfil.descricao || '-'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-cdl-navy-100 text-cdl-navy-700">
-                          {perfil.menus?.length || 0}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-cdl-navy-50 text-cdl-navy-700 border border-cdl-navy-100">
-                          {perfil.permissoes?.length || 0}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        {getStatusBadge(perfil.ativo)}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          {isEditable ? (
-                            <Link
-                              to={`/admin/perfis/${perfil.id}`}
-                              className="text-cdl-navy-700 hover:text-cdl-navy-900 p-1.5 rounded
-                                         hover:bg-cdl-navy-50 transition-colors"
-                              title="Editar perfil"
-                            >
-                              <Edit size={18} />
-                            </Link>
-                          ) : (
-                            <span className="text-gray-300 p-1.5" title="Sem permissão para editar">
-                              <Edit size={18} className="opacity-30" />
-                            </span>
-                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-600 max-w-xs truncate">
+                            {perfil.descricao || '-'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-cdl-navy-100 text-cdl-navy-700">
+                            {perfil.menus?.length || 0}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-cdl-navy-50 text-cdl-navy-700 border border-cdl-navy-100">
+                            {perfil.permissoes?.length || 0}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          {getStatusBadge(perfil.ativo)}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex justify-end gap-1">
+                            {isEditable ? (
+                              <Link
+                                to={`/admin/perfis/${perfil.id}`}
+                                className="p-1 text-cdl-yellow-600 hover:text-cdl-yellow-700 hover:bg-cdl-yellow-50 rounded transition-colors"
+                                title="Editar perfil"
+                              >
+                                ✏️
+                              </Link>
+                            ) : (
+                              <span className="p-1 text-gray-300" title="Sem permissão para editar">
+                                🚫
+                              </span>
+                            )}
 
-                          {isDeletable ? (
-                            <button
-                              onClick={() => handleDeleteClick(perfil)}
-                              className="text-cdl-danger-500 hover:text-cdl-danger-600 p-1.5 rounded
-                                         hover:bg-cdl-danger-50 transition-colors"
-                              title="Excluir perfil"
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          ) : (
-                            <span className="text-gray-300 p-1.5" title="Sem permissão para excluir">
-                              <Trash2 size={18} className="opacity-30" />
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Paginação */}
-          {totalPages > 1 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-3 bg-cdl-neutral-50 border-t border-gray-200 gap-3">
-              <div className="text-sm text-gray-500">
-                Mostrando <strong className="text-cdl-navy-700">{startIndex + 1}</strong> -{" "}
-                <strong className="text-cdl-navy-700">{Math.min(endIndex, perfisFiltrados.length)}</strong>{" "}
-                de <strong className="text-cdl-navy-700">{perfisFiltrados.length}</strong>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium
-                             text-cdl-navy-700 disabled:opacity-50 disabled:cursor-not-allowed
-                             hover:bg-cdl-navy-50 hover:border-cdl-navy-300 transition-colors"
-                >
-                  ◀ Anterior
-                </button>
-                <span className="px-3 py-1.5 text-sm text-gray-700">
-                  Página <strong className="text-cdl-navy-700">{currentPage}</strong> de{" "}
-                  <strong className="text-cdl-navy-700">{totalPages}</strong>
-                </span>
-                <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium
-                             text-cdl-navy-700 disabled:opacity-50 disabled:cursor-not-allowed
-                             hover:bg-cdl-navy-50 hover:border-cdl-navy-300 transition-colors"
-                >
-                  Próxima ▶
-                </button>
-              </div>
+                            {isDeletable ? (
+                              <button
+                                onClick={() => handleDeleteClick(perfil)}
+                                className="p-1 text-cdl-danger-500 hover:text-cdl-danger-600 hover:bg-cdl-danger-50 rounded transition-colors"
+                                title="Excluir perfil"
+                              >
+                                🗑️
+                              </button>
+                            ) : (
+                              <span className="p-1 text-gray-300" title="Sem permissão para excluir">
+                                🚫
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-          )}
-        </div>
-      )}
+
+            {/* Paginação */}
+            {totalPages > 1 && (
+              <div className="px-6 py-4 border-t border-gray-200 bg-cdl-neutral-50">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="text-sm text-gray-700">
+                    Mostrando <span className="font-medium">{startIndex + 1}</span> -{" "}
+                    <span className="font-medium">{Math.min(endIndex, perfisFiltrados.length)}</span>{" "}
+                    de <span className="font-medium">{perfisFiltrados.length}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium
+                                 text-gray-700 hover:bg-white hover:border-cdl-navy-300
+                                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      ← Anterior
+                    </button>
+                    <span className="text-sm text-gray-700">
+                      Página <span className="font-medium">{currentPage}</span> de{" "}
+                      <span className="font-medium">{totalPages}</span>
+                    </span>
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium
+                                 text-gray-700 hover:bg-white hover:border-cdl-navy-300
+                                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Próxima →
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       <ConfirmModal
         isOpen={deleteModalOpen}

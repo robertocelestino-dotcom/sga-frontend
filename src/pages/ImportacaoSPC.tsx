@@ -1,4 +1,4 @@
-// src/pages/ImportacaoSPC.tsx - VERSÃO CDL
+// src/pages/ImportacaoSPC.tsx - VERSÃO CDL (alinhada a Associados.tsx)
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api, { importacaoSPCService } from "../services/api";
@@ -140,7 +140,7 @@ const ImportacaoSPC: React.FC = () => {
     return "text-cdl-neutral-500 bg-cdl-neutral-100";
   };
 
-  /* ---------- VERIFICAÇÕES (inalterado) ---------- */
+  /* ---------- VERIFICAÇÕES ---------- */
   const buscarVerificacaoAssociados = async (id: string) => {
     try {
       const response = await importacaoSPCService.verificarAssociados(id);
@@ -340,128 +340,141 @@ const ImportacaoSPC: React.FC = () => {
      RENDER
      ============================================================ */
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      {/* ===== HEADER ===== */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-cdl-navy-700">Importação SPC — Faturamento</h1>
-        <p className="text-gray-600 mt-1">
-          Envie o arquivo oficial do SPC e processe as notas para faturamento.
-          O sistema identifica automaticamente se é <strong>Consolidado</strong> ou <strong>Prévia</strong>.
-        </p>
+    <div className="p-6">
+      {/* ===== Cabeçalho (fora dos cards) ===== */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-cdl-navy-700">Importação SPC — Faturamento</h1>
+          <p className="text-gray-600">
+            Envie o arquivo oficial do SPC e processe as notas para faturamento.
+            O sistema identifica automaticamente se é <strong>Consolidado</strong> ou <strong>Prévia</strong>.
+          </p>
+        </div>
       </div>
 
-      {/* Overlay desfazer */}
+      {/* Overlay de exclusão */}
       {isDeleting && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-[2px] flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 text-center shadow-cdl-lg flex items-center gap-3">
+        <div className="fixed inset-0 bg-cdl-navy-900/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 text-center shadow-cdl flex items-center gap-3">
             <div className="w-6 h-6 border-2 border-cdl-navy-700 border-t-transparent rounded-full animate-spin" />
             <span className="text-cdl-navy-700 font-medium">Removendo importação…</span>
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* ==================== COLUNA 1 — UPLOAD ==================== */}
         <div className="lg:col-span-2 space-y-6">
           {/* Card Upload */}
-          <div className="bg-white shadow-cdl rounded-xl p-6">
-            <div className="flex justify-between mb-4">
-              <h2 className="text-xl font-semibold text-cdl-navy-700">Upload do Arquivo SPC</h2>
+          <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 bg-cdl-navy-50 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-6 bg-cdl-navy-700 rounded"></div>
+                <h2 className="text-lg font-semibold text-cdl-navy-700">Upload do Arquivo SPC</h2>
+              </div>
               {file && !isAnyLoading && (
-                <button onClick={() => setFile(null)} className="text-sm text-cdl-danger-500 hover:text-cdl-danger-600 font-medium">
+                <button
+                  onClick={() => setFile(null)}
+                  className="text-sm text-cdl-danger-500 hover:text-cdl-danger-600 font-medium transition-colors"
+                >
                   Limpar
                 </button>
               )}
             </div>
 
-            {error && (
-              <div className="p-3 mb-4 bg-cdl-danger-50 border border-cdl-danger-100 rounded-lg text-cdl-danger-600 flex items-start gap-2">
-                <span className="text-lg">⚠</span>
-                <span className="text-sm">{error}</span>
-              </div>
-            )}
-            {success && (
-              <div className="p-3 mb-4 bg-cdl-green-50 border border-cdl-green-100 rounded-lg text-cdl-green-700 flex items-start gap-2">
-                <span className="text-lg">✅</span>
-                <span className="text-sm">{success}</span>
-              </div>
-            )}
+            <div className="p-6">
+              {error && (
+                <div className="p-3 mb-4 bg-cdl-danger-50 border border-cdl-danger-100 rounded-lg text-cdl-danger-600 flex items-start gap-2">
+                  <span className="text-lg">⚠</span>
+                  <span className="text-sm">{error}</span>
+                </div>
+              )}
+              {success && (
+                <div className="p-3 mb-4 bg-cdl-green-50 border border-cdl-green-100 rounded-lg text-cdl-green-700 flex items-start gap-2">
+                  <span className="text-lg">✅</span>
+                  <span className="text-sm">{success}</span>
+                </div>
+              )}
 
-            {/* Dropzone — EmptyState quando vazio, card verde quando tem arquivo */}
-            {!file ? (
-              <div
-                onDrop={handleDrop}
-                onDragOver={(e) => e.preventDefault()}
-                onClick={() => document.getElementById("file-upload")?.click()}
-                className={`border-2 border-dashed border-gray-300 hover:border-cdl-navy-400 hover:bg-cdl-navy-50
-                            rounded-xl transition-colors cursor-pointer ${isAnyLoading ? "opacity-50 pointer-events-none" : ""}`}
-              >
-                <EmptyState
-                  icon="📄"
-                  title="Arraste o arquivo aqui ou clique para selecionar"
-                  description="Formato: .TXT — Consolidado (5501txtp.txt) ou Prévia (5501tmpp.txt)"
-                  action={
-                    <label
-                      htmlFor="file-upload"
-                      onClick={(e) => e.stopPropagation()}
-                      className="inline-flex px-6 py-3 bg-cdl-navy-700 text-white rounded-lg font-medium
-                                 hover:bg-cdl-navy-800 cursor-pointer transition-all active:scale-[.98]"
-                    >
-                      Selecionar Arquivo
-                    </label>
-                  }
-                />
-              </div>
-            ) : (
-              <div className="border-2 border-dashed border-cdl-green-400 bg-cdl-green-50 rounded-xl p-8 text-center">
-                <div className="text-5xl mb-3">✅</div>
-                <p className="font-medium text-cdl-green-700">{file.name}</p>
-                <p className="text-sm text-gray-600 mt-1">
-                  Tipo: <strong>{detectarTipoArquivo(file.name) === "CONSOLIDADO" ? "Consolidado" : "Prévia"}</strong>
-                  <span className="mx-2">•</span>
-                  {(file.size / 1024).toFixed(2)} KB
-                </p>
-                <label
-                  htmlFor="file-upload"
-                  className="mt-4 inline-flex px-5 py-2.5 bg-cdl-navy-700 text-white rounded-lg font-medium
-                             hover:bg-cdl-navy-800 cursor-pointer transition-all active:scale-[.98] text-sm"
+              {/* Dropzone */}
+              {!file ? (
+                <div
+                  onDrop={handleDrop}
+                  onDragOver={(e) => e.preventDefault()}
+                  onClick={() => document.getElementById("file-upload")?.click()}
+                  className={`border-2 border-dashed border-gray-300 hover:border-cdl-navy-400 hover:bg-cdl-navy-50
+                              rounded-xl transition-colors cursor-pointer ${isAnyLoading ? "opacity-50 pointer-events-none" : ""}`}
                 >
-                  Trocar Arquivo
-                </label>
+                  <EmptyState
+                    icon="📄"
+                    title="Arraste o arquivo aqui ou clique para selecionar"
+                    description="Formato: .TXT — Consolidado (5501txtp.txt) ou Prévia (5501tmpp.txt)"
+                    action={
+                      <label
+                        htmlFor="file-upload"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex px-6 py-3 bg-cdl-navy-700 text-white rounded-lg font-medium
+                                   hover:bg-cdl-navy-800 cursor-pointer transition-all active:scale-[.98]"
+                      >
+                        Selecionar Arquivo
+                      </label>
+                    }
+                  />
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-cdl-green-400 bg-cdl-green-50 rounded-xl p-8 text-center">
+                  <div className="text-5xl mb-3">✅</div>
+                  <p className="font-medium text-cdl-green-700">{file.name}</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Tipo: <strong>{detectarTipoArquivo(file.name) === "CONSOLIDADO" ? "Consolidado" : "Prévia"}</strong>
+                    <span className="mx-2">•</span>
+                    {(file.size / 1024).toFixed(2)} KB
+                  </p>
+                  <label
+                    htmlFor="file-upload"
+                    className="mt-4 inline-flex px-5 py-2.5 bg-cdl-navy-700 text-white rounded-lg font-medium
+                               hover:bg-cdl-navy-800 cursor-pointer transition-all active:scale-[.98] text-sm"
+                  >
+                    Trocar Arquivo
+                  </label>
+                </div>
+              )}
+
+              <input id="file-upload" type="file" accept=".txt" className="hidden" onChange={handleFileChange} />
+
+              {/* Botão Upload */}
+              <div className="mt-6 flex justify-center">
+                <button
+                  onClick={() => setShowConfirmUploadModal(true)}
+                  disabled={!file || isAnyLoading}
+                  className={`px-8 py-3 rounded-lg font-semibold flex items-center justify-center gap-3
+                              transition-all active:scale-[.98] ${
+                    !file || isAnyLoading
+                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      : "bg-cdl-navy-700 text-white hover:bg-cdl-navy-800"
+                  }`}
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Processando...
+                    </>
+                  ) : (
+                    <>🚀 Iniciar Importação</>
+                  )}
+                </button>
               </div>
-            )}
-
-            <input id="file-upload" type="file" accept=".txt" className="hidden" onChange={handleFileChange} />
-
-            {/* Botão Upload */}
-            <div className="mt-6 flex justify-center">
-              <button
-                onClick={() => setShowConfirmUploadModal(true)}
-                disabled={!file || isAnyLoading}
-                className={`px-8 py-3 rounded-lg font-semibold flex items-center justify-center gap-3
-                            transition-all active:scale-[.98] ${
-                  !file || isAnyLoading
-                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                    : "bg-cdl-navy-700 text-white hover:bg-cdl-navy-800"
-                }`}
-              >
-                {isLoading ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Processando...
-                  </>
-                ) : (
-                  <>🚀 Iniciar Importação</>
-                )}
-              </button>
             </div>
           </div>
 
           {/* ===== Detalhes do Processamento ===== */}
           {processamentoDetalhes && (
-            <div className="bg-white shadow-cdl rounded-xl p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold text-cdl-navy-700">Detalhes do Processamento</h3>
+            <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200 bg-cdl-navy-50 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-6 bg-cdl-navy-700 rounded"></div>
+                  <h3 className="text-lg font-semibold text-cdl-navy-700">Detalhes do Processamento</h3>
+                </div>
                 <div className="flex gap-2">
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(processamentoDetalhes.status || "")}`}>
                     {processamentoDetalhes.status}
@@ -478,75 +491,77 @@ const ImportacaoSPC: React.FC = () => {
                 </div>
               </div>
 
-              {tipoAtual && (
-                <div className="mb-4 p-4 bg-cdl-navy-50 border border-cdl-navy-100 rounded-lg">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-cdl-navy-700">Tipo de Arquivo:</span>
-                    <span className="px-2 py-0.5 text-xs rounded-full bg-white text-cdl-navy-700 border border-cdl-navy-200 font-medium">
-                      {tipoAtual.icon} {tipoAtual.nome}
-                    </span>
-                  </div>
-                  <div className="text-sm text-gray-600 mt-1">
-                    <span className="font-medium text-cdl-navy-700">Uso:</span> {tipoAtual.uso}
-                  </div>
-                  {processamentoDetalhes.dataFimPeriodo && (
-                    <div className="text-sm text-gray-600">
-                      <span className="font-medium text-cdl-navy-700">Data fim período:</span>{" "}
-                      {formatarData(processamentoDetalhes.dataFimPeriodo)}
+              <div className="p-6">
+                {tipoAtual && (
+                  <div className="mb-4 p-4 bg-cdl-navy-50 border border-cdl-navy-100 rounded-lg">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-semibold text-cdl-navy-700">Tipo de Arquivo:</span>
+                      <span className="px-2 py-0.5 text-xs rounded-full bg-white text-cdl-navy-700 border border-cdl-navy-200 font-medium">
+                        {tipoAtual.icon} {tipoAtual.nome}
+                      </span>
                     </div>
-                  )}
-                  {processamentoDetalhes.descricaoArquivo && (
-                    <div className="text-sm text-gray-600">
-                      <span className="font-medium text-cdl-navy-700">Descrição:</span> {processamentoDetalhes.descricaoArquivo}
+                    <div className="text-sm text-gray-600 mt-1">
+                      <span className="font-medium text-cdl-navy-700">Uso:</span> {tipoAtual.uso}
                     </div>
-                  )}
-                </div>
-              )}
+                    {processamentoDetalhes.dataFimPeriodo && (
+                      <div className="text-sm text-gray-600">
+                        <span className="font-medium text-cdl-navy-700">Data fim período:</span>{" "}
+                        {formatarData(processamentoDetalhes.dataFimPeriodo)}
+                      </div>
+                    )}
+                    {processamentoDetalhes.descricaoArquivo && (
+                      <div className="text-sm text-gray-600">
+                        <span className="font-medium text-cdl-navy-700">Descrição:</span> {processamentoDetalhes.descricaoArquivo}
+                      </div>
+                    )}
+                  </div>
+                )}
 
-              {/* Stat boxes */}
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                <StatBox label="Total Registros" value={processamentoDetalhes.totalRegistros} tone="info" />
-                <StatBox label="Notas"           value={processamentoDetalhes.quantidadeNotas || 0} tone="info" />
-                <StatBox label="Processados"     value={processamentoDetalhes.registrosProcessados} tone="success" />
-                <StatBox label="Com Erro"        value={processamentoDetalhes.registrosComErro} tone="danger" />
-                <StatBox label="Valor Total"     value={formatarMoeda(processamentoDetalhes.valorTotal || 0)} tone="accent" />
+                {/* Stat boxes */}
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  <StatBox label="Total Registros" value={processamentoDetalhes.totalRegistros} tone="info" />
+                  <StatBox label="Notas"           value={processamentoDetalhes.quantidadeNotas || 0} tone="info" />
+                  <StatBox label="Processados"     value={processamentoDetalhes.registrosProcessados} tone="success" />
+                  <StatBox label="Com Erro"        value={processamentoDetalhes.registrosComErro} tone="danger" />
+                  <StatBox label="Valor Total"     value={formatarMoeda(processamentoDetalhes.valorTotal || 0)} tone="accent" />
+                </div>
+
+                {/* Resumo Financeiro */}
+                {(processamentoDetalhes.totalDebitos !== undefined || processamentoDetalhes.totalCreditos !== undefined) && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <h4 className="text-sm font-semibold text-cdl-navy-700 mb-3">📊 Resumo Financeiro</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                      <div className="bg-cdl-danger-50 border border-cdl-danger-100 p-3 rounded-lg">
+                        <div className="text-xs text-cdl-danger-500 mb-0.5">Total Débitos</div>
+                        <div className="text-lg font-bold text-cdl-danger-500">
+                          {formatarMoeda(processamentoDetalhes.totalDebitos || 0)}
+                        </div>
+                      </div>
+                      <div className="bg-cdl-green-50 border border-cdl-green-100 p-3 rounded-lg">
+                        <div className="text-xs text-cdl-green-600 mb-0.5">Total Créditos</div>
+                        <div className="text-lg font-bold text-cdl-green-700">
+                          {formatarMoeda(processamentoDetalhes.totalCreditos || 0)}
+                        </div>
+                      </div>
+                      <div className="bg-cdl-navy-50 border border-cdl-navy-100 p-3 rounded-lg">
+                        <div className="text-xs text-cdl-navy-600 mb-0.5">Valor Cobrado</div>
+                        <div className="text-lg font-bold text-cdl-navy-700">
+                          {formatarMoeda(processamentoDetalhes.valorCobrado || 0)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => handleVerificarImportacao(String(processamentoDetalhes.id))}
+                  className="w-full mt-5 bg-cdl-navy-700 text-white py-3 rounded-lg font-semibold
+                             hover:bg-cdl-navy-800 transition-all active:scale-[.98]
+                             flex items-center justify-center gap-2"
+                >
+                  🔍 Verificar Importação
+                </button>
               </div>
-
-              {/* Resumo Financeiro */}
-              {(processamentoDetalhes.totalDebitos !== undefined || processamentoDetalhes.totalCreditos !== undefined) && (
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <h4 className="text-sm font-semibold text-cdl-navy-700 mb-3">📊 Resumo Financeiro</h4>
-                  <div className="grid grid-cols-3 gap-4 text-center">
-                    <div className="bg-cdl-danger-50 border border-cdl-danger-100 p-3 rounded-lg">
-                      <div className="text-xs text-cdl-danger-500 mb-0.5">Total Débitos</div>
-                      <div className="text-lg font-bold text-cdl-danger-500">
-                        {formatarMoeda(processamentoDetalhes.totalDebitos || 0)}
-                      </div>
-                    </div>
-                    <div className="bg-cdl-green-50 border border-cdl-green-100 p-3 rounded-lg">
-                      <div className="text-xs text-cdl-green-600 mb-0.5">Total Créditos</div>
-                      <div className="text-lg font-bold text-cdl-green-700">
-                        {formatarMoeda(processamentoDetalhes.totalCreditos || 0)}
-                      </div>
-                    </div>
-                    <div className="bg-cdl-navy-50 border border-cdl-navy-100 p-3 rounded-lg">
-                      <div className="text-xs text-cdl-navy-600 mb-0.5">Valor Cobrado</div>
-                      <div className="text-lg font-bold text-cdl-navy-700">
-                        {formatarMoeda(processamentoDetalhes.valorCobrado || 0)}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <button
-                onClick={() => handleVerificarImportacao(String(processamentoDetalhes.id))}
-                className="w-full mt-5 bg-cdl-navy-700 text-white py-3 rounded-lg font-semibold
-                           hover:bg-cdl-navy-800 transition-all active:scale-[.98]
-                           flex items-center justify-center gap-2"
-              >
-                🔍 Verificar Importação
-              </button>
             </div>
           )}
         </div>
@@ -648,9 +663,11 @@ const StatBox: React.FC<{ label: string; value: any; tone?: StatTone }> = ({
 );
 
 const SideCard: React.FC<{ children: React.ReactNode; title: string }> = ({ children, title }) => (
-  <div className="bg-white shadow-cdl rounded-xl p-6">
-    <h3 className="text-lg font-semibold text-cdl-navy-700 mb-3">{title}</h3>
-    {children}
+  <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+    <div className="px-4 py-3 border-b border-gray-200 bg-cdl-navy-50">
+      <h3 className="text-sm font-semibold text-cdl-navy-700">{title}</h3>
+    </div>
+    <div className="p-4">{children}</div>
   </div>
 );
 

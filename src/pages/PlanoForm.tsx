@@ -1,9 +1,9 @@
+// src/pages/PlanoForm.tsx - VERSÃO CDL (alinhada a AssociadoForm.tsx)
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   planoService,
   PlanoDTO,
-  planoOpcoes
 } from '../services/planoService';
 import { produtoService, ProdutoResumoDTO } from '../services/produtoService';
 import { planoProdutoFranquiaService } from '../services/planoProdutoFranquiaService';
@@ -20,18 +20,16 @@ const PlanoFormPage: React.FC = () => {
   const navigate = useNavigate();
   const { showToast, showConfirm } = useMessage();
   const isEditMode = !!id;
-  
+
   const [loading, setLoading] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [produtosDisponiveis, setProdutosDisponiveis] = useState<ProdutoResumoDTO[]>([]);
   const [franquiasDisponiveis, setFranquiasDisponiveis] = useState<ProdutoResumoDTO[]>([]);
   const [erros, setErros] = useState<Record<string, string>>({});
-  
-  // Estados para modais
+
   const [modalProdutoAberto, setModalProdutoAberto] = useState(false);
   const [modalFranquiaAberto, setModalFranquiaAberto] = useState(false);
-  
-  // Estado para nova associação
+
   const [novaAssociacao, setNovaAssociacao] = useState<{
     produtoId?: number;
     produtoNome?: string;
@@ -43,22 +41,23 @@ const PlanoFormPage: React.FC = () => {
     periodoFranquia: string;
     valorExcedente?: number;
   }>({
-    periodoFranquia: 'MENSAL'
+    periodoFranquia: 'MENSAL',
   });
 
-  // Lista de associações produto-franquia
-  const [associacoes, setAssociacoes] = useState<Array<{
-    id: string;
-    produtoId: number;
-    produtoNome: string;
-    produtoCodigo: string;
-    franquiaId: number;
-    franquiaNome: string;
-    franquiaCodigo: string;
-    limiteFranquia: number;
-    periodoFranquia: string;
-    valorExcedente?: number;
-  }>>([]);
+  const [associacoes, setAssociacoes] = useState<
+    Array<{
+      id: string;
+      produtoId: number;
+      produtoNome: string;
+      produtoCodigo: string;
+      franquiaId: number;
+      franquiaNome: string;
+      franquiaCodigo: string;
+      limiteFranquia: number;
+      periodoFranquia: string;
+      valorExcedente?: number;
+    }>
+  >([]);
 
   const [formData, setFormData] = useState<PlanoDTO>({
     nome: '',
@@ -71,10 +70,9 @@ const PlanoFormPage: React.FC = () => {
     permiteExcedente: true,
     faturamentoAntecipado: false,
     diaFaturamento: 1,
-    observacao: ''
+    observacao: '',
   });
 
-  // Carregar dados se for edição
   useEffect(() => {
     const carregarDados = async () => {
       if (isEditMode) {
@@ -82,13 +80,16 @@ const PlanoFormPage: React.FC = () => {
         try {
           const plano = await planoService.buscarPorId(parseInt(id!));
           setFormData(plano);
-          
-          // Carregar associações existentes
-          const associacoesExistentes = await planoProdutoFranquiaService.listarPorPlano(parseInt(id!));
-          setAssociacoes(associacoesExistentes.map((a: any, index: number) => ({
-            ...a,
-            id: `existing-${index}-${Date.now()}`
-          })));
+
+          const associacoesExistentes = await planoProdutoFranquiaService.listarPorPlano(
+            parseInt(id!)
+          );
+          setAssociacoes(
+            associacoesExistentes.map((a: any, index: number) => ({
+              ...a,
+              id: `existing-${index}-${Date.now()}`,
+            }))
+          );
         } catch (error) {
           console.error('Erro ao carregar plano:', error);
           showToast('Plano não encontrado', 'error');
@@ -104,7 +105,6 @@ const PlanoFormPage: React.FC = () => {
     carregarFranquiasDisponiveis();
   }, [id, isEditMode, navigate, showToast]);
 
-  // Carregar produtos disponíveis (todos os tipos)
   const carregarProdutosDisponiveis = async () => {
     try {
       const response = await produtoService.listar({ size: 1000 });
@@ -114,7 +114,6 @@ const PlanoFormPage: React.FC = () => {
     }
   };
 
-  // Carregar franquias disponíveis (apenas produtos do tipo FRANQUIA)
   const carregarFranquiasDisponiveis = async () => {
     try {
       const franquias = await produtoService.listarFranquiasDisponiveis();
@@ -124,7 +123,6 @@ const PlanoFormPage: React.FC = () => {
     }
   };
 
-  // Validar formulário
   const validarFormulario = (): boolean => {
     const novosErros: Record<string, string> = {};
 
@@ -140,57 +138,50 @@ const PlanoFormPage: React.FC = () => {
     return Object.keys(novosErros).length === 0;
   };
 
-  // Handlers
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value, type } = e.target;
-    
+
     let valorFinal: any = value;
-    
+
     if (type === 'number') {
       valorFinal = value === '' ? '' : parseFloat(value);
     } else if (type === 'checkbox') {
       const target = e.target as HTMLInputElement;
       valorFinal = target.checked;
     }
-    
-    setFormData(prev => ({
-      ...prev,
-      [name]: valorFinal
-    }));
+
+    setFormData((prev) => ({ ...prev, [name]: valorFinal }));
 
     if (erros[name]) {
-      setErros(prev => ({ ...prev, [name]: '' }));
+      setErros((prev) => ({ ...prev, [name]: '' }));
     }
   };
 
-  // Handler para selecionar produto via modal
   const handleSelecionarProduto = (produto: any) => {
-    setNovaAssociacao(prev => ({
+    setNovaAssociacao((prev) => ({
       ...prev,
       produtoId: produto.id,
       produtoNome: produto.nome,
-      produtoCodigo: produto.codigo
+      produtoCodigo: produto.codigo,
     }));
     setModalProdutoAberto(false);
   };
 
-  // Handler para selecionar franquia via modal
   const handleSelecionarFranquia = (franquia: any) => {
-    setNovaAssociacao(prev => ({
+    setNovaAssociacao((prev) => ({
       ...prev,
       franquiaId: franquia.id,
       franquiaNome: franquia.nome,
       franquiaCodigo: franquia.codigo,
       limiteFranquia: franquia.limiteFranquia || 20,
       periodoFranquia: franquia.periodoFranquia || 'MENSAL',
-      valorExcedente: franquia.valorExcedente
+      valorExcedente: franquia.valorExcedente,
     }));
     setModalFranquiaAberto(false);
   };
 
-  // Handler para adicionar associação
   const handleAdicionarAssociacao = () => {
     if (!novaAssociacao.produtoId) {
       showToast('Selecione um produto', 'warning');
@@ -205,14 +196,13 @@ const PlanoFormPage: React.FC = () => {
       return;
     }
 
-    // Verificar se já existe associação para este produto
-    const existe = associacoes.some(a => a.produtoId === novaAssociacao.produtoId);
+    const existe = associacoes.some((a) => a.produtoId === novaAssociacao.produtoId);
     if (existe) {
       showToast('Este produto já possui uma franquia associada neste plano', 'error');
       return;
     }
 
-    setAssociacoes(prev => [
+    setAssociacoes((prev) => [
       ...prev,
       {
         id: Date.now().toString(),
@@ -224,18 +214,14 @@ const PlanoFormPage: React.FC = () => {
         franquiaCodigo: novaAssociacao.franquiaCodigo!,
         limiteFranquia: novaAssociacao.limiteFranquia!,
         periodoFranquia: novaAssociacao.periodoFranquia,
-        valorExcedente: novaAssociacao.valorExcedente
-      }
+        valorExcedente: novaAssociacao.valorExcedente,
+      },
     ]);
 
-    setNovaAssociacao({
-      periodoFranquia: 'MENSAL'
-    });
-
+    setNovaAssociacao({ periodoFranquia: 'MENSAL' });
     showToast('Associação adicionada com sucesso!', 'success');
   };
 
-  // Handler para remover associação
   const handleRemoverAssociacao = async (id: string, associacaoId?: number) => {
     if (associacaoId) {
       try {
@@ -247,23 +233,22 @@ const PlanoFormPage: React.FC = () => {
         return;
       }
     }
-    setAssociacoes(prev => prev.filter(a => a.id !== id));
+    setAssociacoes((prev) => prev.filter((a) => a.id !== id));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validarFormulario()) {
       showToast('Por favor, corrija os erros antes de salvar.', 'warning');
       return;
     }
 
     setSalvando(true);
-    
+
     try {
       let planoSalvo;
-      
-      // 1. Salvar o plano
+
       if (isEditMode) {
         planoSalvo = await planoService.atualizar(parseInt(id!), formData);
         showToast('Plano atualizado com sucesso!', 'success');
@@ -272,14 +257,12 @@ const PlanoFormPage: React.FC = () => {
         showToast('Plano criado com sucesso!', 'success');
       }
 
-      // 2. Salvar as associações
       if (associacoes.length > 0 && planoSalvo?.id) {
         let associacoesSalvas = 0;
         let associacoesComErro = 0;
 
         for (const assoc of associacoes) {
           try {
-            // Se não tem ID, é uma associação nova
             if (!assoc.id.startsWith('existing-')) {
               await planoProdutoFranquiaService.associar(
                 planoSalvo.id,
@@ -298,16 +281,21 @@ const PlanoFormPage: React.FC = () => {
         }
 
         if (associacoesComErro === 0) {
-          showToast(`${associacoesSalvas} associação(ões) salva(s) com sucesso!`, 'success');
+          showToast(
+            `${associacoesSalvas} associação(ões) salva(s) com sucesso!`,
+            'success'
+          );
         } else {
-          showToast(`${associacoesSalvas} associações salvas, ${associacoesComErro} com erro`, 'warning');
+          showToast(
+            `${associacoesSalvas} associações salvas, ${associacoesComErro} com erro`,
+            'warning'
+          );
         }
       }
-      
+
       navigate('/planos');
     } catch (error: any) {
       console.error('Erro ao salvar plano:', error);
-      
       if (error.response?.data?.erro) {
         showToast(error.response.data.erro, 'error');
       } else {
@@ -324,114 +312,134 @@ const PlanoFormPage: React.FC = () => {
       message: 'Deseja cancelar? As alterações não salvas serão perdidas.',
       confirmText: 'Sim, cancelar',
       cancelText: 'Não, continuar',
-      type: 'warning'
+      type: 'warning',
     });
 
-    if (confirmado) {
-      navigate('/planos');
-    }
+    if (confirmado) navigate('/planos');
   };
 
   if (loading) return <Loading />;
 
+  // Classe base dos inputs (padrão Associados.tsx)
+  const inputBase =
+    'w-full px-3 py-2 border rounded-md transition-colors ' +
+    'focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600';
+
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <BreadCrumb 
+    <div className="p-6">
+      <BreadCrumb
         links={[
           { label: 'Planos', path: '/planos' },
-          { label: isEditMode ? 'Editar Plano' : 'Novo Plano' }
+          { label: isEditMode ? 'Editar Plano' : 'Novo Plano' },
         ]}
       />
-      
-      <div className="bg-white rounded-xl shadow-lg p-6 mt-6">
-        {/* Cabeçalho */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">
-              {isEditMode ? 'Editar Plano' : 'Novo Plano'}
-            </h1>
-            <p className="text-gray-600 mt-1">
-              {isEditMode 
-                ? 'Atualize as informações do plano' 
-                : 'Preencha os dados para cadastrar um novo plano'}
-            </p>
-          </div>
-          
-          <div className="flex gap-3">
-            <button
-              onClick={handleCancelar}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center gap-2"
-            >
-              ✕ Cancelar
-            </button>
-            
-            <button
-              onClick={handleSubmit}
-              disabled={salvando}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-            >
-              💾 {salvando ? 'Salvando...' : 'Salvar Plano'}
-            </button>
-          </div>
+
+      {/* Cabeçalho */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-cdl-navy-700">
+            {isEditMode ? 'Editar Plano' : 'Novo Plano'}
+          </h1>
+          <p className="text-gray-600">
+            {isEditMode
+              ? 'Atualize as informações do plano'
+              : 'Preencha os dados para cadastrar um novo plano'}
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Seção 1: Informações Básicas do Plano */}
-          <div className="border border-gray-200 rounded-lg p-6">
-            <div className="flex items-center gap-2 mb-6">
-              <div className="w-1 h-6 bg-blue-600 rounded"></div>
-              <h2 className="text-lg font-semibold text-gray-800">Informações do Plano</h2>
-            </div>
-            
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={handleCancelar}
+            className="px-4 py-2 bg-cdl-neutral-50 text-cdl-navy-700 border border-[#E2E6EC]
+                       rounded-lg flex items-center gap-2 hover:bg-cdl-navy-50 transition-colors"
+          >
+            ✕ Cancelar
+          </button>
+
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={salvando}
+            className="px-4 py-2 bg-cdl-navy-700 text-white rounded-lg flex items-center gap-2
+                       hover:bg-cdl-navy-800 font-medium transition-all active:scale-[.98]
+                       disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            💾 {salvando ? 'Salvando...' : 'Salvar Plano'}
+          </button>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* ============================================================
+            SEÇÃO 1: Informações do Plano
+            ============================================================ */}
+        <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+          <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-200 bg-cdl-navy-50">
+            <div className="w-1 h-6 bg-cdl-navy-700 rounded"></div>
+            <h2 className="text-lg font-semibold text-cdl-navy-700">
+              📋 Informações do Plano
+            </h2>
+          </div>
+
+          <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Nome do Plano */}
+              {/* Nome */}
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nome do Plano * <span className="text-red-500">*</span>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nome do Plano <span className="text-cdl-danger-500">*</span>
                 </label>
                 <input
                   type="text"
                   name="nome"
                   value={formData.nome}
                   onChange={handleChange}
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    erros.nome ? 'border-red-500' : 'border-gray-300'
+                  className={`${inputBase} ${
+                    erros.nome ? 'border-cdl-danger-500' : 'border-gray-300'
                   }`}
                   placeholder="Ex: PLANO 20 MIX 1/1"
                 />
                 {erros.nome && (
-                  <p className="mt-1 text-sm text-red-600">{erros.nome}</p>
+                  <p className="mt-1 text-xs text-cdl-danger-600">⚠️ {erros.nome}</p>
                 )}
               </div>
 
-              {/* Valor do Plano */}
+              {/* Valor */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Valor (R$) * <span className="text-red-500">*</span>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Valor <span className="text-cdl-danger-500">*</span>
                 </label>
-                <input
-                  type="number"
-                  name="valor"
-                  value={formData.valor}
-                  onChange={handleChange}
-                  step="0.01"
-                  min="0"
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    erros.valor ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                />
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-cdl-navy-700">
+                    R$
+                  </span>
+                  <input
+                    type="number"
+                    name="valor"
+                    value={formData.valor}
+                    onChange={handleChange}
+                    step="0.01"
+                    min="0"
+                    className={`${inputBase} pl-10 ${
+                      erros.valor ? 'border-cdl-danger-500' : 'border-gray-300'
+                    }`}
+                  />
+                </div>
+                {erros.valor && (
+                  <p className="mt-1 text-xs text-cdl-danger-600">⚠️ {erros.valor}</p>
+                )}
               </div>
 
               {/* Status */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Status
                 </label>
                 <select
                   name="status"
                   value={formData.status}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className={`${inputBase} border-gray-300 bg-white`}
                 >
                   <option value="ATIVO">Ativo</option>
                   <option value="INATIVO">Inativo</option>
@@ -440,14 +448,14 @@ const PlanoFormPage: React.FC = () => {
 
               {/* Tipo de Plano */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Tipo de Plano
                 </label>
                 <select
                   name="tipoPlano"
                   value={formData.tipoPlano}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className={`${inputBase} border-gray-300 bg-white`}
                 >
                   <option value="MENSAL">Mensal</option>
                   <option value="ANUAL">Anual</option>
@@ -458,7 +466,7 @@ const PlanoFormPage: React.FC = () => {
 
               {/* Dia do Faturamento */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Dia do Faturamento
                 </label>
                 <input
@@ -468,13 +476,13 @@ const PlanoFormPage: React.FC = () => {
                   onChange={handleChange}
                   min="1"
                   max="31"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className={`${inputBase} border-gray-300`}
                 />
               </div>
 
               {/* Quantidade Mínima */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Quantidade Mínima
                 </label>
                 <input
@@ -483,13 +491,13 @@ const PlanoFormPage: React.FC = () => {
                   value={formData.quantidadeMinima}
                   onChange={handleChange}
                   min="1"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className={`${inputBase} border-gray-300`}
                 />
               </div>
 
               {/* Quantidade Máxima */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Quantidade Máxima
                 </label>
                 <input
@@ -498,42 +506,42 @@ const PlanoFormPage: React.FC = () => {
                   value={formData.quantidadeMaxima}
                   onChange={handleChange}
                   min="1"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className={`${inputBase} border-gray-300`}
                 />
               </div>
 
               {/* Checkboxes */}
-              <div className="md:col-span-2 space-y-3">
-                <div className="flex items-center gap-3">
+              <div className="md:col-span-2 p-4 bg-cdl-navy-50/50 rounded-lg border border-cdl-navy-100 space-y-3">
+                <label className="flex items-center gap-3 cursor-pointer">
                   <input
                     type="checkbox"
                     name="permiteExcedente"
                     checked={formData.permiteExcedente}
                     onChange={handleChange}
-                    className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
+                    className="h-4 w-4 rounded text-cdl-navy-700 focus:ring-cdl-navy-600 border-gray-300"
                   />
-                  <label className="text-sm text-gray-700">
+                  <span className="text-sm text-gray-700 font-medium">
                     Permite excedente (cobrança adicional)
-                  </label>
-                </div>
+                  </span>
+                </label>
 
-                <div className="flex items-center gap-3">
+                <label className="flex items-center gap-3 cursor-pointer">
                   <input
                     type="checkbox"
                     name="faturamentoAntecipado"
                     checked={formData.faturamentoAntecipado}
                     onChange={handleChange}
-                    className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
+                    className="h-4 w-4 rounded text-cdl-navy-700 focus:ring-cdl-navy-600 border-gray-300"
                   />
-                  <label className="text-sm text-gray-700">
+                  <span className="text-sm text-gray-700 font-medium">
                     Faturamento antecipado
-                  </label>
-                </div>
+                  </span>
+                </label>
               </div>
 
               {/* Observação */}
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Observação
                 </label>
                 <textarea
@@ -541,56 +549,91 @@ const PlanoFormPage: React.FC = () => {
                   value={formData.observacao || ''}
                   onChange={handleChange}
                   rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className={`${inputBase} border-gray-300 resize-none`}
                   placeholder="Observações sobre o plano..."
                 />
               </div>
             </div>
           </div>
+        </div>
 
-          {/* 🔥 SEÇÃO 2: Associações Produto-Franquia */}
-          <div className="border border-gray-200 rounded-lg p-6">
-            <div className="flex items-center gap-2 mb-6">
-              <div className="w-1 h-6 bg-indigo-600 rounded"></div>
-              <h2 className="text-lg font-semibold text-gray-800">Produtos e Franquias do Plano</h2>
-              <span className="text-sm text-gray-500 ml-2">
-                (Associe produtos de consulta com suas respectivas franquias)
-              </span>
+        {/* ============================================================
+            SEÇÃO 2: Produtos e Franquias
+            ============================================================ */}
+        <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-6 py-4 border-b border-gray-200 bg-cdl-navy-50">
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-6 bg-cdl-navy-700 rounded"></div>
+              <h2 className="text-lg font-semibold text-cdl-navy-700">
+                🎯 Produtos e Franquias do Plano
+              </h2>
             </div>
+            <span className="text-sm text-gray-500">
+              Associe produtos de consulta com suas respectivas franquias
+            </span>
+          </div>
 
-            {/* Lista de Associações Existentes */}
+          <div className="p-6">
+            {/* Lista de associações existentes */}
             {associacoes.length > 0 && (
               <div className="mb-6">
-                <h3 className="text-sm font-medium text-gray-700 mb-3">Produtos inclusos no plano:</h3>
+                <h3 className="text-sm font-semibold text-cdl-navy-700 mb-3">
+                  Produtos inclusos no plano ({associacoes.length})
+                </h3>
                 <div className="space-y-3">
                   {associacoes.map((assoc) => (
-                    <div key={assoc.id} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                      <div className="flex justify-between items-start">
-                        <div className="space-y-3 flex-1">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-blue-50 p-3 rounded-lg">
-                              <p className="text-xs text-blue-600 mb-1">📋 Produto</p>
-                              <p className="font-medium text-gray-800">{assoc.produtoNome}</p>
-                              <p className="text-xs text-gray-500">Código: {assoc.produtoCodigo}</p>
+                    <div
+                      key={assoc.id}
+                      className="bg-cdl-neutral-50 border border-gray-200 rounded-lg p-4"
+                    >
+                      <div className="flex justify-between items-start gap-4">
+                        <div className="flex-1 space-y-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="bg-cdl-navy-50 p-3 rounded-lg border border-cdl-navy-100">
+                              <p className="text-xs text-cdl-navy-600 mb-1 uppercase tracking-wide font-semibold">
+                                📋 Produto
+                              </p>
+                              <p className="font-medium text-cdl-navy-800">
+                                {assoc.produtoNome}
+                              </p>
+                              <p className="text-xs text-gray-500 font-mono">
+                                Código: {assoc.produtoCodigo}
+                              </p>
                             </div>
-                            <div className="bg-purple-50 p-3 rounded-lg">
-                              <p className="text-xs text-purple-600 mb-1">📦 Franquia</p>
-                              <p className="font-medium text-gray-800">{assoc.franquiaNome}</p>
-                              <p className="text-xs text-gray-500">Código: {assoc.franquiaCodigo}</p>
+                            <div className="bg-cdl-green-50 p-3 rounded-lg border border-cdl-green-100">
+                              <p className="text-xs text-cdl-green-700 mb-1 uppercase tracking-wide font-semibold">
+                                📦 Franquia
+                              </p>
+                              <p className="font-medium text-gray-800">
+                                {assoc.franquiaNome}
+                              </p>
+                              <p className="text-xs text-gray-500 font-mono">
+                                Código: {assoc.franquiaCodigo}
+                              </p>
                             </div>
                           </div>
-                          <div className="grid grid-cols-3 gap-4 mt-2">
+                          <div className="grid grid-cols-3 gap-4">
                             <div>
-                              <p className="text-xs text-gray-500">Limite incluso</p>
-                              <p className="text-sm font-medium text-gray-900">{assoc.limiteFranquia} consultas</p>
+                              <p className="text-xs text-gray-500 uppercase tracking-wide">
+                                Limite incluso
+                              </p>
+                              <p className="text-sm font-medium text-gray-900">
+                                {assoc.limiteFranquia} consultas
+                              </p>
                             </div>
                             <div>
-                              <p className="text-xs text-gray-500">Período</p>
-                              <p className="text-sm font-medium text-gray-900">{assoc.periodoFranquia}</p>
+                              <p className="text-xs text-gray-500 uppercase tracking-wide">
+                                Período
+                              </p>
+                              <p className="text-sm font-medium text-gray-900">
+                                {assoc.periodoFranquia}
+                              </p>
                             </div>
-                            {assoc.valorExcedente && (
+                            {assoc.valorExcedente !== undefined && (
                               <div>
-                                <p className="text-xs text-gray-500">Valor Excedente</p>
+                                <p className="text-xs text-gray-500 uppercase tracking-wide">
+                                  Valor Excedente
+                                </p>
                                 <p className="text-sm font-medium text-gray-900">
                                   R$ {assoc.valorExcedente.toFixed(2)}
                                 </p>
@@ -600,13 +643,16 @@ const PlanoFormPage: React.FC = () => {
                         </div>
                         <button
                           type="button"
-                          onClick={() => handleRemoverAssociacao(assoc.id, parseInt(assoc.id.split('-')[1]))}
-                          className="ml-4 p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                          onClick={() =>
+                            handleRemoverAssociacao(
+                              assoc.id,
+                              parseInt(assoc.id.split('-')[1])
+                            )
+                          }
+                          className="p-1.5 text-cdl-danger-500 hover:text-cdl-danger-600 hover:bg-cdl-danger-50 rounded transition-colors"
                           title="Remover associação"
                         >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
+                          🗑️
                         </button>
                       </div>
                     </div>
@@ -615,41 +661,54 @@ const PlanoFormPage: React.FC = () => {
               </div>
             )}
 
-            {/* Formulário para Nova Associação */}
+            {/* Formulário nova associação */}
             <div className="border-t border-gray-200 pt-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-4">Adicionar produto ao plano:</h3>
-              
+              <h3 className="text-sm font-semibold text-cdl-navy-700 mb-4">
+                Adicionar produto ao plano
+              </h3>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Seleção do Produto */}
+                {/* Produto */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Produto *
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Produto <span className="text-cdl-danger-500">*</span>
                   </label>
                   {!novaAssociacao.produtoId ? (
                     <button
                       type="button"
                       onClick={() => setModalProdutoAberto(true)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-between text-left"
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-white
+                                 hover:bg-cdl-navy-50 flex items-center justify-between text-left
+                                 transition-colors focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600"
                     >
-                      <span className="text-gray-500">Clique para selecionar um produto...</span>
+                      <span className="text-gray-500 text-sm">
+                        Clique para selecionar um produto...
+                      </span>
                       <span className="text-gray-400">🔍</span>
                     </button>
                   ) : (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <div className="bg-cdl-navy-50 border border-cdl-navy-100 rounded-lg p-3">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="font-medium text-gray-800">{novaAssociacao.produtoNome}</p>
-                          <p className="text-xs text-gray-500">Código: {novaAssociacao.produtoCodigo}</p>
+                          <p className="font-medium text-cdl-navy-800">
+                            {novaAssociacao.produtoNome}
+                          </p>
+                          <p className="text-xs text-gray-500 font-mono">
+                            Código: {novaAssociacao.produtoCodigo}
+                          </p>
                         </div>
                         <button
                           type="button"
-                          onClick={() => setNovaAssociacao(prev => ({ 
-                            ...prev, 
-                            produtoId: undefined, 
-                            produtoNome: undefined,
-                            produtoCodigo: undefined
-                          }))}
-                          className="text-red-600 hover:text-red-800"
+                          onClick={() =>
+                            setNovaAssociacao((prev) => ({
+                              ...prev,
+                              produtoId: undefined,
+                              produtoNome: undefined,
+                              produtoCodigo: undefined,
+                            }))
+                          }
+                          className="text-cdl-danger-500 hover:text-cdl-danger-600 hover:bg-cdl-danger-50 p-1 rounded transition-colors"
+                          title="Remover seleção"
                         >
                           ✕
                         </button>
@@ -658,37 +717,48 @@ const PlanoFormPage: React.FC = () => {
                   )}
                 </div>
 
-                {/* Seleção da Franquia */}
+                {/* Franquia */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Franquia Associada *
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Franquia Associada <span className="text-cdl-danger-500">*</span>
                   </label>
                   {!novaAssociacao.franquiaId ? (
                     <button
                       type="button"
                       onClick={() => setModalFranquiaAberto(true)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-between text-left"
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-md bg-white
+                                 hover:bg-cdl-navy-50 flex items-center justify-between text-left
+                                 transition-colors focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600"
                     >
-                      <span className="text-gray-500">Clique para selecionar uma franquia...</span>
+                      <span className="text-gray-500 text-sm">
+                        Clique para selecionar uma franquia...
+                      </span>
                       <span className="text-gray-400">🔍</span>
                     </button>
                   ) : (
-                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                    <div className="bg-cdl-green-50 border border-cdl-green-100 rounded-lg p-3">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="font-medium text-gray-800">{novaAssociacao.franquiaNome}</p>
-                          <p className="text-xs text-gray-500">Código: {novaAssociacao.franquiaCodigo}</p>
+                          <p className="font-medium text-gray-800">
+                            {novaAssociacao.franquiaNome}
+                          </p>
+                          <p className="text-xs text-gray-500 font-mono">
+                            Código: {novaAssociacao.franquiaCodigo}
+                          </p>
                         </div>
                         <button
                           type="button"
-                          onClick={() => setNovaAssociacao(prev => ({ 
-                            ...prev, 
-                            franquiaId: undefined, 
-                            franquiaNome: undefined,
-                            franquiaCodigo: undefined,
-                            limiteFranquia: undefined
-                          }))}
-                          className="text-red-600 hover:text-red-800"
+                          onClick={() =>
+                            setNovaAssociacao((prev) => ({
+                              ...prev,
+                              franquiaId: undefined,
+                              franquiaNome: undefined,
+                              franquiaCodigo: undefined,
+                              limiteFranquia: undefined,
+                            }))
+                          }
+                          className="text-cdl-danger-500 hover:text-cdl-danger-600 hover:bg-cdl-danger-50 p-1 rounded transition-colors"
+                          title="Remover seleção"
                         >
                           ✕
                         </button>
@@ -697,33 +767,40 @@ const PlanoFormPage: React.FC = () => {
                   )}
                 </div>
 
-                {/* Limite da Franquia */}
+                {/* Limite */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Limite incluso no plano *
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Limite incluso no plano <span className="text-cdl-danger-500">*</span>
                   </label>
                   <input
                     type="number"
                     value={novaAssociacao.limiteFranquia || ''}
-                    onChange={(e) => setNovaAssociacao(prev => ({ 
-                      ...prev, 
-                      limiteFranquia: e.target.value ? parseInt(e.target.value) : undefined 
-                    }))}
+                    onChange={(e) =>
+                      setNovaAssociacao((prev) => ({
+                        ...prev,
+                        limiteFranquia: e.target.value ? parseInt(e.target.value) : undefined,
+                      }))
+                    }
                     min="1"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className={`${inputBase} border-gray-300`}
                     placeholder="Ex: 20"
                   />
                 </div>
 
                 {/* Período */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Período
                   </label>
                   <select
                     value={novaAssociacao.periodoFranquia}
-                    onChange={(e) => setNovaAssociacao(prev => ({ ...prev, periodoFranquia: e.target.value }))}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    onChange={(e) =>
+                      setNovaAssociacao((prev) => ({
+                        ...prev,
+                        periodoFranquia: e.target.value,
+                      }))
+                    }
+                    className={`${inputBase} border-gray-300 bg-white`}
                   >
                     <option value="MENSAL">Mensal</option>
                     <option value="BIMESTRAL">Bimestral</option>
@@ -735,64 +812,80 @@ const PlanoFormPage: React.FC = () => {
 
                 {/* Valor Excedente */}
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Valor por Consulta Excedente (R$)
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Valor por Consulta Excedente
                   </label>
-                  <input
-                    type="number"
-                    value={novaAssociacao.valorExcedente || ''}
-                    onChange={(e) => setNovaAssociacao(prev => ({ 
-                      ...prev, 
-                      valorExcedente: e.target.value ? parseFloat(e.target.value) : undefined 
-                    }))}
-                    step="0.01"
-                    min="0"
-                    className="w-full max-w-xs px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="0,00"
-                  />
-                  <p className="mt-1 text-sm text-gray-500">
+                  <div className="relative max-w-xs">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-cdl-navy-700">
+                      R$
+                    </span>
+                    <input
+                      type="number"
+                      value={novaAssociacao.valorExcedente || ''}
+                      onChange={(e) =>
+                        setNovaAssociacao((prev) => ({
+                          ...prev,
+                          valorExcedente: e.target.value
+                            ? parseFloat(e.target.value)
+                            : undefined,
+                        }))
+                      }
+                      step="0.01"
+                      min="0"
+                      className={`${inputBase} pl-10 border-gray-300`}
+                      placeholder="0,00"
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
                     Valor cobrado por consulta além do limite (deixe 0 se não permitir excedente)
                   </p>
                 </div>
               </div>
 
-              {/* Botão Adicionar */}
               <div className="mt-6 flex justify-end">
                 <button
                   type="button"
                   onClick={handleAdicionarAssociacao}
-                  disabled={!novaAssociacao.produtoId || !novaAssociacao.franquiaId || !novaAssociacao.limiteFranquia}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  disabled={
+                    !novaAssociacao.produtoId ||
+                    !novaAssociacao.franquiaId ||
+                    !novaAssociacao.limiteFranquia
+                  }
+                  className="px-4 py-2 bg-cdl-navy-700 text-white rounded-lg flex items-center gap-2
+                             hover:bg-cdl-navy-800 font-medium transition-all active:scale-[.98]
+                             disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <span>➕</span>
-                  Adicionar ao Plano
+                  ➕ Adicionar ao Plano
                 </button>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Botões de ação */}
-          <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={handleCancelar}
-              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center gap-2"
-            >
-              ✕ Cancelar
-            </button>
-            
-            <button
-              type="submit"
-              disabled={salvando}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-            >
-              💾 {salvando ? 'Salvando...' : 'Salvar Plano'}
-            </button>
-          </div>
-        </form>
-      </div>
+        {/* Rodapé - Botões de ação */}
+        <div className="bg-white rounded-lg shadow border border-gray-200 px-6 py-4 bg-cdl-neutral-50 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={handleCancelar}
+            className="px-4 py-2 bg-cdl-neutral-50 text-cdl-navy-700 border border-[#E2E6EC]
+                       rounded-lg flex items-center gap-2 hover:bg-cdl-navy-50 transition-colors"
+          >
+            ✕ Cancelar
+          </button>
 
-      {/* Modal de Seleção de Produto */}
+          <button
+            type="submit"
+            disabled={salvando}
+            className="px-4 py-2 bg-cdl-navy-700 text-white rounded-lg flex items-center gap-2
+                       hover:bg-cdl-navy-800 font-medium transition-all active:scale-[.98]
+                       disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            💾 {salvando ? 'Salvando...' : 'Salvar Plano'}
+          </button>
+        </div>
+      </form>
+
+      {/* Modais */}
       <ModalSelecaoProduto
         aberto={modalProdutoAberto}
         onFechar={() => setModalProdutoAberto(false)}
@@ -801,7 +894,6 @@ const PlanoFormPage: React.FC = () => {
         produtoSelecionadoId={novaAssociacao.produtoId}
       />
 
-      {/* Modal de Seleção de Franquia */}
       <ModalSelecaoFranquia
         aberto={modalFranquiaAberto}
         onFechar={() => setModalFranquiaAberto(false)}

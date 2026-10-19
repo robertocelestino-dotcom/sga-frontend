@@ -1,4 +1,4 @@
-// src/pages/faturamento/FaturaDetalhes.tsx - VERSÃO CDL
+// src/pages/faturamento/FaturaDetalhes.tsx - VERSÃO CDL (alinhada a Associados.tsx)
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMessage } from '../../providers/MessageProvider';
@@ -403,23 +403,25 @@ const FaturaDetalhes: React.FC = () => {
 
   if (!fatura) {
     return (
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="p-6">
         <BreadCrumb atual="Detalhes da Fatura" />
-        <div className="bg-white rounded-xl shadow-cdl p-12 mt-6">
-          <EmptyState
-            icon="📄"
-            title="Fatura não encontrada"
-            description="Não foi possível localizar esta fatura."
-            action={
-              <button
-                onClick={() => navigate('/faturamento/faturas')}
-                className="px-6 py-3 bg-cdl-navy-700 text-white rounded-lg font-medium
-                           hover:bg-cdl-navy-800 transition-all active:scale-[.98]"
-              >
-                ← Voltar para listagem
-              </button>
-            }
-          />
+        <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+          <div className="p-12">
+            <EmptyState
+              icon="📄"
+              title="Fatura não encontrada"
+              description="Não foi possível localizar esta fatura."
+              action={
+                <button
+                  onClick={() => navigate('/faturamento/faturas')}
+                  className="px-6 py-3 bg-cdl-navy-700 text-white rounded-lg font-medium
+                             hover:bg-cdl-navy-800 transition-all active:scale-[.98]"
+                >
+                  ← Voltar para listagem
+                </button>
+              }
+            />
+          </div>
         </div>
       </div>
     );
@@ -428,409 +430,446 @@ const FaturaDetalhes: React.FC = () => {
   const totalFatura = fatura.itens?.reduce((acc, item) => acc + (item.valorTotal || 0), 0) || 0;
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <BreadCrumb
-        items={[
-          { label: 'Faturamento', path: '/faturamento/faturas' },
-          { label: 'Faturas Geradas', path: '/faturamento/faturas' },
-          { label: `Fatura ${fatura.numeroFatura}` },
-        ]}
-      />
+    <div className="p-6">
+      <BreadCrumb atual={`Fatura ${fatura.numeroFatura}`} />
 
-      <div className="bg-white rounded-xl shadow-cdl p-6 mt-6">
-        {/* Cabeçalho */}
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6 pb-4 border-b border-gray-200">
-          <div>
-            <h1 className="text-2xl font-bold text-cdl-navy-700">Fatura {fatura.numeroFatura}</h1>
-            <p className="text-gray-500 mt-1">ID: <span className="font-mono text-cdl-navy-700">{fatura.id}</span></p>
-            {fatura.numeroRps && (
-              <p className="text-gray-500 mt-1">Nº RPS: <span className="font-mono text-cdl-navy-700">{fatura.numeroRps}</span></p>
-            )}
-          </div>
-          <span className={`inline-flex items-center gap-1 px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(fatura.status)}`}>
-            <span>{getStatusIcon(fatura.status)}</span>
-            <span>{getStatusText(fatura.status)}</span>
-          </span>
-        </div>
-
-        {/* Associado + Datas */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 pb-4 border-b border-gray-200">
-          <div>
-            <h3 className="text-sm font-medium text-cdl-navy-600 mb-2">Associado</h3>
-            <p className="text-lg font-semibold text-gray-900">{fatura.associadoNome}</p>
-            <p className="text-sm text-gray-600">{fatura.cnpjCpf}</p>
-            {fatura.codigoSpc && (
-              <p className="text-sm text-gray-500 mt-1">
-                Código SPC: <span className="font-mono text-cdl-navy-700">{fatura.codigoSpc}</span>
-              </p>
-            )}
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-cdl-navy-600 mb-2">Datas</h3>
-            <p><span className="text-gray-500">Emissão:</span> <span className="font-medium text-gray-900">{formatDate(fatura.dataEmissao)}</span></p>
-            <p><span className="text-gray-500">Vencimento:</span> <span className="font-medium text-gray-900">{formatDate(fatura.dataVencimento)}</span></p>
-            {fatura.mesReferencia && fatura.anoReferencia && (
-              <p className="text-gray-500 mt-1">
-                Competência: <span className="font-medium text-cdl-navy-700">{fatura.mesReferencia}/{fatura.anoReferencia}</span>
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Itens */}
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-cdl-navy-700 flex items-center gap-2">
-            <span>📋</span> Itens da Fatura
-          </h3>
-          {podeEditar && (
-            <span className="text-xs bg-cdl-yellow-100 text-cdl-yellow-700 px-2.5 py-1 rounded-full font-medium">
-              ✏️ Modo Edição
+      {/* ===== Cabeçalho ===== */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-cdl-navy-700 flex items-center gap-3 flex-wrap">
+            Fatura {fatura.numeroFatura}
+            <span className={`inline-flex items-center gap-1 px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(fatura.status)}`}>
+              <span>{getStatusIcon(fatura.status)}</span>
+              <span>{getStatusText(fatura.status)}</span>
             </span>
-          )}
+          </h1>
+          <p className="text-gray-600">
+            ID: <span className="font-mono text-cdl-navy-700">{fatura.id}</span>
+            {fatura.numeroRps && (
+              <> • Nº RPS: <span className="font-mono text-cdl-navy-700">{fatura.numeroRps}</span></>
+            )}
+          </p>
         </div>
 
-        <div className="overflow-x-auto border border-gray-200 rounded-lg">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-cdl-navy-50">
-              <tr>
-                {['Código','Descrição','Quantidade','Valor Unit.','Valor Total'].map((h, i) => (
-                  <th key={h} className={`px-4 py-3 text-xs font-semibold text-cdl-navy-700 uppercase ${
-                    i >= 2 ? 'text-right' : 'text-left'
-                  }`}>{h}</th>
-                ))}
-                {podeEditar && (
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-cdl-navy-700 uppercase">Ações</th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
-              {fatura.itens && fatura.itens.length > 0 ? (
-                fatura.itens.map((item) => {
-                  const itemId = getItemId(item);
-                  const isValid = isValidItemId(itemId);
-                  return (
-                    <tr key={itemId || Math.random()} className="hover:bg-cdl-navy-50/40 transition-colors">
-                      <td className="px-4 py-3">
-                        {itensEditando[itemId!] ? (
-                          <input
-                            type="text"
-                            value={item.codigoProduto}
-                            onChange={(e) => alterarItemEditando(item, 'codigoProduto', e.target.value)}
-                            className="w-full px-2 py-1 border border-cdl-navy-300 rounded text-sm
-                                       focus:outline-none focus:ring-2 focus:ring-cdl-navy-600"
-                            disabled={salvando}
-                          />
-                        ) : (
-                          <span className="text-sm font-mono text-cdl-navy-700">{item.codigoProduto || '-'}</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {itensEditando[itemId!] ? (
-                          <input
-                            type="text"
-                            value={item.descricao}
-                            onChange={(e) => alterarItemEditando(item, 'descricao', e.target.value)}
-                            className="w-full px-2 py-1 border border-cdl-navy-300 rounded text-sm
-                                       focus:outline-none focus:ring-2 focus:ring-cdl-navy-600"
-                            disabled={salvando}
-                          />
-                        ) : (
-                          <span className="text-sm text-gray-900">{item.descricao}</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        {itensEditando[itemId!] ? (
-                          <input
-                            type="number"
-                            value={item.quantidade}
-                            onChange={(e) => alterarItemEditando(item, 'quantidade', parseFloat(e.target.value) || 0)}
-                            className="w-20 text-right px-2 py-1 border border-cdl-navy-300 rounded text-sm
-                                       focus:outline-none focus:ring-2 focus:ring-cdl-navy-600"
-                            min="0"
-                            step="0.01"
-                            disabled={salvando}
-                          />
-                        ) : (
-                          <span className="text-sm text-gray-900">{item.quantidade}</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        {itensEditando[itemId!] ? (
-                          <input
-                            type="number"
-                            value={item.valorUnitario}
-                            onChange={(e) => alterarItemEditando(item, 'valorUnitario', parseFloat(e.target.value) || 0)}
-                            className="w-28 text-right px-2 py-1 border border-cdl-navy-300 rounded text-sm
-                                       focus:outline-none focus:ring-2 focus:ring-cdl-navy-600"
-                            min="0"
-                            step="0.01"
-                            disabled={salvando}
-                          />
-                        ) : (
-                          <span className="text-sm text-gray-900">{formatCurrency(item.valorUnitario)}</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right font-medium text-cdl-navy-700">
-                        {formatCurrency(item.valorTotal)}
-                      </td>
-                      {podeEditar && (
-                        <td className="px-4 py-3 text-center">
-                          {isValid ? (
-                            itensEditando[itemId!] ? (
-                              <div className="flex justify-center gap-1">
-                                <button
-                                  onClick={() => salvarEdicaoItem(item)}
-                                  disabled={salvando}
-                                  className="p-1.5 text-cdl-green-600 hover:text-cdl-green-700 hover:bg-cdl-green-50 rounded transition-colors"
-                                  title="Salvar"
-                                >💾</button>
-                                <button
-                                  onClick={() => cancelarEdicaoItem(item)}
-                                  disabled={salvando}
-                                  className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-cdl-neutral-50 rounded transition-colors"
-                                  title="Cancelar"
-                                >❌</button>
-                              </div>
-                            ) : (
-                              <div className="flex justify-center gap-1">
-                                <button
-                                  onClick={() => iniciarEdicaoItem(item)}
-                                  disabled={salvando}
-                                  className="p-1.5 text-cdl-navy-700 hover:text-cdl-navy-900 hover:bg-cdl-navy-50 rounded transition-colors"
-                                  title="Editar"
-                                >✏️</button>
-                                {podeRemoverItem && (
-                                  <button
-                                    onClick={() => removerItem(item)}
-                                    disabled={salvando}
-                                    className="p-1.5 text-cdl-danger-500 hover:text-cdl-danger-600 hover:bg-cdl-danger-50 rounded transition-colors"
-                                    title="Remover"
-                                  >🗑️</button>
-                                )}
-                              </div>
-                            )
-                          ) : (
-                            <span className="text-xs text-gray-400">ID inválido</span>
-                          )}
-                        </td>
-                      )}
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={podeEditar ? 6 : 5} className="px-4 py-8 text-center">
-                    <EmptyState
-                      icon="📋"
-                      title="Nenhum item na fatura"
-                      description="Adicione itens para compor o valor desta fatura."
-                      compact
-                    />
-                  </td>
-                </tr>
-              )}
-              <tr className="bg-cdl-yellow-50 font-bold">
-                <td colSpan={4} className="px-4 py-3 text-right text-cdl-navy-700">Total da Fatura:</td>
-                <td className="px-4 py-3 text-right text-cdl-navy-700 text-lg">{formatCurrency(totalFatura)}</td>
-                {podeEditar && <td />}
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        {/* Adicionar item */}
-        {podeEditar && (
-          <div className="mt-6 pt-5 border-t border-gray-200">
-            <h4 className="font-medium text-cdl-navy-700 mb-3 flex items-center gap-2">
-              <span>➕</span> Adicionar Novo Item
-            </h4>
-
-            <div className="relative">
-              <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
-                <div className="relative col-span-2">
-                  <input
-                    type="text"
-                    placeholder="Buscar produto..."
-                    value={buscaProdutos}
-                    onChange={(e) => setBuscaProdutos(e.target.value)}
-                    onFocus={() => { if (buscaProdutos.length >= 2) setMostrarDropdownProdutos(true); }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white
-                               focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                               focus:border-cdl-navy-600 transition-colors"
-                    disabled={salvando}
-                  />
-                  {carregandoProdutos && (
-                    <div className="absolute right-3 top-3">
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-cdl-navy-100 border-t-cdl-navy-700" />
-                    </div>
-                  )}
-
-                  {mostrarDropdownProdutos && produtosFiltrados.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg
-                                    shadow-cdl-lg max-h-48 overflow-y-auto">
-                      {produtosFiltrados.map((produto) => (
-                        <button
-                          key={produto.id}
-                          onClick={() => selecionarProduto(produto)}
-                          className="w-full text-left px-4 py-2 hover:bg-cdl-navy-50
-                                     border-b border-gray-100 last:border-b-0 flex justify-between items-center transition-colors"
-                        >
-                          <div>
-                            <div className="font-medium text-sm text-gray-900">{produto.descricao || produto.nome}</div>
-                            <div className="text-xs text-gray-500 mt-0.5">
-                              <span className="font-medium">Código RM:</span>{' '}
-                              <span className="font-mono text-cdl-navy-700 font-semibold">{produto.codigoRm}</span>
-                              {produto.codigo && produto.codigo !== produto.codigoRm && (
-                                <span className="ml-2 text-gray-400">(interno: {produto.codigo})</span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="text-sm font-semibold text-cdl-green-700">
-                            {formatCurrency(produto.valor || produto.valorUnitario || 0)}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {mostrarDropdownProdutos && buscaProdutos.length >= 2 && produtosFiltrados.length === 0 && !carregandoProdutos && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg
-                                    shadow-cdl-lg p-4 text-center text-gray-500 text-sm">
-                      Nenhum produto encontrado para "{buscaProdutos}"
-                    </div>
-                  )}
-                </div>
-
-                <input
-                  type="text"
-                  placeholder="Código RM"
-                  value={novoItem.codigoProduto}
-                  onChange={(e) => setNovoItem({ ...novoItem, codigoProduto: e.target.value })}
-                  className="px-3 py-2 border border-gray-300 rounded-lg font-mono bg-cdl-neutral-50
-                             focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                             focus:border-cdl-navy-600 transition-colors"
-                  disabled={salvando}
-                  title="Código RM do produto"
-                />
-                <input
-                  type="text"
-                  placeholder="Descrição"
-                  value={novoItem.descricao}
-                  onChange={(e) => setNovoItem({ ...novoItem, descricao: e.target.value })}
-                  className="px-3 py-2 border border-gray-300 rounded-lg bg-white
-                             focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                             focus:border-cdl-navy-600 transition-colors"
-                  disabled={salvando}
-                />
-                <input
-                  type="number"
-                  placeholder="Qtd"
-                  value={novoItem.quantidade}
-                  onChange={(e) => setNovoItem({ ...novoItem, quantidade: parseFloat(e.target.value) || 0 })}
-                  className="px-3 py-2 border border-gray-300 rounded-lg bg-white
-                             focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                             focus:border-cdl-navy-600 transition-colors"
-                  min="0"
-                  step="0.01"
-                  disabled={salvando}
-                />
-                <input
-                  type="number"
-                  placeholder="Valor Unit."
-                  value={novoItem.valorUnitario}
-                  onChange={(e) => setNovoItem({ ...novoItem, valorUnitario: parseFloat(e.target.value) || 0 })}
-                  className="px-3 py-2 border border-gray-300 rounded-lg bg-white
-                             focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                             focus:border-cdl-navy-600 transition-colors"
-                  min="0"
-                  step="0.01"
-                  disabled={salvando}
-                />
-                <button
-                  onClick={adicionarItem}
-                  disabled={salvando || !novoItem.codigoProduto || !novoItem.descricao || novoItem.valorUnitario <= 0}
-                  className="px-4 py-2 bg-cdl-navy-700 text-white rounded-lg hover:bg-cdl-navy-800
-                             disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center
-                             gap-2 font-medium transition-all active:scale-[.98]"
-                >
-                  {salvando ? (
-                    <span className="inline-block w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                  ) : '➕ Adicionar'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Observação */}
-        {fatura.observacao && (
-          <div className="mt-4 p-3 bg-cdl-navy-50 border border-cdl-navy-100 rounded-lg">
-            <p className="text-sm text-cdl-navy-700">
-              <span className="font-medium">Observação:</span> {fatura.observacao}
-            </p>
-          </div>
-        )}
-
-        {/* Botões */}
-        <div className="flex flex-wrap justify-end gap-3 mt-6 pt-5 border-t border-gray-200">
+        <div className="flex flex-wrap gap-3">
           <button
             onClick={() => navigate('/faturamento/faturas')}
-            className="px-4 py-2.5 border border-gray-300 text-cdl-navy-700 rounded-lg
-                       hover:bg-cdl-neutral-50 transition-colors font-medium"
+            className="px-4 py-2 bg-cdl-neutral-50 text-cdl-navy-700 border border-[#E2E6EC]
+                       rounded-lg flex items-center gap-2 hover:bg-cdl-navy-50 transition-colors"
           >
             ❌ Fechar
           </button>
-
-          {podeVerLogs && (
-            <button
-              onClick={() => setModalLogsAberta(true)}
-              className="px-4 py-2.5 bg-cdl-navy-700 text-white rounded-lg hover:bg-cdl-navy-800
-                         transition-all active:scale-[.98] flex items-center gap-2 font-medium"
-            >
-              <span>📝</span> Ver Logs
-            </button>
-          )}
-
           {podeEditar && (
             <button
               onClick={handleSalvarEFechar}
               disabled={salvando}
-              className="px-4 py-2.5 bg-cdl-green-500 text-white rounded-lg hover:bg-cdl-green-600
-                         disabled:bg-gray-400 disabled:cursor-not-allowed transition-all
-                         active:scale-[.98] flex items-center gap-2 font-medium"
+              className="px-4 py-2 bg-cdl-navy-700 text-white rounded-lg flex items-center gap-2
+                         hover:bg-cdl-navy-800 font-medium transition-all active:scale-[.98]
+                         disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {salvando ? (
                 <span className="inline-block w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
               ) : '💾 Salvar e Fechar'}
             </button>
           )}
+        </div>
+      </div>
 
-          {podeExportarPdf && (
-            <button
-              onClick={async () => {
-                try {
-                  showToast('Gerando PDF, aguarde...', 'info');
-                  const blob = await faturamentoService.exportarPdf(fatura.id);
-                  const url = window.URL.createObjectURL(blob);
-                  const link = document.createElement('a');
-                  link.href = url;
-                  link.setAttribute('download', `fatura_${fatura.numeroFatura}.pdf`);
-                  document.body.appendChild(link);
-                  link.click();
-                  link.remove();
-                  window.URL.revokeObjectURL(url);
-                  showToast('PDF exportado com sucesso!', 'success');
-                } catch (error: any) {
-                  console.error('Erro ao exportar PDF:', error);
-                  showToast(error.response?.data?.message || 'Erro ao exportar PDF', 'error');
-                }
-              }}
-              className="px-4 py-2.5 bg-cdl-navy-700 text-white rounded-lg hover:bg-cdl-navy-800
-                         transition-all active:scale-[.98] flex items-center gap-2 font-medium"
-            >
-              📄 Exportar PDF
-            </button>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* ===== Coluna Principal ===== */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Card Dados do Associado + Datas */}
+          <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 bg-cdl-navy-50 flex items-center gap-2">
+              <div className="w-1 h-6 bg-cdl-navy-700 rounded"></div>
+              <h3 className="text-lg font-semibold text-cdl-navy-700">📋 Informações da Fatura</h3>
+            </div>
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="text-sm font-semibold text-cdl-navy-700 mb-3">Associado</h4>
+                  <p className="text-lg font-semibold text-gray-900">{fatura.associadoNome}</p>
+                  <p className="text-sm text-gray-600">{fatura.cnpjCpf}</p>
+                  {fatura.codigoSpc && (
+                    <p className="text-sm text-gray-500 mt-1">
+                      Código SPC: <span className="font-mono text-cdl-navy-700">{fatura.codigoSpc}</span>
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-cdl-navy-700 mb-3">Datas</h4>
+                  <p className="text-sm"><span className="text-gray-500">Emissão:</span> <span className="font-medium text-gray-900">{formatDate(fatura.dataEmissao)}</span></p>
+                  <p className="text-sm"><span className="text-gray-500">Vencimento:</span> <span className="font-medium text-gray-900">{formatDate(fatura.dataVencimento)}</span></p>
+                  {fatura.mesReferencia && fatura.anoReferencia && (
+                    <p className="text-sm text-gray-500 mt-1">
+                      Competência: <span className="font-medium text-cdl-navy-700">{fatura.mesReferencia}/{fatura.anoReferencia}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Card Itens */}
+          <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 bg-cdl-navy-50 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-6 bg-cdl-navy-700 rounded"></div>
+                <h3 className="text-lg font-semibold text-cdl-navy-700">📋 Itens da Fatura</h3>
+              </div>
+              {podeEditar && (
+                <span className="text-xs bg-cdl-yellow-100 text-cdl-yellow-700 px-2.5 py-1 rounded-full font-medium">
+                  ✏️ Modo Edição
+                </span>
+              )}
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-cdl-navy-50">
+                  <tr>
+                    {['Código','Descrição','Quantidade','Valor Unit.','Valor Total'].map((h, i) => (
+                      <th key={h} className={`px-6 py-3 text-xs font-semibold text-cdl-navy-700 uppercase tracking-wider ${
+                        i >= 2 ? 'text-right' : 'text-left'
+                      }`}>{h}</th>
+                    ))}
+                    {podeEditar && (
+                      <th className="px-6 py-3 text-center text-xs font-semibold text-cdl-navy-700 uppercase tracking-wider">Ações</th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {fatura.itens && fatura.itens.length > 0 ? (
+                    fatura.itens.map((item) => {
+                      const itemId = getItemId(item);
+                      const isValid = isValidItemId(itemId);
+                      return (
+                        <tr key={itemId || Math.random()} className="hover:bg-cdl-navy-50/40 transition-colors">
+                          <td className="px-6 py-4">
+                            {itensEditando[itemId!] ? (
+                              <input
+                                type="text"
+                                value={item.codigoProduto}
+                                onChange={(e) => alterarItemEditando(item, 'codigoProduto', e.target.value)}
+                                className="w-full px-2 py-1 border border-cdl-navy-300 rounded text-sm
+                                           focus:ring-2 focus:ring-cdl-navy-600"
+                                disabled={salvando}
+                              />
+                            ) : (
+                              <span className="text-sm font-mono text-cdl-navy-700">{item.codigoProduto || '-'}</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4">
+                            {itensEditando[itemId!] ? (
+                              <input
+                                type="text"
+                                value={item.descricao}
+                                onChange={(e) => alterarItemEditando(item, 'descricao', e.target.value)}
+                                className="w-full px-2 py-1 border border-cdl-navy-300 rounded text-sm
+                                           focus:ring-2 focus:ring-cdl-navy-600"
+                                disabled={salvando}
+                              />
+                            ) : (
+                              <span className="text-sm text-gray-900">{item.descricao}</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            {itensEditando[itemId!] ? (
+                              <input
+                                type="number"
+                                value={item.quantidade}
+                                onChange={(e) => alterarItemEditando(item, 'quantidade', parseFloat(e.target.value) || 0)}
+                                className="w-20 text-right px-2 py-1 border border-cdl-navy-300 rounded text-sm
+                                           focus:ring-2 focus:ring-cdl-navy-600"
+                                min="0"
+                                step="0.01"
+                                disabled={salvando}
+                              />
+                            ) : (
+                              <span className="text-sm text-gray-900">{item.quantidade}</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            {itensEditando[itemId!] ? (
+                              <input
+                                type="number"
+                                value={item.valorUnitario}
+                                onChange={(e) => alterarItemEditando(item, 'valorUnitario', parseFloat(e.target.value) || 0)}
+                                className="w-28 text-right px-2 py-1 border border-cdl-navy-300 rounded text-sm
+                                           focus:ring-2 focus:ring-cdl-navy-600"
+                                min="0"
+                                step="0.01"
+                                disabled={salvando}
+                              />
+                            ) : (
+                              <span className="text-sm text-gray-900">{formatCurrency(item.valorUnitario)}</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-right font-medium text-cdl-navy-700">
+                            {formatCurrency(item.valorTotal)}
+                          </td>
+                          {podeEditar && (
+                            <td className="px-6 py-4 text-center">
+                              {isValid ? (
+                                itensEditando[itemId!] ? (
+                                  <div className="flex justify-center gap-1">
+                                    <button
+                                      onClick={() => salvarEdicaoItem(item)}
+                                      disabled={salvando}
+                                      className="p-1 text-cdl-green-600 hover:text-cdl-green-700 hover:bg-cdl-green-50 rounded transition-colors"
+                                      title="Salvar"
+                                    >💾</button>
+                                    <button
+                                      onClick={() => cancelarEdicaoItem(item)}
+                                      disabled={salvando}
+                                      className="p-1 text-gray-400 hover:text-gray-600 hover:bg-cdl-neutral-50 rounded transition-colors"
+                                      title="Cancelar"
+                                    >❌</button>
+                                  </div>
+                                ) : (
+                                  <div className="flex justify-center gap-1">
+                                    <button
+                                      onClick={() => iniciarEdicaoItem(item)}
+                                      disabled={salvando}
+                                      className="p-1 text-cdl-navy-700 hover:text-cdl-navy-900 hover:bg-cdl-navy-50 rounded transition-colors"
+                                      title="Editar"
+                                    >✏️</button>
+                                    {podeRemoverItem && (
+                                      <button
+                                        onClick={() => removerItem(item)}
+                                        disabled={salvando}
+                                        className="p-1 text-cdl-danger-500 hover:text-cdl-danger-600 hover:bg-cdl-danger-50 rounded transition-colors"
+                                        title="Remover"
+                                      >🗑️</button>
+                                    )}
+                                  </div>
+                                )
+                              ) : (
+                                <span className="text-xs text-gray-400">ID inválido</span>
+                              )}
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={podeEditar ? 6 : 5} className="px-6 py-8 text-center">
+                        <EmptyState
+                          icon="📋"
+                          title="Nenhum item na fatura"
+                          description="Adicione itens para compor o valor desta fatura."
+                          compact
+                        />
+                      </td>
+                    </tr>
+                  )}
+                  <tr className="bg-cdl-yellow-50 font-bold">
+                    <td colSpan={4} className="px-6 py-3 text-right text-cdl-navy-700">Total da Fatura:</td>
+                    <td className="px-6 py-3 text-right text-cdl-navy-700 text-lg">{formatCurrency(totalFatura)}</td>
+                    {podeEditar && <td />}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Adicionar item */}
+            {podeEditar && (
+              <div className="p-6 border-t border-gray-200 bg-cdl-neutral-50/40">
+                <h4 className="font-medium text-cdl-navy-700 mb-3 flex items-center gap-2">
+                  <span>➕</span> Adicionar Novo Item
+                </h4>
+
+                <div className="relative">
+                  <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+                    <div className="relative col-span-2">
+                      <input
+                        type="text"
+                        placeholder="Buscar produto..."
+                        value={buscaProdutos}
+                        onChange={(e) => setBuscaProdutos(e.target.value)}
+                        onFocus={() => { if (buscaProdutos.length >= 2) setMostrarDropdownProdutos(true); }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white
+                                   focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600 transition-colors"
+                        disabled={salvando}
+                      />
+                      {carregandoProdutos && (
+                        <div className="absolute right-3 top-3">
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-cdl-navy-100 border-t-cdl-navy-700" />
+                        </div>
+                      )}
+
+                      {mostrarDropdownProdutos && produtosFiltrados.length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg
+                                        shadow-cdl max-h-48 overflow-y-auto">
+                          {produtosFiltrados.map((produto) => (
+                            <button
+                              key={produto.id}
+                              onClick={() => selecionarProduto(produto)}
+                              className="w-full text-left px-4 py-2 hover:bg-cdl-navy-50
+                                         border-b border-gray-100 last:border-b-0 flex justify-between items-center transition-colors"
+                            >
+                              <div>
+                                <div className="font-medium text-sm text-gray-900">{produto.descricao || produto.nome}</div>
+                                <div className="text-xs text-gray-500 mt-0.5">
+                                  <span className="font-medium">Código RM:</span>{' '}
+                                  <span className="font-mono text-cdl-navy-700 font-semibold">{produto.codigoRm}</span>
+                                  {produto.codigo && produto.codigo !== produto.codigoRm && (
+                                    <span className="ml-2 text-gray-400">(interno: {produto.codigo})</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-sm font-semibold text-cdl-green-700">
+                                {formatCurrency(produto.valor || produto.valorUnitario || 0)}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {mostrarDropdownProdutos && buscaProdutos.length >= 2 && produtosFiltrados.length === 0 && !carregandoProdutos && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg
+                                        shadow-cdl p-4 text-center text-gray-500 text-sm">
+                          Nenhum produto encontrado para "{buscaProdutos}"
+                        </div>
+                      )}
+                    </div>
+
+                    <input
+                      type="text"
+                      placeholder="Código RM"
+                      value={novoItem.codigoProduto}
+                      onChange={(e) => setNovoItem({ ...novoItem, codigoProduto: e.target.value })}
+                      className="px-3 py-2 border border-gray-300 rounded-md font-mono bg-cdl-neutral-50
+                                 focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600 transition-colors"
+                      disabled={salvando}
+                      title="Código RM do produto"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Descrição"
+                      value={novoItem.descricao}
+                      onChange={(e) => setNovoItem({ ...novoItem, descricao: e.target.value })}
+                      className="px-3 py-2 border border-gray-300 rounded-md bg-white
+                                 focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600 transition-colors"
+                      disabled={salvando}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Qtd"
+                      value={novoItem.quantidade}
+                      onChange={(e) => setNovoItem({ ...novoItem, quantidade: parseFloat(e.target.value) || 0 })}
+                      className="px-3 py-2 border border-gray-300 rounded-md bg-white
+                                 focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600 transition-colors"
+                      min="0"
+                      step="0.01"
+                      disabled={salvando}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Valor Unit."
+                      value={novoItem.valorUnitario}
+                      onChange={(e) => setNovoItem({ ...novoItem, valorUnitario: parseFloat(e.target.value) || 0 })}
+                      className="px-3 py-2 border border-gray-300 rounded-md bg-white
+                                 focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600 transition-colors"
+                      min="0"
+                      step="0.01"
+                      disabled={salvando}
+                    />
+                    <button
+                      onClick={adicionarItem}
+                      disabled={salvando || !novoItem.codigoProduto || !novoItem.descricao || novoItem.valorUnitario <= 0}
+                      className="px-4 py-2 bg-cdl-navy-700 text-white rounded-lg hover:bg-cdl-navy-800
+                                 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center
+                                 gap-2 font-medium transition-all active:scale-[.98]"
+                    >
+                      {salvando ? (
+                        <span className="inline-block w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                      ) : '➕ Adicionar'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Observação */}
+          {fatura.observacao && (
+            <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+              <div className="p-6">
+                <div className="p-3 bg-cdl-navy-50 border border-cdl-navy-100 rounded-lg">
+                  <p className="text-sm text-cdl-navy-700">
+                    <span className="font-medium">Observação:</span> {fatura.observacao}
+                  </p>
+                </div>
+              </div>
+            </div>
           )}
+        </div>
+
+        {/* ===== Sidebar ===== */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 bg-cdl-navy-50 flex items-center gap-2">
+              <div className="w-1 h-6 bg-cdl-navy-700 rounded"></div>
+              <h3 className="text-lg font-semibold text-cdl-navy-700">💰 Resumo</h3>
+            </div>
+            <div className="p-6">
+              <div className="text-center p-4 bg-cdl-navy-50 border border-cdl-navy-100 rounded-lg mb-3">
+                <div className="text-2xl font-bold text-cdl-navy-700">{formatCurrency(totalFatura)}</div>
+                <div className="text-sm text-cdl-navy-600">Total da Fatura</div>
+              </div>
+              <div className="text-center p-3 bg-cdl-neutral-50 border border-cdl-neutral-100 rounded-lg">
+                <div className="text-lg font-bold text-gray-700">{fatura.itens?.length || 0}</div>
+                <div className="text-xs text-gray-500">Itens</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 bg-cdl-navy-50 flex items-center gap-2">
+              <div className="w-1 h-6 bg-cdl-navy-700 rounded"></div>
+              <h3 className="text-lg font-semibold text-cdl-navy-700">🎯 Ações</h3>
+            </div>
+            <div className="p-4 space-y-2">
+              {podeVerLogs && (
+                <button
+                  onClick={() => setModalLogsAberta(true)}
+                  className="w-full px-4 py-2 bg-cdl-navy-700 text-white rounded-lg hover:bg-cdl-navy-800
+                             transition-all active:scale-[.98] flex items-center justify-center gap-2 font-medium"
+                >
+                  📝 Ver Logs
+                </button>
+              )}
+
+              {podeExportarPdf && (
+                <button
+                  onClick={async () => {
+                    try {
+                      showToast('Gerando PDF, aguarde...', 'info');
+                      const blob = await faturamentoService.exportarPdf(fatura.id);
+                      const url = window.URL.createObjectURL(blob);
+                      const link = document.createElement('a');
+                      link.href = url;
+                      link.setAttribute('download', `fatura_${fatura.numeroFatura}.pdf`);
+                      document.body.appendChild(link);
+                      link.click();
+                      link.remove();
+                      window.URL.revokeObjectURL(url);
+                      showToast('PDF exportado com sucesso!', 'success');
+                    } catch (error: any) {
+                      console.error('Erro ao exportar PDF:', error);
+                      showToast(error.response?.data?.message || 'Erro ao exportar PDF', 'error');
+                    }
+                  }}
+                  className="w-full px-4 py-2 bg-cdl-navy-700 text-white rounded-lg hover:bg-cdl-navy-800
+                             transition-all active:scale-[.98] flex items-center justify-center gap-2 font-medium"
+                >
+                  📄 Exportar PDF
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

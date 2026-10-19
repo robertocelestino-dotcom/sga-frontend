@@ -1,4 +1,4 @@
-// src/pages/ProcessarFaturamento.tsx - VERSÃO CDL
+// src/pages/ProcessarFaturamento.tsx - VERSÃO CDL (alinhada a Associados.tsx)
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import api from '../services/api';
 import { useMessage } from '../providers/MessageProvider';
@@ -140,7 +140,6 @@ const ProcessarFaturamento: React.FC = () => {
     try {
       const total = associadosIds.length;
 
-      // Em lotes se > 500
       if (total > 500) {
         showToast(`📊 Processando ${total} associados em lotes de ${BATCH_SIZE}...`, 'info');
 
@@ -229,7 +228,6 @@ const ProcessarFaturamento: React.FC = () => {
         return;
       }
 
-      // Normal
       const payload = {
         associadosIds,
         mesReferencia: config.mesReferencia,
@@ -507,57 +505,77 @@ const ProcessarFaturamento: React.FC = () => {
      RENDER
      ============================================================ */
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6">
       <BreadCrumb atual="Processar Faturamento" />
 
-      <div className="bg-white rounded-xl shadow-cdl p-6 mt-6">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-cdl-navy-700 mb-2">
-            Processar Faturamento
-          </h1>
+      {/* ===== Cabeçalho ===== */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-cdl-navy-700">Processar Faturamento</h1>
           <p className="text-gray-600">
             Selecione uma régua de faturamento e os associados que deseja processar.
             O sistema aplicará as regras de franquia e faturamento mínimo.
           </p>
         </div>
 
-        {/* Botão principal */}
-        <div className="flex justify-center">
+        <div className="flex flex-wrap gap-3">
           <button
             onClick={() => setModalSelecaoAberta(true)}
             disabled={processando}
-            className="bg-cdl-navy-700 hover:bg-cdl-navy-800 text-white font-semibold
-                       py-4 px-8 rounded-xl shadow-cdl transition-all active:scale-[.98]
-                       flex items-center gap-3 text-lg disabled:bg-gray-400
-                       disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-cdl-navy-700 text-white rounded-lg flex items-center gap-2
+                       hover:bg-cdl-navy-800 font-medium transition-all active:scale-[.98]
+                       disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <span className="text-2xl">🚀</span>
-            Iniciar Processamento de Faturamento
+            🚀 Iniciar Processamento
           </button>
         </div>
+      </div>
 
-        {/* Info */}
-        <div className="mt-8 p-5 bg-cdl-navy-50 border border-cdl-navy-100 rounded-lg">
-          <h3 className="font-semibold text-cdl-navy-700 mb-3 flex items-center gap-2">
-            <span>ℹ️</span> Sobre o Processamento
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
-            <ul className="space-y-1.5 list-disc list-inside marker:text-cdl-navy-600">
-              <li>O processamento considera o faturamento mínimo configurado para cada associado</li>
-              <li>A regra de franquia calcula o consumo vs franquia contratada</li>
-              <li>Cancelamentos no período são automaticamente excluídos</li>
-            </ul>
-            <ul className="space-y-1.5 list-disc list-inside marker:text-cdl-navy-600">
-              <li>As notas de débito são geradas com base no valor excedente</li>
-              <li>É possível simular o processo antes de efetivar</li>
-              <li>As réguas definem o dia de emissão e vencimento das faturas</li>
-            </ul>
+      {/* ===== Card Principal ===== */}
+      <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200 bg-cdl-navy-50 flex items-center gap-2">
+          <div className="w-1 h-6 bg-cdl-navy-700 rounded"></div>
+          <h2 className="text-lg font-semibold text-cdl-navy-700">Configuração do Processamento</h2>
+        </div>
+
+        <div className="p-6">
+          {/* Área de ação principal */}
+          <div className="flex justify-center py-8">
+            <button
+              onClick={() => setModalSelecaoAberta(true)}
+              disabled={processando}
+              className="bg-cdl-navy-700 hover:bg-cdl-navy-800 text-white font-semibold
+                         py-4 px-8 rounded-xl shadow-cdl transition-all active:scale-[.98]
+                         flex items-center gap-3 text-lg disabled:bg-gray-400
+                         disabled:cursor-not-allowed"
+            >
+              <span className="text-2xl">🚀</span>
+              Iniciar Processamento de Faturamento
+            </button>
+          </div>
+
+          {/* Info */}
+          <div className="p-5 bg-cdl-navy-50 border border-cdl-navy-100 rounded-lg">
+            <h3 className="font-semibold text-cdl-navy-700 mb-3 flex items-center gap-2">
+              <span>ℹ️</span> Sobre o Processamento
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
+              <ul className="space-y-1.5 list-disc list-inside marker:text-cdl-navy-600">
+                <li>O processamento considera o faturamento mínimo configurado para cada associado</li>
+                <li>A regra de franquia calcula o consumo vs franquia contratada</li>
+                <li>Cancelamentos no período são automaticamente excluídos</li>
+              </ul>
+              <ul className="space-y-1.5 list-disc list-inside marker:text-cdl-navy-600">
+                <li>As notas de débito são geradas com base no valor excedente</li>
+                <li>É possível simular o processo antes de efetivar</li>
+                <li>As réguas definem o dia de emissão e vencimento das faturas</li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Modais */}
+      {/* ===== Modais ===== */}
       <ModalSelecaoAssociados
         isOpen={modalSelecaoAberta}
         onClose={() => setModalSelecaoAberta(false)}
@@ -580,12 +598,11 @@ const ProcessarFaturamento: React.FC = () => {
         resultado={resultado}
       />
 
-      {/* Loading global */}
+      {/* ===== Loading global ===== */}
       {processando && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-[2px] flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-8 text-center max-w-lg w-full
-                          shadow-[0_20px_60px_-15px_rgba(0,0,0,.35)]
-                          border-t-4 border-cdl-navy-700">
+        <div className="fixed inset-0 bg-cdl-navy-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-8 text-center max-w-lg w-full
+                          shadow-cdl border-t-4 border-cdl-navy-700">
             <Loading />
             <p className="mt-4 text-cdl-navy-700 font-semibold">
               {modoExecucao === 'simular'

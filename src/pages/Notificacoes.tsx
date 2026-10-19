@@ -1,4 +1,4 @@
-// src/pages/Notificacoes.tsx - VERSÃO CDL
+// src/pages/Notificacoes.tsx - VERSÃO CDL (alinhada a Associados.tsx)
 import React, { useState, useEffect, useRef } from 'react';
 import { useMessage } from '../providers/MessageProvider';
 import BreadCrumb from '../components/BreadCrumb';
@@ -176,18 +176,18 @@ const Notificacoes: React.FC = () => {
       setTotalPaginas(Math.ceil(data.length / itensPorPagina));
 
       if (data.length === 0) {
-        showToast('ℹ️ Nenhuma notificação encontrada no MS-SQL', 'info');
+        showToast('ℹ️ Nenhuma notificação encontrada', 'info');
       } else {
-        showToast(`✅ ${data.length} registros encontrados no MS-SQL`, 'success');
+        showToast(`✅ ${data.length} registros encontrados`, 'success');
       }
     } catch (error: any) {
       if (error.name === 'CanceledError' || error.message === 'canceled') return;
-      console.error('❌ Erro ao carregar do MS-SQL:', error);
+      console.error('❌ Erro ao carregar notificações:', error);
       setErroConexao(true);
       setDadosMSSQL([]);
       setNotificacoesAgrupadas([]);
       setTemDados(false);
-      showToast('⚠️ Erro ao carregar dados do MS-SQL', 'error');
+      showToast('⚠️ Erro ao carregar notificações', 'error');
     } finally {
       setCarregandoMSSQL(false);
       abortControllerRef.current = null;
@@ -504,7 +504,7 @@ const Notificacoes: React.FC = () => {
      RENDER
      ============================================================ */
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6">
       <BreadCrumb atual="Notificações" />
 
       <ConfirmModal
@@ -518,63 +518,59 @@ const Notificacoes: React.FC = () => {
         type={confirmModal.type}
       />
 
-      <div className="bg-white rounded-xl shadow-cdl p-6 mt-6">
-        {/* ==================== HEADER ==================== */}
-        <div className="mb-6 flex flex-wrap justify-between items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-cdl-navy-700 mb-2 flex items-center gap-2">
-              <span>📬</span> Notificações
-            </h1>
-            <p className="text-gray-600">
-              Visualize as notificações enviadas (SMS/E-mails/Cartas) por associado
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={openConfirmSincronizar}
-              disabled={sincronizarDesabilitado}
-              className={`px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium
-                          transition-all active:scale-[.98] ${
-                sincronizarDesabilitado
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-cdl-navy-700 text-white hover:bg-cdl-navy-800'
-              }`}
-              title={podeSincronizar ? 'Salvar dados na tabela local' : 'Sem permissão para sincronizar'}
-            >
-              {sincronizando ? (
-                <>
-                  <span className="inline-block w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                  Salvando...
-                </>
-              ) : (
-                <>
-                  <span>💾</span> Sincronizar
-                </>
-              )}
-            </button>
-
-            <button
-              onClick={() => {
-                setHistoricoAberto(!historicoAberto);
-                if (!historicoAberto) carregarHistorico();
-              }}
-              className="px-4 py-2.5 bg-cdl-navy-700 text-white rounded-lg hover:bg-cdl-navy-800
-                         transition-all active:scale-[.98] flex items-center gap-2 font-medium"
-            >
-              <span>📋</span>
-              {historicoAberto ? 'Ocultar Histórico' : 'Histórico'}
-            </button>
-          </div>
+      {/* ===== Cabeçalho ===== */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-cdl-navy-700">Notificações</h1>
+          <p className="text-gray-600">
+            Visualize as notificações enviadas (SMS/E-mails/Cartas) por associado
+          </p>
         </div>
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={openConfirmSincronizar}
+            disabled={sincronizarDesabilitado}
+            className={`px-4 py-2 rounded-lg flex items-center gap-2 font-medium
+                        transition-all active:scale-[.98] ${
+              sincronizarDesabilitado
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-cdl-navy-700 text-white hover:bg-cdl-navy-800'
+            }`}
+            title={podeSincronizar ? 'Salvar dados na tabela local' : 'Sem permissão para sincronizar'}
+          >
+            {sincronizando ? (
+              <>
+                <span className="inline-block w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              <>💾 Sincronizar</>
+            )}
+          </button>
 
+          <button
+            onClick={() => {
+              setHistoricoAberto(!historicoAberto);
+              if (!historicoAberto) carregarHistorico();
+            }}
+            className="px-4 py-2 bg-cdl-navy-50 text-cdl-navy-700 border border-cdl-navy-100
+                       rounded-lg hover:bg-cdl-navy-100 transition-colors flex items-center gap-2 font-medium"
+          >
+            📋 {historicoAberto ? 'Ocultar Histórico' : 'Histórico'}
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
         {/* ==================== HISTÓRICO ==================== */}
         {historicoAberto && (
-          <div className="mb-6 border border-gray-200 rounded-lg overflow-hidden">
-            <div className="bg-cdl-navy-50 px-4 py-3 border-b border-cdl-navy-100 flex justify-between items-center">
-              <h2 className="text-sm font-semibold text-cdl-navy-700 flex items-center gap-2">
-                <span>📋</span> Histórico de Sincronizações
-              </h2>
-              <span className="text-xs text-cdl-navy-600 bg-white px-2 py-0.5 rounded-full font-medium">
+          <div className="border-b border-gray-200">
+            <div className="px-6 py-4 bg-cdl-navy-50 border-b border-gray-200 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-6 bg-cdl-navy-700 rounded"></div>
+                <h2 className="text-lg font-semibold text-cdl-navy-700">📋 Histórico de Sincronizações</h2>
+              </div>
+              <span className="text-sm text-cdl-navy-600 bg-white px-2.5 py-1 rounded-full font-medium border border-cdl-navy-100">
                 {historicoTotal} registro(s)
               </span>
             </div>
@@ -610,7 +606,7 @@ const Notificacoes: React.FC = () => {
                         ].map((h, i) => (
                           <th
                             key={i}
-                            className={`px-3 py-2 text-xs font-semibold text-cdl-navy-700 uppercase tracking-wider ${
+                            className={`px-6 py-3 text-xs font-semibold text-cdl-navy-700 uppercase tracking-wider ${
                               h.align === 'center' ? 'text-center' : 'text-left'
                             }`}
                           >
@@ -619,24 +615,24 @@ const Notificacoes: React.FC = () => {
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200 bg-white">
+                    <tbody className="bg-white divide-y divide-gray-200">
                       {historico.map((sinc) => (
                         <tr key={sinc.id} className="hover:bg-cdl-navy-50/40 transition-colors text-sm">
-                          <td className="px-3 py-2 font-mono text-cdl-navy-700">{sinc.id}</td>
-                          <td className="px-3 py-2 text-gray-600 whitespace-nowrap">
+                          <td className="px-6 py-4 font-mono text-cdl-navy-700">{sinc.id}</td>
+                          <td className="px-6 py-4 text-gray-600 whitespace-nowrap">
                             {formatarDataExibicao(sinc.dataInicio)} à {formatarDataExibicao(sinc.dataFim)}
                           </td>
-                          <td className="px-3 py-2 font-mono text-cdl-navy-700">
+                          <td className="px-6 py-4 font-mono text-cdl-navy-700">
                             {sinc.codigoAssociado || 'Todos'}
                           </td>
-                          <td className="px-3 py-2 text-center font-medium text-cdl-navy-700">
+                          <td className="px-6 py-4 text-center font-medium text-cdl-navy-700">
                             {sinc.totalAssociados}
                           </td>
-                          <td className="px-3 py-2 text-center text-gray-700">{sinc.totalRegistros}</td>
-                          <td className="px-3 py-2 text-gray-500 text-xs whitespace-nowrap">
+                          <td className="px-6 py-4 text-center text-gray-700">{sinc.totalRegistros}</td>
+                          <td className="px-6 py-4 text-gray-500 text-xs whitespace-nowrap">
                             {formatarDataHora(sinc.dataSincronizacao)}
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="px-6 py-4">
                             <span
                               className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
                                 sinc.status === 'CONCLUIDO'
@@ -649,7 +645,7 @@ const Notificacoes: React.FC = () => {
                               {sinc.status || 'CONCLUIDO'}
                             </span>
                           </td>
-                          <td className="px-3 py-2 text-center">
+                          <td className="px-6 py-4 text-center">
                             {sinc.status !== 'CANCELADO' && (
                               <PermissionGuard requiredPermissions={['NOTIFICACAO_CREATE']}>
                                 <button
@@ -678,41 +674,43 @@ const Notificacoes: React.FC = () => {
                 </div>
 
                 {historicoTotalPaginas > 1 && (
-                  <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-t border-gray-200 bg-cdl-neutral-50">
-                    <div className="text-xs text-gray-500">
-                      Mostrando <strong className="text-cdl-navy-700">{historicoIndexPrimeiro + 1}</strong> -{" "}
-                      <strong className="text-cdl-navy-700">
-                        {Math.min(historicoIndexUltimo, historicoTotal)}
-                      </strong>{" "}
-                      de <strong className="text-cdl-navy-700">{historicoTotal}</strong>
+                  <div className="px-6 py-4 border-t border-gray-200 bg-cdl-neutral-50 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="text-sm text-gray-700">
+                      Mostrando <strong>{historicoIndexPrimeiro + 1}</strong> -{" "}
+                      <strong>{Math.min(historicoIndexUltimo, historicoTotal)}</strong>{" "}
+                      de <strong>{historicoTotal}</strong>
                     </div>
-                    <div className="flex flex-wrap items-center gap-1">
+                    <div className="flex flex-wrap items-center gap-2">
                       <button
                         onClick={() => setHistoricoPagina(1)}
                         disabled={historicoPagina === 1}
-                        className="px-2 py-1 border border-gray-300 rounded disabled:opacity-50
-                                   hover:bg-cdl-navy-50 transition-colors text-xs"
+                        className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium
+                                   text-gray-700 hover:bg-white hover:border-cdl-navy-300
+                                   disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >⏮️</button>
                       <button
                         onClick={() => setHistoricoPagina((p) => Math.max(1, p - 1))}
                         disabled={historicoPagina === 1}
-                        className="px-2 py-1 border border-gray-300 rounded disabled:opacity-50
-                                   hover:bg-cdl-navy-50 transition-colors text-xs"
-                      >◀</button>
-                      <span className="px-2 py-1 text-xs text-gray-600 font-medium">
-                        {historicoPagina} / {historicoTotalPaginas}
+                        className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium
+                                   text-gray-700 hover:bg-white hover:border-cdl-navy-300
+                                   disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >← Anterior</button>
+                      <span className="text-sm text-gray-700">
+                        Página <strong>{historicoPagina}</strong> de <strong>{historicoTotalPaginas}</strong>
                       </span>
                       <button
                         onClick={() => setHistoricoPagina((p) => Math.min(historicoTotalPaginas, p + 1))}
                         disabled={historicoPagina === historicoTotalPaginas}
-                        className="px-2 py-1 border border-gray-300 rounded disabled:opacity-50
-                                   hover:bg-cdl-navy-50 transition-colors text-xs"
-                      >▶</button>
+                        className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium
+                                   text-gray-700 hover:bg-white hover:border-cdl-navy-300
+                                   disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >Próxima →</button>
                       <button
                         onClick={() => setHistoricoPagina(historicoTotalPaginas)}
                         disabled={historicoPagina === historicoTotalPaginas}
-                        className="px-2 py-1 border border-gray-300 rounded disabled:opacity-50
-                                   hover:bg-cdl-navy-50 transition-colors text-xs"
+                        className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium
+                                   text-gray-700 hover:bg-white hover:border-cdl-navy-300
+                                   disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >⏭️</button>
                     </div>
                   </div>
@@ -722,77 +720,23 @@ const Notificacoes: React.FC = () => {
           </div>
         )}
 
-        {/* ==================== BANNERS DE STATUS ==================== */}
-        {sincronizacaoRealizada && (
-          <div className="mb-4 p-4 bg-cdl-green-50 border border-cdl-green-100 rounded-lg flex items-start gap-3">
-            <span className="text-2xl">✅</span>
-            <div>
-              <p className="text-sm font-medium text-cdl-green-700">
-                Dados sincronizados com sucesso!
-              </p>
-              <p className="text-xs text-cdl-green-600 mt-1">
-                {ultimaSincronizacao && `Última sincronização: ${ultimaSincronizacao}`}
-                <span className="ml-2">
-                  Total de registros: <strong>{totalRegistros}</strong>
-                </span>
-              </p>
-            </div>
-          </div>
-        )}
-
-        {buscaRealizada && temDados && (
-          <div className="mb-4 p-3 bg-cdl-navy-50 border border-cdl-navy-100 rounded-lg flex items-center gap-2">
-            <span className="text-cdl-navy-700">📊</span>
-            <span className="text-sm text-cdl-navy-700">
-              <strong>{dadosAgrupados.length}</strong> associados encontrados.
-              {dadosMSSQL.length > 0 && !sincronizacaoRealizada && (
-                <span className="ml-1 text-cdl-yellow-700"></span>
-              )}
-            </span>
-          </div>
-        )}
-
-        {buscaRealizada && !temDados && !erroConexao && (
-          <div className="mb-4 p-3 bg-cdl-yellow-50 border border-cdl-yellow-100 rounded-lg flex items-center gap-2">
-            <span className="text-cdl-yellow-700">📭</span>
-            <span className="text-sm text-cdl-yellow-700 font-medium">
-              Nenhuma notificação encontrada para o período.
-            </span>
-          </div>
-        )}
-
-        {erroConexao && (
-          <div className="mb-4 p-4 bg-cdl-danger-50 border border-cdl-danger-100 rounded-lg flex items-start gap-3">
-            <span className="text-2xl">❌</span>
-            <div>
-              <p className="text-sm font-medium text-cdl-danger-600">
-                Servidor de Notificação indisponível
-              </p>
-              <p className="text-xs text-cdl-danger-500 mt-1">
-                Não foi possível conectar ao servidor MS-SQL. Verifique a conexão.
-              </p>
-            </div>
-          </div>
-        )}
-
         {/* ==================== FILTROS ==================== */}
-        <div className="bg-cdl-navy-50 border border-cdl-navy-100 p-4 rounded-lg mb-6">
+        <div className="px-6 py-4 border-b border-gray-200 bg-cdl-neutral-50">
           <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
             <div>
-              <label className="block text-xs font-medium text-cdl-navy-700 mb-1">Código Associado</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Código Associado</label>
               <input
                 type="text"
                 placeholder="Código do Associado"
                 value={filtroCodigo}
                 onChange={(e) => setFiltroCodigo(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white
-                           focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                           focus:border-cdl-navy-600 transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white
+                           focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600 transition-colors"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-cdl-navy-700 mb-1">Data Início</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Data Início</label>
               <input
                 type="date"
                 value={dataInicio.toISOString().split('T')[0]}
@@ -802,14 +746,13 @@ const Notificacoes: React.FC = () => {
                     setDataInicio(new Date(ano, mes - 1, dia));
                   }
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white
-                           focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                           focus:border-cdl-navy-600 transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white
+                           focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600 transition-colors"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-cdl-navy-700 mb-1">Data Fim</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Data Fim</label>
               <input
                 type="date"
                 value={dataFim.toISOString().split('T')[0]}
@@ -819,14 +762,13 @@ const Notificacoes: React.FC = () => {
                     setDataFim(new Date(ano, mes - 1, dia));
                   }
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white
-                           focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                           focus:border-cdl-navy-600 transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white
+                           focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600 transition-colors"
               />
             </div>
 
             <div className="flex items-end">
-              <span className="text-xs text-cdl-navy-600 font-medium">
+              <span className="text-xs text-gray-600 font-medium">
                 Período: {formatarData(dataInicio)} à {formatarData(dataFim)}
               </span>
             </div>
@@ -836,7 +778,7 @@ const Notificacoes: React.FC = () => {
                 onClick={carregarGridMSSQL}
                 disabled={carregandoMSSQL || sincronizando}
                 className="px-4 py-2 bg-cdl-navy-700 text-white rounded-lg hover:bg-cdl-navy-800
-                           disabled:bg-gray-400 disabled:cursor-not-allowed transition-all
+                           disabled:opacity-50 disabled:cursor-not-allowed transition-all
                            active:scale-[.98] flex items-center gap-2 flex-1 justify-center font-medium"
                 title="Buscar dados no MS-SQL (sem salvar)"
               >
@@ -855,35 +797,34 @@ const Notificacoes: React.FC = () => {
                              transition-all active:scale-[.98] flex items-center gap-2
                              flex-1 justify-center font-medium"
                 >
-                  <span>⏹️</span> Cancelar
+                  ⏹️ Cancelar
                 </button>
               )}
 
               <button
                 onClick={limparFiltros}
                 disabled={carregandoMSSQL || sincronizando || loading}
-                className="px-4 py-2 bg-cdl-neutral-100 text-cdl-navy-700 rounded-lg
-                           hover:bg-cdl-neutral-200 disabled:opacity-50 transition-colors
+                className="px-4 py-2 bg-cdl-neutral-50 text-cdl-navy-700 border border-[#E2E6EC]
+                           rounded-lg hover:bg-cdl-navy-50 disabled:opacity-50 transition-colors
                            flex items-center gap-2 flex-1 justify-center font-medium"
                 title="Limpar filtros"
               >
-                <span>🧹</span> Limpar
+                🧹 Limpar
               </button>
             </div>
           </div>
 
           {/* Filtro da grid */}
           {buscaRealizada && temDados && (
-            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-cdl-navy-100 pt-3">
-              <span className="text-xs font-medium text-cdl-navy-600">🔍 Filtrar Grid:</span>
+            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-200 pt-3">
+              <span className="text-xs font-medium text-gray-600">🔍 Filtrar Grid:</span>
               <input
                 type="text"
                 placeholder="Filtrar por código do associado..."
                 value={filtroGrid}
                 onChange={(e) => setFiltroGrid(e.target.value)}
-                className="flex-1 min-w-[200px] px-3 py-2 border border-gray-300 rounded-lg bg-white
-                           focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                           focus:border-cdl-navy-600 transition-colors text-sm"
+                className="flex-1 min-w-[200px] px-3 py-2 border border-gray-300 rounded-md bg-white
+                           focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600 transition-colors text-sm"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') aplicarFiltroGrid();
                 }}
@@ -897,40 +838,92 @@ const Notificacoes: React.FC = () => {
               </button>
               <button
                 onClick={limparFiltroGrid}
-                className="px-3 py-2 bg-cdl-neutral-100 text-cdl-navy-700 rounded-lg
-                           hover:bg-cdl-neutral-200 transition-colors text-sm font-medium"
+                className="px-3 py-2 bg-cdl-neutral-50 text-cdl-navy-700 border border-[#E2E6EC]
+                           rounded-lg hover:bg-cdl-navy-50 transition-colors text-sm font-medium"
               >
                 ✕ Limpar
               </button>
-              <span className="text-xs text-cdl-navy-600">
+              <span className="text-xs text-gray-600">
                 {totalRegistros} registros
               </span>
             </div>
           )}
         </div>
 
+        {/* ==================== BANNERS DE STATUS ==================== */}
+        {sincronizacaoRealizada && (
+          <div className="mx-6 mt-4 p-4 bg-cdl-green-50 border border-cdl-green-100 rounded-lg flex items-start gap-3">
+            <span className="text-2xl">✅</span>
+            <div>
+              <p className="text-sm font-medium text-cdl-green-700">
+                Dados sincronizados com sucesso!
+              </p>
+              <p className="text-xs text-cdl-green-600 mt-1">
+                {ultimaSincronizacao && `Última sincronização: ${ultimaSincronizacao}`}
+                <span className="ml-2">
+                  Total de registros: <strong>{totalRegistros}</strong>
+                </span>
+              </p>
+            </div>
+          </div>
+        )}
+
+        {buscaRealizada && temDados && (
+          <div className="mx-6 mt-4 p-3 bg-cdl-navy-50 border border-cdl-navy-100 rounded-lg flex items-center gap-2">
+            <span className="text-cdl-navy-700">📊</span>
+            <span className="text-sm text-cdl-navy-700">
+              <strong>{dadosAgrupados.length}</strong> associados encontrados.
+            </span>
+          </div>
+        )}
+
+        {buscaRealizada && !temDados && !erroConexao && (
+          <div className="mx-6 mt-4 p-3 bg-cdl-yellow-50 border border-cdl-yellow-100 rounded-lg flex items-center gap-2">
+            <span className="text-cdl-yellow-700">📭</span>
+            <span className="text-sm text-cdl-yellow-700 font-medium">
+              Nenhuma notificação encontrada para o período.
+            </span>
+          </div>
+        )}
+
+        {erroConexao && (
+          <div className="mx-6 mt-4 p-4 bg-cdl-danger-50 border border-cdl-danger-100 rounded-lg flex items-start gap-3">
+            <span className="text-2xl">❌</span>
+            <div>
+              <p className="text-sm font-medium text-cdl-danger-600">
+                Servidor de Notificação indisponível
+              </p>
+              <p className="text-xs text-cdl-danger-500 mt-1">
+                Não foi possível conectar ao servidor MS-SQL. Verifique a conexão.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* ==================== RESUMO ==================== */}
         {buscaRealizada && dadosAgrupados.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-            <div className="bg-cdl-navy-50 border border-cdl-navy-100 p-3 rounded-lg text-center">
-              <div className="text-2xl font-bold text-cdl-navy-700">{totais.totalRegistros}</div>
-              <div className="text-xs text-cdl-navy-600 mt-0.5 font-medium">Total Registros</div>
-            </div>
-            <div className="bg-cdl-navy-50 border border-cdl-navy-100 p-3 rounded-lg text-center">
-              <div className="text-2xl font-bold text-cdl-navy-700">{totais.sms}</div>
-              <div className="text-xs text-cdl-navy-600 mt-0.5 font-medium">SMS</div>
-            </div>
-            <div className="bg-cdl-green-50 border border-cdl-green-100 p-3 rounded-lg text-center">
-              <div className="text-2xl font-bold text-cdl-green-700">{totais.emails}</div>
-              <div className="text-xs text-cdl-green-600 mt-0.5 font-medium">E-mails</div>
-            </div>
-            <div className="bg-cdl-yellow-50 border border-cdl-yellow-100 p-3 rounded-lg text-center">
-              <div className="text-2xl font-bold text-cdl-yellow-700">{totais.cartas}</div>
-              <div className="text-xs text-cdl-yellow-600 mt-0.5 font-medium">Cartas</div>
-            </div>
-            <div className="bg-cdl-danger-50 border border-cdl-danger-100 p-3 rounded-lg text-center">
-              <div className="text-2xl font-bold text-cdl-danger-500">{totais.naoEnviadas}</div>
-              <div className="text-xs text-cdl-danger-500 mt-0.5 font-medium">Não Enviadas</div>
+          <div className="px-6 pt-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <div className="bg-cdl-navy-50 border border-cdl-navy-100 p-3 rounded-lg text-center">
+                <div className="text-2xl font-bold text-cdl-navy-700">{totais.totalRegistros}</div>
+                <div className="text-xs text-cdl-navy-600 mt-0.5 font-medium">Total Registros</div>
+              </div>
+              <div className="bg-cdl-navy-50 border border-cdl-navy-100 p-3 rounded-lg text-center">
+                <div className="text-2xl font-bold text-cdl-navy-700">{totais.sms}</div>
+                <div className="text-xs text-cdl-navy-600 mt-0.5 font-medium">SMS</div>
+              </div>
+              <div className="bg-cdl-green-50 border border-cdl-green-100 p-3 rounded-lg text-center">
+                <div className="text-2xl font-bold text-cdl-green-700">{totais.emails}</div>
+                <div className="text-xs text-cdl-green-600 mt-0.5 font-medium">E-mails</div>
+              </div>
+              <div className="bg-cdl-yellow-50 border border-cdl-yellow-100 p-3 rounded-lg text-center">
+                <div className="text-2xl font-bold text-cdl-yellow-700">{totais.cartas}</div>
+                <div className="text-xs text-cdl-yellow-600 mt-0.5 font-medium">Cartas</div>
+              </div>
+              <div className="bg-cdl-danger-50 border border-cdl-danger-100 p-3 rounded-lg text-center">
+                <div className="text-2xl font-bold text-cdl-danger-500">{totais.naoEnviadas}</div>
+                <div className="text-xs text-cdl-danger-500 mt-0.5 font-medium">Não Enviadas</div>
+              </div>
             </div>
           </div>
         )}
@@ -945,29 +938,33 @@ const Notificacoes: React.FC = () => {
             <Loading />
           </div>
         ) : !buscaRealizada ? (
-          <EmptyState
-            icon="📊"
-            title="Aguardando busca"
-            description='Clique em "Buscar" para carregar os dados. Os dados serão exibidos sem serem salvos.'
-            compact
-          />
+          <div className="p-6">
+            <EmptyState
+              icon="📊"
+              title="Aguardando busca"
+              description='Clique em "Buscar" para carregar os dados. Os dados serão exibidos sem serem salvos.'
+              compact
+            />
+          </div>
         ) : dadosAgrupados.length === 0 ? (
-          <EmptyState
-            icon="📭"
-            title="Nenhuma notificação encontrada"
-            description={`Não há registros para o período ${formatarData(dataInicio)} à ${formatarData(dataFim)}.`}
-            compact
-          />
+          <div className="p-6">
+            <EmptyState
+              icon="📭"
+              title="Nenhuma notificação encontrada"
+              description={`Não há registros para o período ${formatarData(dataInicio)} à ${formatarData(dataFim)}.`}
+              compact
+            />
+          </div>
         ) : (
           <>
-            <div className="overflow-x-auto border border-gray-200 rounded-lg">
+            <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-cdl-navy-50">
                   <tr>
                     {['Código','Associado','Total','SMS','E-mail','Cartas','Não Env.','Períodos','Ações'].map((h, i) => (
                       <th
                         key={h}
-                        className={`px-4 py-3 text-xs font-semibold text-cdl-navy-700 uppercase tracking-wider ${
+                        className={`px-6 py-3 text-xs font-semibold text-cdl-navy-700 uppercase tracking-wider ${
                           i === 1 ? 'text-left' : i === 0 ? 'text-left' : 'text-center'
                         }`}
                       >
@@ -976,30 +973,30 @@ const Notificacoes: React.FC = () => {
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 bg-white">
+                <tbody className="bg-white divide-y divide-gray-200">
                   {itensPaginaAtual.map((grupo, index) => (
                     <tr key={index} className="hover:bg-cdl-navy-50/40 transition-colors">
-                      <td className="px-4 py-3 text-sm font-mono text-cdl-navy-700">
+                      <td className="px-6 py-4 text-sm font-mono text-cdl-navy-700">
                         {grupo.codigoAssociado}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate" title={grupo.nomeAssociado}>
+                      <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate" title={grupo.nomeAssociado}>
                         {grupo.nomeAssociado || '-'}
                       </td>
-                      <td className="px-4 py-3 text-center font-medium text-cdl-navy-700">
+                      <td className="px-6 py-4 text-center font-medium text-cdl-navy-700">
                         {grupo.totalRegistros}
                       </td>
-                      <td className="px-4 py-3 text-center text-cdl-navy-600 font-medium">{grupo.totalSms}</td>
-                      <td className="px-4 py-3 text-center text-cdl-green-700 font-medium">{grupo.totalEmail}</td>
-                      <td className="px-4 py-3 text-center text-cdl-yellow-700 font-medium">
+                      <td className="px-6 py-4 text-center text-cdl-navy-600 font-medium">{grupo.totalSms}</td>
+                      <td className="px-6 py-4 text-center text-cdl-green-700 font-medium">{grupo.totalEmail}</td>
+                      <td className="px-6 py-4 text-center text-cdl-yellow-700 font-medium">
                         {grupo.cartasEnviadas}
                       </td>
-                      <td className="px-4 py-3 text-center text-cdl-danger-500 font-medium">
+                      <td className="px-6 py-4 text-center text-cdl-danger-500 font-medium">
                         {grupo.naoEnviada}
                       </td>
-                      <td className="px-4 py-3 text-center text-xs text-gray-500 font-medium">
+                      <td className="px-6 py-4 text-center text-xs text-gray-500 font-medium">
                         {grupo.detalhes.length} período(s)
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-6 py-4 text-center">
                         <button
                           onClick={() => handleAbrirDetalhes({
                             ...grupo,
@@ -1007,7 +1004,7 @@ const Notificacoes: React.FC = () => {
                             dataInicio: dataInicio,
                             dataFim: dataFim,
                           })}
-                          className="p-1.5 text-cdl-navy-700 hover:text-cdl-navy-900 hover:bg-cdl-navy-50
+                          className="p-1 text-cdl-navy-700 hover:text-cdl-navy-900 hover:bg-cdl-navy-50
                                      rounded transition-colors"
                           title="Ver detalhes"
                         >
@@ -1021,45 +1018,48 @@ const Notificacoes: React.FC = () => {
             </div>
 
             {totalPaginas > 1 && (
-              <div className="flex flex-wrap items-center justify-between gap-4 mt-4 pt-4 border-t border-gray-200">
-                <div className="text-sm text-gray-500">
-                  Mostrando <strong className="text-cdl-navy-700">{indexPrimeiroItem + 1}</strong> -{" "}
-                  <strong className="text-cdl-navy-700">
-                    {Math.min(indexUltimoItem, dadosAgrupados.length)}
-                  </strong>{" "}
-                  de <strong className="text-cdl-navy-700">{dadosAgrupados.length}</strong> registros
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    onClick={() => setPaginaAtual(1)}
-                    disabled={paginaAtual === 1}
-                    className="px-3 py-1.5 border border-gray-300 rounded-lg disabled:opacity-50
-                               hover:bg-cdl-navy-50 hover:border-cdl-navy-300 transition-colors text-sm"
-                    title="Primeira página"
-                  >⏮️</button>
-                  <button
-                    onClick={() => setPaginaAtual((p) => Math.max(1, p - 1))}
-                    disabled={paginaAtual === 1}
-                    className="px-3 py-1.5 border border-gray-300 rounded-lg disabled:opacity-50
-                               hover:bg-cdl-navy-50 hover:border-cdl-navy-300 transition-colors text-sm"
-                  >◀ Anterior</button>
-                  <span className="px-3 py-1.5 text-sm text-gray-600 font-medium min-w-[100px] text-center">
-                    Página <strong className="text-cdl-navy-700">{paginaAtual}</strong> de{" "}
-                    <strong className="text-cdl-navy-700">{totalPaginas}</strong>
-                  </span>
-                  <button
-                    onClick={() => setPaginaAtual((p) => Math.min(totalPaginas, p + 1))}
-                    disabled={paginaAtual === totalPaginas}
-                    className="px-3 py-1.5 border border-gray-300 rounded-lg disabled:opacity-50
-                               hover:bg-cdl-navy-50 hover:border-cdl-navy-300 transition-colors text-sm"
-                  >Próxima ▶</button>
-                  <button
-                    onClick={() => setPaginaAtual(totalPaginas)}
-                    disabled={paginaAtual === totalPaginas}
-                    className="px-3 py-1.5 border border-gray-300 rounded-lg disabled:opacity-50
-                               hover:bg-cdl-navy-50 hover:border-cdl-navy-300 transition-colors text-sm"
-                    title="Última página"
-                  >⏭️</button>
+              <div className="px-6 py-4 border-t border-gray-200 bg-cdl-neutral-50">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="text-sm text-gray-700">
+                    Mostrando <strong>{indexPrimeiroItem + 1}</strong> -{" "}
+                    <strong>{Math.min(indexUltimoItem, dadosAgrupados.length)}</strong>{" "}
+                    de <strong>{dadosAgrupados.length}</strong> registros
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => setPaginaAtual(1)}
+                      disabled={paginaAtual === 1}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium
+                                 text-gray-700 hover:bg-white hover:border-cdl-navy-300
+                                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      title="Primeira página"
+                    >⏮️</button>
+                    <button
+                      onClick={() => setPaginaAtual((p) => Math.max(1, p - 1))}
+                      disabled={paginaAtual === 1}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium
+                                 text-gray-700 hover:bg-white hover:border-cdl-navy-300
+                                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >← Anterior</button>
+                    <span className="text-sm text-gray-700">
+                      Página <strong>{paginaAtual}</strong> de <strong>{totalPaginas}</strong>
+                    </span>
+                    <button
+                      onClick={() => setPaginaAtual((p) => Math.min(totalPaginas, p + 1))}
+                      disabled={paginaAtual === totalPaginas}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium
+                                 text-gray-700 hover:bg-white hover:border-cdl-navy-300
+                                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >Próxima →</button>
+                    <button
+                      onClick={() => setPaginaAtual(totalPaginas)}
+                      disabled={paginaAtual === totalPaginas}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium
+                                 text-gray-700 hover:bg-white hover:border-cdl-navy-300
+                                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      title="Última página"
+                    >⏭️</button>
+                  </div>
                 </div>
               </div>
             )}
@@ -1067,7 +1067,7 @@ const Notificacoes: React.FC = () => {
         )}
 
         {/* ==================== RODAPÉ ==================== */}
-        <div className="mt-4 text-xs text-gray-500 border-t border-gray-200 pt-3 flex justify-between items-center flex-wrap gap-2">
+        <div className="px-6 py-4 border-t border-gray-200 bg-cdl-neutral-50 flex flex-wrap justify-between items-center gap-2 text-xs text-gray-600">
           <span>
             {dadosMSSQL.length > 0 && !sincronizacaoRealizada && '🔄 Notificações não sincronizadas' }
             {sincronizacaoRealizada && '✅ Dados sincronizados com o servidor'}

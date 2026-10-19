@@ -1,4 +1,4 @@
-// src/pages/ImportacaoCancelamentos.tsx - VERSÃO CDL
+// src/pages/ImportacaoCancelamentos.tsx - VERSÃO CDL (alinhada a Associados.tsx)
 import React, { useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import cancelamentoService, { CancelamentoImportacao } from '../services/cancelamentoService';
@@ -160,9 +160,6 @@ const ImportacaoCancelamentos: React.FC = () => {
   };
 
   /* ---------------- FORMAT ---------------- */
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-
   const getStatusColor = (status?: string) => {
     switch (status) {
       case 'PROCESSADO': return 'bg-cdl-green-100 text-cdl-green-700';
@@ -172,43 +169,71 @@ const ImportacaoCancelamentos: React.FC = () => {
     }
   };
 
-  /* ---------------- CONTADORES (evita recalcular várias vezes) ---------------- */
+  /* ---------------- CONTADORES ---------------- */
   const totalRegistros   = resultado?.length ?? 0;
   const totalSucesso     = resultado?.filter(r => !r.erro).length ?? 0;
   const totalErros       = resultado?.filter(r => r.erro).length ?? 0;
   const comValorMaiorQueZero = resultado?.filter(r => r.valorCancelamento && r.valorCancelamento > 0).length ?? 0;
 
+  /* ============================================================
+     RENDER
+     ============================================================ */
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6">
       <BreadCrumb atual="Importação de Cancelamentos" />
 
-      <div className="bg-white rounded-xl shadow-cdl p-6 mt-6">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-cdl-navy-700 mb-2">Importação de Cancelamentos</h1>
+      {/* ===== Cabeçalho ===== */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-cdl-navy-700">Importação de Cancelamentos</h1>
           <p className="text-gray-600">
             Importe cancelamentos de serviços/produtos em lote utilizando um arquivo CSV.
             Os cancelamentos serão aplicados automaticamente no próximo processamento de faturamento.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* ==================== ÁREA DE UPLOAD ==================== */}
-          <div className="lg:col-span-2">
-            {/* Configuração do Período */}
-            <div className="bg-cdl-navy-50 border border-cdl-navy-100 p-4 rounded-lg mb-4">
-              <h3 className="font-semibold text-cdl-navy-700 mb-3 flex items-center gap-2">
-                <span>📅</span> Período de Referência
-              </h3>
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={handleDownloadModelo}
+            disabled={isLoading}
+            className="px-4 py-2 bg-cdl-neutral-50 text-cdl-navy-700 border border-[#E2E6EC]
+                       rounded-lg flex items-center gap-2 hover:bg-cdl-navy-50
+                       disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            📥 Baixar Modelo
+          </button>
+          {resultado && resultado.length > 0 && (
+            <button
+              onClick={() => setShowDesfazerModal(true)}
+              disabled={isLoading}
+              className="px-4 py-2 bg-cdl-danger-500 text-white rounded-lg flex items-center gap-2
+                         hover:bg-cdl-danger-600 font-medium transition-all active:scale-[.98]
+                         disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              🗑️ Desfazer Importação
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* ==================== COLUNA 1 — UPLOAD ==================== */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Card Configuração do Período */}
+          <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 bg-cdl-navy-50 flex items-center gap-2">
+              <div className="w-1 h-6 bg-cdl-navy-700 rounded"></div>
+              <h2 className="text-lg font-semibold text-cdl-navy-700">📅 Período de Referência</h2>
+            </div>
+            <div className="p-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-cdl-navy-700 mb-1">Mês</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mês</label>
                   <select
                     value={mesReferencia}
                     onChange={(e) => setMesReferencia(parseInt(e.target.value))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white
-                               focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                               focus:border-cdl-navy-600 transition-colors"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white
+                               focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600 transition-colors"
                   >
                     {['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                       'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'].map((mes, idx) => (
@@ -217,218 +242,214 @@ const ImportacaoCancelamentos: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-cdl-navy-700 mb-1">Ano</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ano</label>
                   <input
                     type="number"
                     value={anoReferencia}
                     onChange={(e) => setAnoReferencia(parseInt(e.target.value))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white
-                               focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                               focus:border-cdl-navy-600 transition-colors"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white
+                               focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600 transition-colors"
                     min={2020}
                     max={2030}
                   />
                 </div>
               </div>
             </div>
-
-            {/* Dropzone — EmptyState quando vazio, card verde quando tem arquivo */}
-            {!arquivo ? (
-              <div
-                onDrop={handleDrop}
-                onDragOver={handleDragOver}
-                onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-gray-300 hover:border-cdl-navy-400
-                           hover:bg-cdl-navy-50 rounded-xl transition-colors cursor-pointer"
-              >
-                <EmptyState
-                  icon="📋"
-                  title="Arraste o arquivo aqui ou clique para selecionar"
-                  description="Formatos aceitos: CSV, TXT (separador: ponto e vírgula)"
-                  action={
-                    <div className="flex flex-col items-center gap-3">
-                      <label
-                        htmlFor="file-upload"
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex px-6 py-3 bg-cdl-navy-700 text-white rounded-lg font-medium
-                                   hover:bg-cdl-navy-800 cursor-pointer transition-all active:scale-[.98]"
-                      >
-                        Selecionar Arquivo
-                      </label>
-                      <div className="bg-cdl-neutral-50 border border-cdl-neutral-100 rounded-lg px-3 py-2 mt-1">
-                        <p className="text-xs text-cdl-navy-700 font-mono">
-                          CODIGO;SERVICO1;SERVICO2;...
-                        </p>
-                      </div>
-                    </div>
-                  }
-                />
-              </div>
-            ) : (
-              <div className="border-2 border-dashed border-cdl-green-400 bg-cdl-green-50 rounded-xl p-8 text-center">
-                <div className="text-5xl mb-3">✅</div>
-                <p className="font-medium text-cdl-green-700 mb-1">Arquivo pronto para importar</p>
-                <p className="text-xs text-cdl-green-600 font-mono mb-4">
-                  Formato esperado: CODIGO;SERVICO1;SERVICO2;SERVICO3;...
-                </p>
-                <label
-                  htmlFor="file-upload"
-                  className="inline-flex px-5 py-2.5 bg-cdl-navy-700 text-white rounded-lg font-medium
-                             hover:bg-cdl-navy-800 cursor-pointer transition-all active:scale-[.98] text-sm"
-                >
-                  Trocar Arquivo
-                </label>
-              </div>
-            )}
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv,.txt"
-              onChange={handleFileChange}
-              className="hidden"
-              id="file-upload"
-            />
-
-            {/* Info do arquivo selecionado */}
-            {arquivo && (
-              <div className="mt-4 p-4 bg-cdl-navy-50 border border-cdl-navy-100 rounded-lg flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">📄</span>
-                  <div>
-                    <div className="font-medium text-cdl-navy-700">{arquivo.name}</div>
-                    <div className="text-xs text-gray-500">{(arquivo.size / 1024).toFixed(2)} KB</div>
-                  </div>
-                </div>
-                <button
-                  onClick={handleLimparArquivo}
-                  className="text-cdl-danger-500 hover:text-cdl-danger-600 text-sm font-medium
-                             hover:bg-cdl-danger-50 px-3 py-1 rounded transition-colors"
-                >
-                  Remover
-                </button>
-              </div>
-            )}
-
-            {/* Barra de progresso */}
-            {isLoading && (
-              <div className="mt-6 p-4 bg-cdl-navy-50 border border-cdl-navy-100 rounded-lg">
-                <div className="flex justify-between text-sm text-cdl-navy-700 mb-2">
-                  <span className="flex items-center gap-2">
-                    <span className="inline-block w-3 h-3 rounded-full bg-cdl-yellow-500 animate-pulse" />
-                    {mensagemProgresso}
-                  </span>
-                  <span className="font-semibold">{Math.round(progresso)}%</span>
-                </div>
-                <div className="w-full bg-white rounded-full h-3 overflow-hidden border border-cdl-navy-100">
-                  <div
-                    className="bg-cdl-yellow-gradient h-3 rounded-full transition-all duration-300 ease-out"
-                    style={{ width: `${progresso}%` }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Botões de ação */}
-            <div className="mt-6 flex flex-wrap gap-3">
-              <button
-                onClick={handleDownloadModelo}
-                disabled={isLoading}
-                className="px-5 py-2.5 border border-cdl-navy-200 text-cdl-navy-700 bg-white
-                           rounded-lg hover:bg-cdl-navy-50 transition-colors flex items-center gap-2
-                           font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                📥 Baixar Modelo
-              </button>
-              <button
-                onClick={handleConfirmarImportacao}
-                disabled={!arquivo || isLoading}
-                className={`px-5 py-2.5 rounded-lg flex items-center gap-2 font-medium
-                            transition-all active:scale-[.98] ${
-                  !arquivo || isLoading
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-cdl-navy-700 text-white hover:bg-cdl-navy-800'
-                }`}
-              >
-                {isLoading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
-                    Processando...
-                  </>
-                ) : (
-                  <>🚀 Importar Cancelamentos</>
-                )}
-              </button>
-
-              {resultado && resultado.length > 0 && (
-                <button
-                  onClick={() => setShowDesfazerModal(true)}
-                  disabled={isLoading}
-                  className="px-5 py-2.5 bg-cdl-danger-500 text-white rounded-lg
-                             hover:bg-cdl-danger-600 transition-all active:scale-[.98]
-                             flex items-center gap-2 font-medium disabled:opacity-50"
-                >
-                  🗑️ Desfazer Importação
-                </button>
-              )}
-            </div>
           </div>
 
-          {/* ==================== INSTRUÇÕES ==================== */}
-          <div className="bg-cdl-navy-50 rounded-xl p-6 border border-cdl-navy-100">
-            <h3 className="font-semibold text-cdl-navy-700 mb-4 flex items-center gap-2">
-              <span>📋</span> Instruções
-            </h3>
-            <ul className="space-y-3 text-sm text-gray-700">
-              <li>1. Baixe o modelo de arquivo</li>
-              <li>2. Preencha os dados no formato CSV</li>
-              <li>3. O arquivo deve ter o formato:</li>
-              <ul className="ml-6 mt-2 space-y-1 text-xs font-mono bg-white border border-cdl-navy-100 rounded p-2">
-                <li>• CODIGO;SERVICO1;SERVICO2;SERVICO3</li>
-                <li>• 17055;HSM;;</li>
-                <li>• 17056;SPC AVISA;HSM;</li>
-                <li>• 17057;NFE;SPC AVISA;HSM</li>
-              </ul>
-              <li>4. Confirme a importação no dialog</li>
-              <li>5. Se errar, use o botão "Desfazer Importação"</li>
-            </ul>
-
-            <div className="mt-4 p-3 bg-cdl-navy-100 border border-cdl-navy-200 rounded-lg">
-              <p className="text-xs text-cdl-navy-700">
-                💡 <strong>Dica:</strong> Os cancelamentos serão aplicados automaticamente no próximo
-                processamento de faturamento para o mesmo período.
-              </p>
+          {/* Card Upload */}
+          <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 bg-cdl-navy-50 flex items-center gap-2">
+              <div className="w-1 h-6 bg-cdl-navy-700 rounded"></div>
+              <h2 className="text-lg font-semibold text-cdl-navy-700">Upload do Arquivo</h2>
             </div>
 
-            <div className="mt-4 p-3 bg-cdl-yellow-50 border border-cdl-yellow-100 rounded-lg">
-              <p className="text-xs text-cdl-yellow-700">
-                ⚠️ <strong>Atenção:</strong> O botão "Desfazer Importação" remove <strong>TODOS</strong> os
-                cancelamentos do período selecionado.
-              </p>
+            <div className="p-6">
+              {/* Dropzone */}
+              {!arquivo ? (
+                <div
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-gray-300 hover:border-cdl-navy-400
+                             hover:bg-cdl-navy-50 rounded-xl transition-colors cursor-pointer"
+                >
+                  <EmptyState
+                    icon="📋"
+                    title="Arraste o arquivo aqui ou clique para selecionar"
+                    description="Formatos aceitos: CSV, TXT (separador: ponto e vírgula)"
+                    action={
+                      <div className="flex flex-col items-center gap-3">
+                        <label
+                          htmlFor="file-upload"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex px-6 py-3 bg-cdl-navy-700 text-white rounded-lg font-medium
+                                     hover:bg-cdl-navy-800 cursor-pointer transition-all active:scale-[.98]"
+                        >
+                          Selecionar Arquivo
+                        </label>
+                        <div className="bg-cdl-neutral-50 border border-cdl-neutral-100 rounded-lg px-3 py-2 mt-1">
+                          <p className="text-xs text-cdl-navy-700 font-mono">
+                            CODIGO;SERVICO1;SERVICO2;...
+                          </p>
+                        </div>
+                      </div>
+                    }
+                  />
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-cdl-green-400 bg-cdl-green-50 rounded-xl p-8 text-center">
+                  <div className="text-5xl mb-3">✅</div>
+                  <p className="font-medium text-cdl-green-700 mb-1">Arquivo pronto para importar</p>
+                  <p className="text-xs text-cdl-green-600 font-mono mb-4">
+                    Formato esperado: CODIGO;SERVICO1;SERVICO2;SERVICO3;...
+                  </p>
+                  <label
+                    htmlFor="file-upload"
+                    className="inline-flex px-5 py-2.5 bg-cdl-navy-700 text-white rounded-lg font-medium
+                               hover:bg-cdl-navy-800 cursor-pointer transition-all active:scale-[.98] text-sm"
+                  >
+                    Trocar Arquivo
+                  </label>
+                </div>
+              )}
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,.txt"
+                onChange={handleFileChange}
+                className="hidden"
+                id="file-upload"
+              />
+
+              {/* Info do arquivo selecionado */}
+              {arquivo && (
+                <div className="mt-4 p-4 bg-cdl-navy-50 border border-cdl-navy-100 rounded-lg flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">📄</span>
+                    <div>
+                      <div className="font-medium text-cdl-navy-700">{arquivo.name}</div>
+                      <div className="text-xs text-gray-500">{(arquivo.size / 1024).toFixed(2)} KB</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleLimparArquivo}
+                    className="text-cdl-danger-500 hover:text-cdl-danger-600 text-sm font-medium
+                               hover:bg-cdl-danger-50 px-3 py-1 rounded transition-colors"
+                  >
+                    Remover
+                  </button>
+                </div>
+              )}
+
+              {/* Barra de progresso */}
+              {isLoading && (
+                <div className="mt-6 p-4 bg-cdl-navy-50 border border-cdl-navy-100 rounded-lg">
+                  <div className="flex justify-between text-sm text-cdl-navy-700 mb-2">
+                    <span className="flex items-center gap-2">
+                      <span className="inline-block w-3 h-3 rounded-full bg-cdl-yellow-500 animate-pulse" />
+                      {mensagemProgresso}
+                    </span>
+                    <span className="font-semibold">{Math.round(progresso)}%</span>
+                  </div>
+                  <div className="w-full bg-white rounded-full h-3 overflow-hidden border border-cdl-navy-100">
+                    <div
+                      className="bg-cdl-yellow-gradient h-3 rounded-full transition-all duration-300 ease-out"
+                      style={{ width: `${progresso}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Botão Importar */}
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={handleConfirmarImportacao}
+                  disabled={!arquivo || isLoading}
+                  className={`px-5 py-2.5 rounded-lg flex items-center gap-2 font-medium
+                              transition-all active:scale-[.98] ${
+                    !arquivo || isLoading
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-cdl-navy-700 text-white hover:bg-cdl-navy-800'
+                  }`}
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+                      Processando...
+                    </>
+                  ) : (
+                    <>🚀 Importar Cancelamentos</>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* ==================== RESULTADO ==================== */}
-        {resultado && (
-          <div className="mt-8 border-t border-gray-200 pt-6">
-            <div className="flex flex-wrap justify-between items-center mb-4 gap-3">
-              <h2 className="text-lg font-semibold text-cdl-navy-700 flex items-center gap-2">
-                <span>📊</span> Resultado da Importação
-              </h2>
-              {totalErros > 0 && (
-                <button
-                  onClick={handleBaixarLogErros}
-                  className="px-4 py-2 bg-cdl-danger-500 text-white rounded-lg
-                             hover:bg-cdl-danger-600 flex items-center gap-2
-                             transition-all active:scale-[.98] font-medium shadow-sm"
-                >
-                  <span>📥</span>
-                  Baixar Log de Erros ({totalErros})
-                </button>
-              )}
+        {/* ==================== COLUNA 2 — INSTRUÇÕES ==================== */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 bg-cdl-navy-50 flex items-center gap-2">
+              <div className="w-1 h-6 bg-cdl-navy-700 rounded"></div>
+              <h3 className="text-lg font-semibold text-cdl-navy-700">📋 Instruções</h3>
             </div>
+            <div className="p-6">
+              <ul className="space-y-3 text-sm text-gray-700">
+                <li>1. Baixe o modelo de arquivo</li>
+                <li>2. Preencha os dados no formato CSV</li>
+                <li>3. O arquivo deve ter o formato:</li>
+                <ul className="ml-6 mt-2 space-y-1 text-xs font-mono bg-cdl-neutral-50 border border-cdl-neutral-100 rounded p-2">
+                  <li>• CODIGO;SERVICO1;SERVICO2;SERVICO3</li>
+                  <li>• 17055;HSM;;</li>
+                  <li>• 17056;SPC AVISA;HSM;</li>
+                  <li>• 17057;NFE;SPC AVISA;HSM</li>
+                </ul>
+                <li>4. Confirme a importação no dialog</li>
+                <li>5. Se errar, use o botão "Desfazer Importação"</li>
+              </ul>
 
+              <div className="mt-4 p-3 bg-cdl-navy-50 border border-cdl-navy-100 rounded-lg">
+                <p className="text-xs text-cdl-navy-700">
+                  💡 <strong>Dica:</strong> Os cancelamentos serão aplicados automaticamente no próximo
+                  processamento de faturamento para o mesmo período.
+                </p>
+              </div>
+
+              <div className="mt-4 p-3 bg-cdl-yellow-50 border border-cdl-yellow-100 rounded-lg">
+                <p className="text-xs text-cdl-yellow-700">
+                  ⚠️ <strong>Atenção:</strong> O botão "Desfazer Importação" remove <strong>TODOS</strong> os
+                  cancelamentos do período selecionado.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ==================== RESULTADO ==================== */}
+      {resultado && (
+        <div className="mt-6 bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 bg-cdl-navy-50 flex flex-wrap justify-between items-center gap-3">
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-6 bg-cdl-navy-700 rounded"></div>
+              <h2 className="text-lg font-semibold text-cdl-navy-700">📊 Resultado da Importação</h2>
+            </div>
+            {totalErros > 0 && (
+              <button
+                onClick={handleBaixarLogErros}
+                className="px-4 py-2 bg-cdl-danger-500 text-white rounded-lg
+                           hover:bg-cdl-danger-600 flex items-center gap-2
+                           transition-all active:scale-[.98] font-medium shadow-sm"
+              >
+                <span>📥</span>
+                Baixar Log de Erros ({totalErros})
+              </button>
+            )}
+          </div>
+
+          <div className="p-6">
             {/* Cards de resumo */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="bg-cdl-navy-50 border border-cdl-navy-100 p-4 rounded-lg text-center">
@@ -466,15 +487,15 @@ const ImportacaoCancelamentos: React.FC = () => {
                       <thead className="bg-cdl-danger-50">
                         <tr>
                           {['Linha','Código','Serviços','Erro'].map(h => (
-                            <th key={h} className="px-4 py-2 text-left text-xs font-semibold text-cdl-danger-500 uppercase">
+                            <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-cdl-danger-500 uppercase tracking-wider">
                               {h}
                             </th>
                           ))}
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-200">
+                      <tbody className="bg-white divide-y divide-gray-200">
                         {resultado.filter(r => r.erro).slice(0, 100).map((erro, idx) => (
-                          <tr key={idx} className="hover:bg-cdl-danger-50/40">
+                          <tr key={idx} className="hover:bg-cdl-danger-50/40 transition-colors">
                             <td className="px-4 py-2 text-center font-mono text-cdl-navy-700">{erro.linha || '-'}</td>
                             <td className="px-4 py-2 font-mono text-cdl-navy-700">{erro.codigoAssociado}</td>
                             <td className="px-4 py-2">
@@ -517,13 +538,13 @@ const ImportacaoCancelamentos: React.FC = () => {
                   <table className="min-w-full divide-y divide-gray-200 text-sm">
                     <thead className="bg-cdl-green-50 sticky top-0">
                       <tr>
-                        <th className="px-4 py-2 text-left text-xs font-semibold text-cdl-green-700 uppercase">Código</th>
-                        <th className="px-4 py-2 text-left text-xs font-semibold text-cdl-green-700 uppercase">Serviços a Cancelar</th>
-                        <th className="px-4 py-2 text-center text-xs font-semibold text-cdl-green-700 uppercase">Quantidade</th>
-                        <th className="px-4 py-2 text-center text-xs font-semibold text-cdl-green-700 uppercase">Status</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-cdl-green-700 uppercase tracking-wider">Código</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-cdl-green-700 uppercase tracking-wider">Serviços a Cancelar</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-cdl-green-700 uppercase tracking-wider">Quantidade</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-cdl-green-700 uppercase tracking-wider">Status</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200">
+                    <tbody className="bg-white divide-y divide-gray-200">
                       {resultado.filter(r => !r.erro).map((item, idx) => (
                         <tr key={idx} className="hover:bg-cdl-green-50/40 transition-colors">
                           <td className="px-4 py-2 font-mono font-medium text-cdl-navy-700">
@@ -572,8 +593,8 @@ const ImportacaoCancelamentos: React.FC = () => {
               />
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ==================== MODAIS ==================== */}
       <ConfirmModal

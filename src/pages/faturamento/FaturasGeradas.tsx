@@ -1,4 +1,4 @@
-// src/pages/faturamento/FaturasGeradas.tsx - VERSÃO CDL
+// src/pages/faturamento/FaturasGeradas.tsx - VERSÃO CDL (alinhada a Associados.tsx)
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
@@ -547,27 +547,27 @@ const FaturasGeradas: React.FC = () => {
      ============================================================ */
   if (!podeVisualizar) {
     return (
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="p-6">
         <BreadCrumb atual="Faturas Geradas" />
-        <div className="bg-white rounded-xl shadow-cdl p-12 mt-6 text-center">
-          <div className="text-6xl mb-4">🔒</div>
-          <h2 className="text-2xl font-bold text-cdl-navy-700 mb-2">Acesso Negado</h2>
-          <p className="text-gray-500">Você não tem permissão para visualizar as faturas geradas.</p>
+        <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+          <div className="p-12 text-center">
+            <div className="text-6xl mb-4">🔒</div>
+            <h2 className="text-2xl font-bold text-cdl-navy-700 mb-2">Acesso Negado</h2>
+            <p className="text-gray-500">Você não tem permissão para visualizar as faturas geradas.</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6">
       <BreadCrumb atual="Faturas Geradas" />
 
-      <div className="bg-white rounded-xl shadow-cdl p-6 mt-6">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-cdl-navy-700 mb-2 flex items-center gap-2">
-            <span>📄</span> Faturas Geradas
-          </h1>
+      {/* ===== Cabeçalho ===== */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-cdl-navy-700">Faturas Geradas</h1>
           <p className="text-gray-600">
             Consulte as faturas geradas a partir do processamento de faturamento
             {totalFaturasComNota > 0 && (
@@ -577,10 +577,12 @@ const FaturasGeradas: React.FC = () => {
             )}
           </p>
         </div>
+      </div>
 
+      <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
         {/* Botões de ação em massa */}
         {faturasSelecionadas.size > 0 && (
-          <div className="flex flex-wrap justify-between items-center mb-4 p-4 bg-cdl-navy-50 border border-cdl-navy-100 rounded-lg gap-3">
+          <div className="px-6 py-4 border-b border-gray-200 bg-cdl-navy-50 flex flex-wrap justify-between items-center gap-3">
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-sm text-cdl-navy-700 font-medium">
                 <strong>{faturasSelecionadas.size}</strong> fatura(s) selecionada(s)
@@ -654,32 +656,29 @@ const FaturasGeradas: React.FC = () => {
         )}
 
         {/* Filtros */}
-        <div className="bg-cdl-navy-50 border border-cdl-navy-100 p-4 rounded-lg mb-6">
+        <div className="px-6 py-4 border-b border-gray-200 bg-cdl-neutral-50">
           <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
             <input
               type="text"
               placeholder="Nº Fatura"
               value={filtroNumero}
               onChange={(e) => setFiltroNumero(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg bg-white
-                         focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                         focus:border-cdl-navy-600 transition-colors"
+              className="px-3 py-2 border border-gray-300 rounded-md bg-white
+                         focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600 transition-colors"
             />
             <input
               type="text"
               placeholder="Associado"
               value={filtroAssociado}
               onChange={(e) => setFiltroAssociado(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg bg-white
-                         focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                         focus:border-cdl-navy-600 transition-colors"
+              className="px-3 py-2 border border-gray-300 rounded-md bg-white
+                         focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600 transition-colors"
             />
             <select
               value={filtroStatus}
               onChange={(e) => setFiltroStatus(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg bg-white
-                         focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                         focus:border-cdl-navy-600 transition-colors"
+              className="px-3 py-2 border border-gray-300 rounded-md bg-white
+                         focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600 transition-colors"
             >
               <option value="">Todos status</option>
               <option value="PENDENTE">⏳ Pendente</option>
@@ -690,9 +689,8 @@ const FaturasGeradas: React.FC = () => {
             <select
               value={filtroRegua || ''}
               onChange={(e) => setFiltroRegua(e.target.value ? parseInt(e.target.value) : undefined)}
-              className="px-3 py-2 border border-gray-300 rounded-lg bg-white
-                         focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                         focus:border-cdl-navy-600 transition-colors"
+              className="px-3 py-2 border border-gray-300 rounded-md bg-white
+                         focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600 transition-colors"
             >
               <option value="">Todas réguas</option>
               {reguas.map((regua) => <option key={regua.id} value={regua.id}>{regua.nome}</option>)}
@@ -700,9 +698,8 @@ const FaturasGeradas: React.FC = () => {
             <select
               value={filtroMes}
               onChange={(e) => setFiltroMes(parseInt(e.target.value))}
-              className="px-3 py-2 border border-gray-300 rounded-lg bg-white
-                         focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                         focus:border-cdl-navy-600 transition-colors"
+              className="px-3 py-2 border border-gray-300 rounded-md bg-white
+                         focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600 transition-colors"
             >
               {['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'].map((mes, idx) => (
                 <option key={idx} value={idx + 1}>{mes}</option>
@@ -713,9 +710,8 @@ const FaturasGeradas: React.FC = () => {
               placeholder="Ano"
               value={filtroAno}
               onChange={(e) => setFiltroAno(parseInt(e.target.value))}
-              className="px-3 py-2 border border-gray-300 rounded-lg bg-white
-                         focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                         focus:border-cdl-navy-600 transition-colors"
+              className="px-3 py-2 border border-gray-300 rounded-md bg-white
+                         focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600 transition-colors"
               min={2020}
               max={2030}
             />
@@ -727,8 +723,8 @@ const FaturasGeradas: React.FC = () => {
               >🔍 Buscar</button>
               <button
                 onClick={limparFiltros}
-                className="flex-1 px-4 py-2 border border-gray-300 text-cdl-navy-700 rounded-lg
-                           hover:bg-cdl-neutral-50 transition-colors"
+                className="flex-1 px-4 py-2 bg-cdl-neutral-50 text-cdl-navy-700 border border-[#E2E6EC]
+                           rounded-lg hover:bg-cdl-navy-50 transition-colors"
               >🗑️ Limpar</button>
             </div>
           </div>
@@ -736,7 +732,7 @@ const FaturasGeradas: React.FC = () => {
 
         {/* Resumo */}
         {!loading && faturas.length > 0 && (
-          <div className="mb-4 text-sm text-gray-500">
+          <div className="px-6 pt-4 text-sm text-gray-500">
             Mostrando <strong className="text-cdl-navy-700">{faturas.length}</strong> de{" "}
             <strong className="text-cdl-navy-700">{totalItens}</strong> fatura(s) |{" "}
             <strong className="text-cdl-navy-700">{faturasSelecionadas.size}</strong> de{" "}
@@ -759,11 +755,11 @@ const FaturasGeradas: React.FC = () => {
           />
         ) : (
           <>
-            <div className="overflow-x-auto border border-gray-200 rounded-lg">
+            <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-cdl-navy-50">
                   <tr>
-                    <th className="px-4 py-3 text-left w-10">
+                    <th className="px-6 py-3 text-left w-10">
                       <input
                         type="checkbox"
                         checked={selecionarTodos && totalFaturas > 0}
@@ -775,7 +771,7 @@ const FaturasGeradas: React.FC = () => {
                     {['Id Fatura','Associado','CNPJ/CPF','Régua','Emissão','Vencimento','Valor','Status','Nota','Ações'].map((h, i) => (
                       <th
                         key={h}
-                        className={`px-4 py-3 text-xs font-semibold text-cdl-navy-700 uppercase tracking-wider ${
+                        className={`px-6 py-3 text-xs font-semibold text-cdl-navy-700 uppercase tracking-wider ${
                           ['Emissão','Vencimento','Status','Nota','Ações'].includes(h) ? 'text-center'
                           : h === 'Valor' ? 'text-right'
                           : 'text-left'
@@ -787,13 +783,13 @@ const FaturasGeradas: React.FC = () => {
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 bg-white">
+                <tbody className="bg-white divide-y divide-gray-200">
                   {faturas.map((fatura) => {
                     const possuiNota = temNotaDebito(fatura);
                     const notaId = getNotaDebitoId(fatura);
                     return (
                       <tr key={fatura.id} className="hover:bg-cdl-navy-50/40 transition-colors">
-                        <td className="px-4 py-3">
+                        <td className="px-6 py-4">
                           <input
                             type="checkbox"
                             checked={faturasSelecionadas.has(fatura.id)}
@@ -804,13 +800,13 @@ const FaturasGeradas: React.FC = () => {
                             title={possuiNota ? '' : 'Fatura sem nota de débito'}
                           />
                         </td>
-                        <td className="px-4 py-3 text-sm font-mono text-cdl-navy-700">{fatura.id}</td>
-                        <td className="px-4 py-3">
+                        <td className="px-6 py-4 text-sm font-mono text-cdl-navy-700">{fatura.id}</td>
+                        <td className="px-6 py-4">
                           <div className="text-sm font-medium text-gray-900">{fatura.associadoNome}</div>
                           <div className="text-xs text-gray-500">Código: <span className="font-mono">{fatura.associadoId}</span></div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{fatura.cnpjCpf || '-'}</td>
-                        <td className="px-4 py-3">
+                        <td className="px-6 py-4 text-sm text-gray-600">{fatura.cnpjCpf || '-'}</td>
+                        <td className="px-6 py-4">
                           {(fatura as any).reguaNome ? (
                             <span
                               className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full font-medium"
@@ -829,18 +825,18 @@ const FaturasGeradas: React.FC = () => {
                             <span className="text-xs text-gray-400">-</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-600 text-center">{formatDate(fatura.dataEmissao)}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600 text-center">{formatDate(fatura.dataVencimento)}</td>
-                        <td className="px-4 py-3 text-sm font-bold text-right text-cdl-navy-700">
+                        <td className="px-6 py-4 text-sm text-gray-600 text-center">{formatDate(fatura.dataEmissao)}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600 text-center">{formatDate(fatura.dataVencimento)}</td>
+                        <td className="px-6 py-4 text-sm font-bold text-right text-cdl-navy-700">
                           {formatCurrency(fatura.valorTotal)}
                         </td>
-                        <td className="px-4 py-3 text-center">
+                        <td className="px-6 py-4 text-center">
                           <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full font-medium ${getStatusColor(fatura.status)}`}>
                             <span>{getStatusIcon(fatura.status)}</span>
                             <span>{fatura.status}</span>
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-center">
+                        <td className="px-6 py-4 text-center">
                           {possuiNota ? (
                             <span className="text-cdl-green-600" title={`Nota ID: ${notaId}`}>
                               <FaCheckCircle className="inline-block" />
@@ -851,26 +847,26 @@ const FaturasGeradas: React.FC = () => {
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-center">
+                        <td className="px-6 py-4 text-center">
                           <div className="flex items-center justify-center gap-1 whitespace-nowrap">
                             <PermissionGuard requiredPermissions={['FATURA_VIEW']}>
                               <button
                                 onClick={() => handleVerDetalhes(fatura.id)}
-                                className="p-1.5 text-cdl-navy-700 hover:text-cdl-navy-900 hover:bg-cdl-navy-50 rounded transition-colors"
+                                className="p-1 text-cdl-navy-700 hover:text-cdl-navy-900 hover:bg-cdl-navy-50 rounded transition-colors"
                                 title="Ver detalhes"
                               >👁️</button>
                             </PermissionGuard>
                             <PermissionGuard requiredPermissions={['FATURA_VIEW']}>
                               <button
                                 onClick={() => handleExportarPdf(fatura.id, fatura.numeroFatura)}
-                                className="p-1.5 text-cdl-green-600 hover:text-cdl-green-700 hover:bg-cdl-green-50 rounded transition-colors"
+                                className="p-1 text-cdl-green-600 hover:text-cdl-green-700 hover:bg-cdl-green-50 rounded transition-colors"
                                 title="Exportar PDF"
                               >📄</button>
                             </PermissionGuard>
                             <PermissionGuard requiredPermissions={['FATURA_VIEW']}>
                               <button
                                 onClick={() => navigate(`/faturamento/faturas/${fatura.id}`)}
-                                className="p-1.5 text-cdl-navy-700 hover:text-cdl-navy-900 hover:bg-cdl-navy-50 rounded transition-colors"
+                                className="p-1 text-cdl-navy-700 hover:text-cdl-navy-900 hover:bg-cdl-navy-50 rounded transition-colors"
                                 title="Ver Logs"
                               >📝</button>
                             </PermissionGuard>
@@ -878,12 +874,12 @@ const FaturasGeradas: React.FC = () => {
                               {podeExcluir(fatura.status) ? (
                                 <button
                                   onClick={() => handleConfirmarExclusao(fatura.id, fatura.status, fatura.numeroFatura)}
-                                  className="p-1.5 text-cdl-danger-500 hover:text-cdl-danger-600 hover:bg-cdl-danger-50 rounded transition-colors"
+                                  className="p-1 text-cdl-danger-500 hover:text-cdl-danger-600 hover:bg-cdl-danger-50 rounded transition-colors"
                                   title="Excluir fatura"
                                 >🗑️</button>
                               ) : (
                                 <button
-                                  className="p-1.5 text-gray-400 cursor-not-allowed"
+                                  className="p-1 text-gray-400 cursor-not-allowed"
                                   title={`Não é possível excluir fatura com status: ${fatura.status}`}
                                   disabled
                                 >🚫</button>
@@ -900,43 +896,46 @@ const FaturasGeradas: React.FC = () => {
 
             {/* Paginação */}
             {totalPaginas > 1 && (
-              <div className="flex flex-wrap items-center justify-between gap-4 mt-4 pt-4 border-t border-gray-200">
-                <div className="text-sm text-gray-500">
-                  Mostrando <strong className="text-cdl-navy-700">{pagina * pageSize + 1}</strong> -{" "}
-                  <strong className="text-cdl-navy-700">
-                    {Math.min((pagina + 1) * pageSize, totalItens)}
-                  </strong>{" "}
-                  de <strong className="text-cdl-navy-700">{totalItens}</strong> registros
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    onClick={() => setPagina(0)}
-                    disabled={pagina === 0}
-                    className="px-3 py-1.5 border border-gray-300 rounded-lg disabled:opacity-50
-                               hover:bg-cdl-navy-50 hover:border-cdl-navy-300 transition-colors text-sm"
-                  >⏮️</button>
-                  <button
-                    onClick={() => setPagina((p) => Math.max(0, p - 1))}
-                    disabled={pagina === 0}
-                    className="px-3 py-1.5 border border-gray-300 rounded-lg disabled:opacity-50
-                               hover:bg-cdl-navy-50 hover:border-cdl-navy-300 transition-colors text-sm"
-                  >◀ Anterior</button>
-                  <span className="px-3 py-1.5 text-sm text-gray-600 font-medium min-w-[100px] text-center">
-                    Página <strong className="text-cdl-navy-700">{pagina + 1}</strong> de{" "}
-                    <strong className="text-cdl-navy-700">{totalPaginas}</strong>
-                  </span>
-                  <button
-                    onClick={() => setPagina((p) => Math.min(totalPaginas - 1, p + 1))}
-                    disabled={pagina === totalPaginas - 1}
-                    className="px-3 py-1.5 border border-gray-300 rounded-lg disabled:opacity-50
-                               hover:bg-cdl-navy-50 hover:border-cdl-navy-300 transition-colors text-sm"
-                  >Próxima ▶</button>
-                  <button
-                    onClick={() => setPagina(totalPaginas - 1)}
-                    disabled={pagina === totalPaginas - 1}
-                    className="px-3 py-1.5 border border-gray-300 rounded-lg disabled:opacity-50
-                               hover:bg-cdl-navy-50 hover:border-cdl-navy-300 transition-colors text-sm"
-                  >⏭️</button>
+              <div className="px-6 py-4 border-t border-gray-200 bg-cdl-neutral-50">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="text-sm text-gray-700">
+                    Mostrando <strong>{pagina * pageSize + 1}</strong> -{" "}
+                    <strong>{Math.min((pagina + 1) * pageSize, totalItens)}</strong>{" "}
+                    de <strong>{totalItens}</strong> registros
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setPagina(0)}
+                      disabled={pagina === 0}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium
+                                 text-gray-700 hover:bg-white hover:border-cdl-navy-300
+                                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >⏮️</button>
+                    <button
+                      onClick={() => setPagina((p) => Math.max(0, p - 1))}
+                      disabled={pagina === 0}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium
+                                 text-gray-700 hover:bg-white hover:border-cdl-navy-300
+                                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >← Anterior</button>
+                    <span className="text-sm text-gray-700">
+                      Página <strong>{pagina + 1}</strong> de <strong>{totalPaginas}</strong>
+                    </span>
+                    <button
+                      onClick={() => setPagina((p) => Math.min(totalPaginas - 1, p + 1))}
+                      disabled={pagina === totalPaginas - 1}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium
+                                 text-gray-700 hover:bg-white hover:border-cdl-navy-300
+                                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >Próxima →</button>
+                    <button
+                      onClick={() => setPagina(totalPaginas - 1)}
+                      disabled={pagina === totalPaginas - 1}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium
+                                 text-gray-700 hover:bg-white hover:border-cdl-navy-300
+                                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >⏭️</button>
+                  </div>
                 </div>
               </div>
             )}
@@ -944,7 +943,7 @@ const FaturasGeradas: React.FC = () => {
         )}
       </div>
 
-      {/* Modais */}
+      {/* ===== Modais ===== */}
       <ModalVisualizarXml
         isOpen={modalVisualizarXmlAberto}
         onClose={() => setModalVisualizarXmlAberto(false)}
@@ -1006,10 +1005,10 @@ const FaturasGeradas: React.FC = () => {
       {/* Modal resultado API */}
       {modalResultadoApiAberta && resultadoApi && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={() => setModalResultadoApiAberta(false)} />
-          <div className="relative w-full sm:max-w-3xl bg-white rounded-t-2xl sm:rounded-2xl
-                          shadow-[0_20px_60px_-15px_rgba(0,0,0,.35)] overflow-hidden
-                          max-h-[95vh] sm:max-h-[85vh] flex flex-col border-t-4 border-cdl-navy-700">
+          <div className="absolute inset-0 bg-cdl-navy-900/60 backdrop-blur-sm" onClick={() => setModalResultadoApiAberta(false)} />
+          <div className="relative w-full sm:max-w-3xl bg-white rounded-t-2xl sm:rounded-lg
+                          shadow-cdl overflow-hidden max-h-[95vh] sm:max-h-[85vh] flex flex-col
+                          border-t-4 border-cdl-navy-700">
             <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 flex justify-between items-center bg-cdl-navy-50 shrink-0">
               <div>
                 <h3 className="text-base sm:text-lg font-semibold text-cdl-navy-700 flex items-center gap-2">
@@ -1050,7 +1049,7 @@ const FaturasGeradas: React.FC = () => {
                     <thead className="bg-cdl-navy-50">
                       <tr>
                         {['Fatura','Status','ID Mov','Mensagem'].map((h) => (
-                          <th key={h} className="px-3 py-2 text-left text-xs font-semibold text-cdl-navy-700 uppercase">
+                          <th key={h} className="px-3 py-2 text-left text-xs font-semibold text-cdl-navy-700 uppercase tracking-wider">
                             {h}
                           </th>
                         ))}

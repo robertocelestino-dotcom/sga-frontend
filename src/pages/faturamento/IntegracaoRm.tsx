@@ -1,4 +1,4 @@
-// src/pages/faturamento/IntegracaoRm.tsx - VERSÃO CDL
+// src/pages/faturamento/IntegracaoRm.tsx - VERSÃO CDL (alinhada a Associados.tsx)
 import React, { useState, useEffect, useCallback } from 'react';
 import { X } from 'lucide-react';
 import { useMessage } from '../../providers/MessageProvider';
@@ -97,23 +97,28 @@ const ModalConfiguracaoRm: React.FC<{
     { value: '2.2.21', label: '2.2.21 - Faturamento - Beneficios / ASSINATURA' },
   ];
 
+  // Classes utilitárias
+  const inputBase =
+    'w-full px-3 py-2 border border-gray-300 rounded-md bg-white transition-colors ' +
+    'focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600';
+
   if (!isOpen) return null;
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+        className="absolute inset-0 bg-cdl-navy-900/60 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden="true"
       />
 
-      <div className="relative w-full sm:max-w-4xl bg-white rounded-t-2xl sm:rounded-2xl
-                      shadow-[0_20px_60px_-15px_rgba(0,0,0,.35)] overflow-hidden
-                      max-h-[95vh] sm:max-h-[90vh] flex flex-col border-t-4 border-cdl-navy-700">
+      <div className="relative w-full sm:max-w-4xl bg-white rounded-t-2xl sm:rounded-lg
+                      shadow-cdl overflow-hidden max-h-[95vh] sm:max-h-[90vh] flex flex-col
+                      border-t-4 border-cdl-navy-700">
         {/* Header */}
         <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 flex justify-between items-center bg-cdl-navy-50 shrink-0">
           <h2 className="text-base sm:text-lg font-semibold text-cdl-navy-700">
-            {configuracao ? 'Editar Configuração RM' : 'Nova Configuração RM'}
+            {configuracao ? '✏️ Editar Configuração RM' : '➕ Nova Configuração RM'}
           </h2>
           <button
             onClick={onClose}
@@ -133,20 +138,20 @@ const ModalConfiguracaoRm: React.FC<{
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-cdl-navy-700 mb-1">Descrição *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Descrição <span className="text-cdl-danger-500">*</span>
+                </label>
                 <input
                   type="text"
                   name="descricao"
                   value={formData.descricao}
                   onChange={handleChange}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white
-                             focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                             focus:border-cdl-navy-600 transition-colors"
+                  className={inputBase}
                   placeholder="Ex: Faturamento Mensal - Associados"
                 />
               </div>
-              <div className="flex items-center gap-3">
+              <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
                   name="ativo"
@@ -154,8 +159,8 @@ const ModalConfiguracaoRm: React.FC<{
                   onChange={handleChange}
                   className="h-4 w-4 text-cdl-navy-700 rounded focus:ring-cdl-navy-600"
                 />
-                <label className="text-sm text-cdl-navy-700 font-medium">Configuração Ativa</label>
-              </div>
+                <span className="text-sm text-gray-700 font-medium">Configuração Ativa</span>
+              </label>
             </div>
           </div>
 
@@ -166,14 +171,12 @@ const ModalConfiguracaoRm: React.FC<{
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-cdl-navy-700 mb-1">Tipo Movimento</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo Movimento</label>
                 <select
                   name="tipoMovimento"
                   value={formData.tipoMovimento}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white
-                             focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                             focus:border-cdl-navy-600 transition-colors"
+                  className={inputBase}
                 >
                   {tiposMovimentoOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -191,7 +194,7 @@ const ModalConfiguracaoRm: React.FC<{
                 { label: 'UF Serviço', name: 'ufServico', maxLength: 2 },
               ].map((field) => (
                 <div key={field.name}>
-                  <label className="block text-sm font-medium text-cdl-navy-700 mb-1">{field.label}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{field.label}</label>
                   <input
                     type="text"
                     name={field.name}
@@ -199,9 +202,7 @@ const ModalConfiguracaoRm: React.FC<{
                     onChange={handleChange}
                     placeholder={field.placeholder}
                     maxLength={field.maxLength}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white
-                               focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                               focus:border-cdl-navy-600 transition-colors"
+                    className={inputBase}
                   />
                 </div>
               ))}
@@ -231,32 +232,32 @@ const ModalConfiguracaoRm: React.FC<{
                   placeholder="Chave"
                   value={param.chave}
                   onChange={(e) => atualizarParametro(index, 'chave', e.target.value)}
-                  className="w-full md:w-1/4 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white
-                             focus:outline-none focus:ring-2 focus:ring-cdl-navy-600"
+                  className="w-full md:w-1/4 px-3 py-2 border border-gray-300 rounded-md text-sm bg-white
+                             focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600"
                 />
                 <input
                   type="text"
                   placeholder="Valor"
                   value={param.valor}
                   onChange={(e) => atualizarParametro(index, 'valor', e.target.value)}
-                  className="w-full md:w-1/4 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white
-                             focus:outline-none focus:ring-2 focus:ring-cdl-navy-600"
+                  className="w-full md:w-1/4 px-3 py-2 border border-gray-300 rounded-md text-sm bg-white
+                             focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600"
                 />
                 <input
                   type="text"
                   placeholder="Descrição"
                   value={param.descricao}
                   onChange={(e) => atualizarParametro(index, 'descricao', e.target.value)}
-                  className="w-full md:w-1/3 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white
-                             focus:outline-none focus:ring-2 focus:ring-cdl-navy-600"
+                  className="w-full md:w-1/3 px-3 py-2 border border-gray-300 rounded-md text-sm bg-white
+                             focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600"
                 />
                 <input
                   type="number"
                   placeholder="Ordem"
                   value={param.ordem}
                   onChange={(e) => atualizarParametro(index, 'ordem', parseInt(e.target.value))}
-                  className="w-full md:w-20 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white
-                             focus:outline-none focus:ring-2 focus:ring-cdl-navy-600"
+                  className="w-full md:w-20 px-3 py-2 border border-gray-300 rounded-md text-sm bg-white
+                             focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600"
                 />
                 <button
                   type="button"
@@ -283,8 +284,8 @@ const ModalConfiguracaoRm: React.FC<{
           <button
             type="button"
             onClick={handleCancelar}
-            className="px-4 py-2.5 border border-gray-300 text-cdl-navy-700 rounded-lg
-                       hover:bg-cdl-neutral-50 transition-colors font-medium"
+            className="px-4 py-2 bg-cdl-neutral-50 text-cdl-navy-700 border border-[#E2E6EC]
+                       rounded-lg flex items-center gap-2 hover:bg-cdl-navy-50 transition-colors font-medium"
           >
             Cancelar
           </button>
@@ -292,8 +293,8 @@ const ModalConfiguracaoRm: React.FC<{
             type="button"
             onClick={handleSubmit}
             disabled={loading}
-            className="px-6 py-2.5 bg-cdl-navy-700 text-white rounded-lg hover:bg-cdl-navy-800
-                       disabled:bg-gray-400 disabled:cursor-not-allowed transition-all
+            className="px-4 py-2 bg-cdl-navy-700 text-white rounded-lg hover:bg-cdl-navy-800
+                       disabled:opacity-50 disabled:cursor-not-allowed transition-all
                        active:scale-[.98] flex items-center justify-center gap-2 font-medium"
           >
             {loading ? (
@@ -425,45 +426,44 @@ const IntegracaoRm: React.FC = () => {
   if (loading) return <Loading />;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <BreadCrumb items={[
-        { label: 'Faturamento', path: '/faturamento/regua' },
-        { label: 'Integração RM' },
-      ]} />
+    <div className="p-6">
+      <BreadCrumb atual="Integração RM" />
 
-      <div className="bg-white rounded-xl shadow-cdl p-6 mt-6">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-cdl-navy-700">Configurações de Integração RM</h1>
-            <p className="text-gray-600 mt-1">
-              Configure as regras para exportação dos arquivos para o sistema TOTVS RM
-            </p>
-          </div>
+      {/* ===== Cabeçalho ===== */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-cdl-navy-700">Configurações de Integração RM</h1>
+          <p className="text-gray-600">
+            Configure as regras para exportação dos arquivos para o sistema TOTVS RM
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-3">
           <button
             onClick={handleAbrirModalNova}
-            className="px-4 py-2 bg-cdl-navy-700 text-white rounded-lg hover:bg-cdl-navy-800
-                       flex items-center gap-2 font-medium transition-all active:scale-[.98]"
+            className="px-4 py-2 bg-cdl-navy-700 text-white rounded-lg flex items-center gap-2
+                       hover:bg-cdl-navy-800 font-medium transition-all active:scale-[.98]"
           >
-            <span className="text-lg">+</span>
-            Nova Configuração
+            ➕ Nova Configuração
           </button>
         </div>
+      </div>
 
+      {/* ===== Card principal ===== */}
+      <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
         {/* Barra de pesquisa */}
-        <div className="mb-4">
+        <div className="px-6 py-4 border-b border-gray-200 bg-cdl-neutral-50">
           <div className="relative max-w-md">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
             <input
               type="text"
-              placeholder="🔍 Pesquisar por descrição..."
+              placeholder="Pesquisar por descrição..."
               value={filtroPesquisa}
               onChange={(e) => {
                 setFiltroPesquisa(e.target.value);
                 setPaginaAtual(1);
               }}
-              className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg bg-white
-                         focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                         focus:border-cdl-navy-600 transition-colors"
+              className="w-full px-3 py-2 pl-9 pr-10 border border-gray-300 rounded-md bg-white
+                         focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600 transition-colors"
             />
             {filtroPesquisa && (
               <button
@@ -473,7 +473,7 @@ const IntegracaoRm: React.FC = () => {
             )}
           </div>
           {filtroPesquisa && (
-            <div className="text-sm text-cdl-navy-600 mt-1">
+            <div className="text-sm text-cdl-navy-600 mt-2">
               Encontradas <strong>{configuracoesFiltradas.length}</strong> configuração(ões)
             </div>
           )}
@@ -487,7 +487,7 @@ const IntegracaoRm: React.FC = () => {
             description={
               filtroPesquisa
                 ? `Nada encontrado para "${filtroPesquisa}". Tente ajustar a busca.`
-                : 'Crie a primeira configuração para integrar com o TOTRM.'
+                : 'Crie a primeira configuração para integrar com o TOTVS RM.'
             }
             action={
               filtroPesquisa ? (
@@ -511,14 +511,14 @@ const IntegracaoRm: React.FC = () => {
           />
         ) : (
           <>
-            <div className="overflow-x-auto border border-gray-200 rounded-lg">
+            <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-cdl-navy-50">
                   <tr>
                     {['ID','Descrição','Tipo Movimento','Centro Custo','Status','Criado em','Ações'].map((h, i) => (
                       <th
                         key={h}
-                        className={`px-4 py-3 text-xs font-semibold text-cdl-navy-700 uppercase tracking-wider ${
+                        className={`px-6 py-3 text-xs font-semibold text-cdl-navy-700 uppercase tracking-wider ${
                           i === 6 ? 'text-center' : 'text-left'
                         }`}
                       >
@@ -530,10 +530,10 @@ const IntegracaoRm: React.FC = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {configuracoesPaginadas.map((config) => (
                     <tr key={config.id} className="hover:bg-cdl-navy-50/40 transition-colors">
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-mono text-cdl-navy-700">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-cdl-navy-700">
                         {config.id}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-900">
+                      <td className="px-6 py-4 text-sm text-gray-900">
                         <div className="font-medium">{config.descricao}</div>
                         {config.parametros && config.parametros.length > 0 && (
                           <div className="text-xs text-gray-500 mt-1">
@@ -541,28 +541,28 @@ const IntegracaoRm: React.FC = () => {
                           </div>
                         )}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 font-mono">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">
                         {config.tipoMovimento}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 font-mono">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">
                         {config.centroCusto}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(config.ativo)}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {formatDate(config.criadoEm)}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-center">
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
                         <div className="flex items-center justify-center gap-1">
                           <button
                             onClick={() => handleEditar(config)}
-                            className="p-1.5 text-cdl-navy-700 hover:text-cdl-navy-900 hover:bg-cdl-navy-50 rounded transition-colors"
+                            className="p-1 text-cdl-yellow-600 hover:text-cdl-yellow-700 hover:bg-cdl-yellow-50 rounded transition-colors"
                             title="Editar"
                           >✏️</button>
                           <button
                             onClick={() => handleRemoverClick(config)}
-                            className="p-1.5 text-cdl-danger-500 hover:text-cdl-danger-600 hover:bg-cdl-danger-50 rounded transition-colors"
+                            className="p-1 text-cdl-danger-500 hover:text-cdl-danger-600 hover:bg-cdl-danger-50 rounded transition-colors"
                             title="Remover"
                           >🗑️</button>
                         </div>
@@ -575,31 +575,32 @@ const IntegracaoRm: React.FC = () => {
 
             {/* Paginação */}
             {totalPaginas > 1 && (
-              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-gray-200 mt-4">
-                <div className="text-sm text-gray-500">
-                  Mostrando <strong className="text-cdl-navy-700">{inicio + 1}</strong> -{" "}
-                  <strong className="text-cdl-navy-700">{Math.min(fim, configuracoesFiltradas.length)}</strong>{" "}
-                  de <strong className="text-cdl-navy-700">{configuracoesFiltradas.length}</strong>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setPaginaAtual((p) => Math.max(1, p - 1))}
-                    disabled={paginaAtual === 1}
-                    className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium
-                               text-cdl-navy-700 disabled:opacity-50 disabled:cursor-not-allowed
-                               hover:bg-cdl-navy-50 hover:border-cdl-navy-300 transition-colors"
-                  >◀ Anterior</button>
-                  <span className="px-3 py-1.5 text-sm text-gray-700">
-                    Página <strong className="text-cdl-navy-700">{paginaAtual}</strong> de{" "}
-                    <strong className="text-cdl-navy-700">{totalPaginas}</strong>
-                  </span>
-                  <button
-                    onClick={() => setPaginaAtual((p) => Math.min(totalPaginas, p + 1))}
-                    disabled={paginaAtual === totalPaginas}
-                    className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium
-                               text-cdl-navy-700 disabled:opacity-50 disabled:cursor-not-allowed
-                               hover:bg-cdl-navy-50 hover:border-cdl-navy-300 transition-colors"
-                  >Próxima ▶</button>
+              <div className="px-6 py-4 border-t border-gray-200 bg-cdl-neutral-50">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="text-sm text-gray-700">
+                    Mostrando <strong>{inicio + 1}</strong> -{" "}
+                    <strong>{Math.min(fim, configuracoesFiltradas.length)}</strong>{" "}
+                    de <strong>{configuracoesFiltradas.length}</strong>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setPaginaAtual((p) => Math.max(1, p - 1))}
+                      disabled={paginaAtual === 1}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium
+                                 text-gray-700 hover:bg-white hover:border-cdl-navy-300
+                                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >← Anterior</button>
+                    <span className="text-sm text-gray-700">
+                      Página <strong>{paginaAtual}</strong> de <strong>{totalPaginas}</strong>
+                    </span>
+                    <button
+                      onClick={() => setPaginaAtual((p) => Math.min(totalPaginas, p + 1))}
+                      disabled={paginaAtual === totalPaginas}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium
+                                 text-gray-700 hover:bg-white hover:border-cdl-navy-300
+                                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >Próxima →</button>
+                  </div>
                 </div>
               </div>
             )}

@@ -1,4 +1,4 @@
-// src/pages/VerificacaoDashboard.tsx - VERSÃO CDL
+// src/pages/VerificacaoDashboard.tsx - VERSÃO CDL (alinhada a Associados.tsx)
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -379,11 +379,11 @@ export default function VerificacaoDashboardPage() {
   const totalPaginasNotas = Math.ceil(notas.totalElements / notasPageSize);
 
   return (
-    <div className="p-5 max-w-7xl mx-auto">
+    <div className="p-6">
       <BreadCrumb atual="Verificação de Faturamento" />
 
-      {/* ========== HEADER: Título + Seletor ========== */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mt-6 mb-6">
+      {/* ===== Cabeçalho ===== */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-cdl-navy-700">
             Painel de Verificação
@@ -396,15 +396,16 @@ export default function VerificacaoDashboardPage() {
               </>
             )}
           </h1>
-          <p className="text-gray-600 mt-1">Análise financeira e de notas da importação SPC</p>
+          <p className="text-gray-600">
+            Análise financeira e de notas da importação SPC
+          </p>
         </div>
 
         <div className="flex items-center gap-3">
           <label className="text-sm font-medium text-cdl-navy-700">Importação:</label>
           <select
-            className="px-3 py-2 border border-gray-300 rounded-lg bg-white min-w-[220px]
-                       focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                       focus:border-cdl-navy-600 transition-colors"
+            className="px-3 py-2 border border-gray-300 rounded-md bg-white min-w-[220px]
+                       focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600 transition-colors"
             value={importacaoSelecionada ?? ""}
             onChange={(e) => {
               setImportacaoSelecionada(Number(e.target.value));
@@ -424,12 +425,12 @@ export default function VerificacaoDashboardPage() {
         </div>
       </div>
 
-      {/* ========== BOTÕES DE EXPORTAÇÃO ========== */}
-      <div className="flex gap-2 mb-6 flex-wrap">
+      {/* ===== Botões de Exportação ===== */}
+      <div className="flex gap-3 mb-6 flex-wrap">
         <button
           onClick={exportarCSV}
           disabled={!todasNotas.length}
-          className={`px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-all active:scale-[.98] ${
+          className={`px-4 py-2 rounded-lg flex items-center gap-2 font-medium transition-all active:scale-[.98] ${
             todasNotas.length
               ? 'bg-cdl-navy-700 text-white hover:bg-cdl-navy-800'
               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -441,7 +442,7 @@ export default function VerificacaoDashboardPage() {
         <button
           onClick={exportarPDFLote}
           disabled={!resumoFinanceiro}
-          className={`px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-all active:scale-[.98] ${
+          className={`px-4 py-2 rounded-lg flex items-center gap-2 font-medium transition-all active:scale-[.98] ${
             resumoFinanceiro
               ? 'bg-cdl-danger-500 text-white hover:bg-cdl-danger-600'
               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -453,7 +454,7 @@ export default function VerificacaoDashboardPage() {
         <button
           onClick={exportarRM}
           disabled={!todasNotas.length}
-          className={`px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-all active:scale-[.98] ${
+          className={`px-4 py-2 rounded-lg flex items-center gap-2 font-medium transition-all active:scale-[.98] ${
             todasNotas.length
               ? 'bg-cdl-green-500 text-white hover:bg-cdl-green-600'
               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -463,71 +464,76 @@ export default function VerificacaoDashboardPage() {
         </button>
       </div>
 
-      {/* ========== RESUMO FINANCEIRO ========== */}
+      {/* ===== Resumo Financeiro ===== */}
       {resumoFinanceiro && (
-        <div className="bg-cdl-navy-50 border border-cdl-navy-100 p-6 rounded-xl shadow-cdl mb-8">
-          <h2 className="text-lg font-semibold text-cdl-navy-700 mb-4 flex items-center gap-2">
-            <span>📊</span> Resumo Financeiro da Importação
-          </h2>
+        <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden mb-6">
+          <div className="px-6 py-4 border-b border-gray-200 bg-cdl-navy-50 flex items-center gap-2">
+            <div className="w-1 h-6 bg-cdl-navy-700 rounded"></div>
+            <h2 className="text-lg font-semibold text-cdl-navy-700">
+              📊 Resumo Financeiro da Importação
+            </h2>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-4 rounded-lg shadow-sm border-l-4 border-cdl-danger-500">
-              <p className="text-sm text-cdl-danger-500 font-medium">Total Débitos</p>
-              <p className="text-xl font-bold text-cdl-danger-500 mt-1">
-                {formatarMoeda(resumoFinanceiro.totalDebitos)}
-              </p>
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow-sm border-l-4 border-cdl-green-500">
-              <p className="text-sm text-cdl-green-600 font-medium">Total Créditos</p>
-              <p className="text-xl font-bold text-cdl-green-700 mt-1">
-                {formatarMoeda(resumoFinanceiro.totalCreditos)}
-              </p>
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow-sm border-l-4 border-cdl-navy-700">
-              <p className="text-sm text-cdl-navy-600 font-medium">Valor Cobrado</p>
-              <p className="text-xl font-bold text-cdl-navy-700 mt-1">
-                {formatarMoeda(resumoFinanceiro.valorCobrado)}
-              </p>
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow-sm border-l-4 border-cdl-yellow-500">
-              <p className="text-sm text-cdl-yellow-700 font-medium">Notas</p>
-              <p className="text-xl font-bold text-cdl-yellow-700 mt-1">
-                {resumoFinanceiro.quantidadeNotas}
-              </p>
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-cdl-neutral-50 p-4 rounded-lg border-l-4 border-cdl-danger-500">
+                <p className="text-sm text-cdl-danger-500 font-medium">Total Débitos</p>
+                <p className="text-xl font-bold text-cdl-danger-500 mt-1">
+                  {formatarMoeda(resumoFinanceiro.totalDebitos)}
+                </p>
+              </div>
+              <div className="bg-cdl-neutral-50 p-4 rounded-lg border-l-4 border-cdl-green-500">
+                <p className="text-sm text-cdl-green-600 font-medium">Total Créditos</p>
+                <p className="text-xl font-bold text-cdl-green-700 mt-1">
+                  {formatarMoeda(resumoFinanceiro.totalCreditos)}
+                </p>
+              </div>
+              <div className="bg-cdl-neutral-50 p-4 rounded-lg border-l-4 border-cdl-navy-700">
+                <p className="text-sm text-cdl-navy-600 font-medium">Valor Cobrado</p>
+                <p className="text-xl font-bold text-cdl-navy-700 mt-1">
+                  {formatarMoeda(resumoFinanceiro.valorCobrado)}
+                </p>
+              </div>
+              <div className="bg-cdl-neutral-50 p-4 rounded-lg border-l-4 border-cdl-yellow-500">
+                <p className="text-sm text-cdl-yellow-700 font-medium">Notas</p>
+                <p className="text-xl font-bold text-cdl-yellow-700 mt-1">
+                  {resumoFinanceiro.quantidadeNotas}
+                </p>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* ========== GRID DE NOTAS ========== */}
-      <div>
-        <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
-          <h2 className="font-semibold text-lg text-cdl-navy-700 flex items-center gap-2">
-            <span>🧾</span> Notas Faturadas
-          </h2>
-          <span className="text-sm text-cdl-navy-600 bg-cdl-navy-50 px-3 py-1 rounded-full font-medium">
+      {/* ===== Grid de Notas ===== */}
+      <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200 bg-cdl-navy-50 flex flex-wrap justify-between items-center gap-3">
+          <div className="flex items-center gap-2">
+            <div className="w-1 h-6 bg-cdl-navy-700 rounded"></div>
+            <h2 className="text-lg font-semibold text-cdl-navy-700">🧾 Notas Faturadas</h2>
+          </div>
+          <span className="text-sm text-cdl-navy-600 bg-white px-3 py-1 rounded-full font-medium border border-cdl-navy-100">
             Total: <strong>{notas.totalElements}</strong> nota(s)
           </span>
         </div>
 
-        <div className="mb-4 relative max-w-md">
-          <input
-            className="w-full px-4 py-2.5 pl-10 border border-gray-300 rounded-lg
-                       focus:outline-none focus:ring-2 focus:ring-cdl-navy-600
-                       focus:border-cdl-navy-600 transition-colors"
-            placeholder="Filtrar por código, nome..."
-            value={notasFiltro}
-            onChange={(e) => {
-              setNotasFiltro(e.target.value);
-              setNotasPage(0);
-            }}
-          />
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
-        </div>
+        <div className="p-6">
+          {/* Filtro */}
+          <div className="mb-4 relative max-w-md">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+            <input
+              className="w-full px-3 py-2 pl-9 border border-gray-300 rounded-md
+                         focus:ring-2 focus:ring-cdl-navy-600 focus:border-cdl-navy-600 transition-colors"
+              placeholder="Filtrar por código, nome..."
+              value={notasFiltro}
+              onChange={(e) => {
+                setNotasFiltro(e.target.value);
+                setNotasPage(0);
+              }}
+            />
+          </div>
 
-        {/* Tabela */}
-        {notas.content.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-cdl">
+          {notas.content.length === 0 ? (
             <EmptyState
               icon="🧾"
               title={notasFiltro ? "Nenhuma nota corresponde ao filtro" : "Nenhuma nota encontrada"}
@@ -548,108 +554,109 @@ export default function VerificacaoDashboardPage() {
                 ) : undefined
               }
             />
-          </div>
-        ) : (
-          <>
-            <div className="overflow-x-auto bg-white rounded-xl shadow-cdl">
-              <table className="w-full text-sm">
-                <thead className="bg-cdl-navy-50">
-                  <tr>
-                    {[
-                      { label: 'Código', align: 'left' },
-                      { label: 'Nome', align: 'left' },
-                      { label: 'Débitos', align: 'right' },
-                      { label: 'Créditos', align: 'right' },
-                      { label: 'Faturado', align: 'right' },
-                      { label: 'Ações', align: 'center' },
-                    ].map((h, i) => (
-                      <th
-                        key={i}
-                        className={`px-4 py-3 text-${h.align} text-xs font-semibold text-cdl-navy-700 uppercase tracking-wider`}
-                      >
-                        {h.label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {notas.content.map((n: any) => (
-                    <tr key={n.id} className="hover:bg-cdl-navy-50/40 transition-colors">
-                      <td className="px-4 py-3 font-mono text-cdl-navy-700">{n.codigoSocio}</td>
-                      <td className="px-4 py-3 text-gray-900">{n.nomeAssociado}</td>
-                      <td className="px-4 py-3 text-right text-cdl-danger-500 font-medium">
-                        {formatarMoeda(n.totalDebitos)}
-                      </td>
-                      <td className="px-4 py-3 text-right text-cdl-green-700 font-medium">
-                        {formatarMoeda(n.totalCreditos)}
-                      </td>
-                      <td className="px-4 py-3 text-right font-semibold text-cdl-navy-700">
-                        {formatarMoeda(n.valorFaturado)}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <div className="flex justify-center gap-2">
-                          <button
-                            onClick={() => abrirDetalhesNota(n.id)}
-                            className="px-3 py-1.5 text-xs bg-cdl-navy-700 text-white rounded-md
-                                       hover:bg-cdl-navy-800 transition-colors font-medium"
-                            title="Visualizar detalhes"
-                          >
-                            Detalhes
-                          </button>
-                          <button
-                            onClick={() => gerarPDFNota(n.id)}
-                            className="px-3 py-1.5 text-xs bg-cdl-yellow-gradient text-cdl-navy-700
-                                       rounded-md hover:brightness-105 transition-all font-medium"
-                            title="Gerar PDF da nota"
-                          >
-                            PDF
-                          </button>
-                        </div>
-                      </td>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-cdl-navy-50">
+                    <tr>
+                      {[
+                        { label: 'Código', align: 'left' },
+                        { label: 'Nome', align: 'left' },
+                        { label: 'Débitos', align: 'right' },
+                        { label: 'Créditos', align: 'right' },
+                        { label: 'Faturado', align: 'right' },
+                        { label: 'Ações', align: 'center' },
+                      ].map((h, i) => (
+                        <th
+                          key={i}
+                          className={`px-6 py-3 text-${h.align} text-xs font-semibold text-cdl-navy-700 uppercase tracking-wider`}
+                        >
+                          {h.label}
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Paginação */}
-            {notas.totalElements > 0 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4">
-                <div className="text-sm text-gray-700">
-                  Mostrando <strong>{notasPage * notasPageSize + 1}</strong> a{" "}
-                  <strong>{Math.min((notasPage + 1) * notasPageSize, notas.totalElements)}</strong>{" "}
-                  de <strong>{notas.totalElements}</strong> notas
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleNotasPreviousPage}
-                    disabled={notasPage === 0}
-                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium
-                               text-gray-700 hover:bg-white hover:border-cdl-navy-300
-                               disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    ← Anterior
-                  </button>
-                  <span className="px-3 py-2 text-sm text-gray-700">
-                    Página <strong>{notasPage + 1}</strong> de <strong>{totalPaginasNotas}</strong>
-                  </span>
-                  <button
-                    onClick={handleNotasNextPage}
-                    disabled={notasPage >= totalPaginasNotas - 1}
-                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium
-                               text-gray-700 hover:bg-white hover:border-cdl-navy-300
-                               disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Próxima →
-                  </button>
-                </div>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {notas.content.map((n: any) => (
+                      <tr key={n.id} className="hover:bg-cdl-navy-50/40 transition-colors">
+                        <td className="px-6 py-4 font-mono text-cdl-navy-700">{n.codigoSocio}</td>
+                        <td className="px-6 py-4 text-gray-900">{n.nomeAssociado}</td>
+                        <td className="px-6 py-4 text-right text-cdl-danger-500 font-medium">
+                          {formatarMoeda(n.totalDebitos)}
+                        </td>
+                        <td className="px-6 py-4 text-right text-cdl-green-700 font-medium">
+                          {formatarMoeda(n.totalCreditos)}
+                        </td>
+                        <td className="px-6 py-4 text-right font-semibold text-cdl-navy-700">
+                          {formatarMoeda(n.valorFaturado)}
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <div className="flex flex-wrap gap-1 justify-center">
+                            <button
+                              onClick={() => abrirDetalhesNota(n.id)}
+                              className="p-1 text-cdl-navy-700 hover:text-cdl-navy-900 hover:bg-cdl-navy-50 rounded transition-colors"
+                              title="Detalhes"
+                            >
+                              👁️
+                            </button>
+                            <button
+                              onClick={() => gerarPDFNota(n.id)}
+                              className="p-1 text-cdl-yellow-600 hover:text-cdl-yellow-700 hover:bg-cdl-yellow-50 rounded transition-colors"
+                              title="Gerar PDF"
+                            >
+                              📄
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            )}
-          </>
-        )}
+
+              {/* Paginação */}
+              {notas.totalElements > 0 && (
+                <div className="px-6 py-4 border-t border-gray-200 bg-cdl-neutral-50 mt-6 -mx-6 -mb-6">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="text-sm text-gray-700">
+                      Mostrando <span className="font-medium">{notasPage * notasPageSize + 1}</span> a{" "}
+                      <span className="font-medium">{Math.min((notasPage + 1) * notasPageSize, notas.totalElements)}</span>{" "}
+                      de <span className="font-medium">{notas.totalElements}</span> notas
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleNotasPreviousPage}
+                        disabled={notasPage === 0}
+                        className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium
+                                   text-gray-700 hover:bg-white hover:border-cdl-navy-300
+                                   disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        ← Anterior
+                      </button>
+                      <span className="text-sm text-gray-700">
+                        Página <span className="font-medium">{notasPage + 1}</span> de{" "}
+                        <span className="font-medium">{totalPaginasNotas}</span>
+                      </span>
+                      <button
+                        onClick={handleNotasNextPage}
+                        disabled={notasPage >= totalPaginasNotas - 1}
+                        className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium
+                                   text-gray-700 hover:bg-white hover:border-cdl-navy-300
+                                   disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Próxima →
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
-      {/* ========== MODAL DE DETALHES ========== */}
+      {/* ===== Modal de Detalhes ===== */}
       {modalAberto && (
         <Modal
           title={`Detalhes da Nota${notaDetalhes?.numeroNota ? ` - ${notaDetalhes.numeroNota}` : ''}`}
@@ -711,14 +718,14 @@ export default function VerificacaoDashboardPage() {
                       ].map((h, i) => (
                         <th
                           key={i}
-                          className={`px-3 py-2 text-${h.align} text-xs font-semibold text-cdl-navy-700 uppercase`}
+                          className={`px-3 py-2 text-${h.align} text-xs font-semibold text-cdl-navy-700 uppercase tracking-wider`}
                         >
                           {h.label}
                         </th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="bg-white divide-y divide-gray-200">
                     {notaDetalhes.itens?.map((item: any, idx: number) => (
                       <tr key={idx} className="hover:bg-cdl-navy-50/40 transition-colors">
                         <td className="px-3 py-2 font-mono text-cdl-navy-700">{item.codigo}</td>
